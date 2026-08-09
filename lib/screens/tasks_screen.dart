@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_animate/flutter_animate.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:intl/intl.dart';
 import 'package:confetti/confetti.dart';
 import '../providers/task_provider.dart';
 import '../models/task.dart';
 import '../theme/app_theme.dart';
+import '../core/motion.dart';
 
 class TasksScreen extends ConsumerStatefulWidget {
   const TasksScreen({super.key});
@@ -130,7 +131,7 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
                           ),
                           child: Row(
                             children: [
-                              const Icon(Icons.calendar_today, color: AppTheme.textMuted, size: 20),
+                              Icon(LucideIcons.calendar, color: AppTheme.textMuted, size: 18),
                               const SizedBox(width: 8),
                               Expanded(
                                 child: Text(
@@ -159,8 +160,8 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
                                   child: Row(
                                     children: [
                                       Container(
-                                        width: 10,
-                                        height: 10,
+                                        width: 8,
+                                        height: 8,
                                         decoration: BoxDecoration(
                                           color: p == 'high'
                                               ? AppTheme.error
@@ -171,7 +172,7 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
                                         ),
                                       ),
                                       const SizedBox(width: 8),
-                                      Text(p.toUpperCase(), style: const TextStyle(fontSize: 12)),
+                                      Text(p.toUpperCase(), style: const TextStyle(fontSize: 11)),
                                     ],
                                   ),
                                 ))
@@ -260,7 +261,7 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
         title: const Text('Tasks Arena'),
         actions: [
           IconButton(
-            icon: const Icon(Icons.add),
+            icon: Icon(LucideIcons.plus),
             onPressed: _showAddTaskDialog,
           ),
         ],
@@ -268,19 +269,19 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
       body: Stack(
         children: [
           tasks.isEmpty
-              ? const Center(
+              ? Center(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.checklist, size: 64, color: AppTheme.textMuted),
-                      SizedBox(height: 16),
-                      Text('No tasks yet', style: TextStyle(color: AppTheme.textMuted)),
-                      SizedBox(height: 8),
-                      Text('Tap + to add your first task',
+                      Icon(LucideIcons.checkSquare, size: 56, color: AppTheme.textMuted),
+                      const SizedBox(height: 16),
+                      const Text('No tasks yet', style: TextStyle(color: AppTheme.textMuted)),
+                      const SizedBox(height: 8),
+                      const Text('Tap + to add your first task',
                           style: TextStyle(color: AppTheme.textMuted, fontSize: 12)),
                     ],
                   ),
-                )
+                ).withPremiumEntry()
               : ListView(
                   padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
                   children: [
@@ -293,24 +294,28 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
                             const Spacer(),
                             Chip(
                               label: Text('${incomplete.length}'),
-                              backgroundColor: AppTheme.primary.withAlpha(51),
+                              backgroundColor: AppTheme.primary.withAlpha(38),
                               labelStyle: const TextStyle(color: AppTheme.primary, fontWeight: FontWeight.bold),
                             ),
                           ],
                         ),
                       ),
-                      ...incomplete.map((task) => _TaskTile(
-                            task: task,
-                            onComplete: () {
-                              ref.read(taskNotifierProvider.notifier).toggleComplete(task.id);
-                              ref.invalidate(taskListProvider);
-                              _confettiController?.play();
-                            },
-                            onDelete: () {
-                              ref.read(taskNotifierProvider.notifier).deleteTask(task.id);
-                              ref.invalidate(taskListProvider);
-                            },
-                          )),
+                      ...incomplete.asMap().entries.map((entry) {
+                        final index = entry.key;
+                        final task = entry.value;
+                        return _TaskTile(
+                          task: task,
+                          onComplete: () {
+                            ref.read(taskNotifierProvider.notifier).toggleComplete(task.id);
+                            ref.invalidate(taskListProvider);
+                            _confettiController?.play();
+                          },
+                          onDelete: () {
+                            ref.read(taskNotifierProvider.notifier).deleteTask(task.id);
+                            ref.invalidate(taskListProvider);
+                          },
+                        ).withPremiumEntry(delayMs: index * 40);
+                      }),
                     ],
                     if (completed.isNotEmpty) ...[
                       const SizedBox(height: 16),
@@ -322,7 +327,7 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
                             const Spacer(),
                             Chip(
                               label: Text('${completed.length}'),
-                              backgroundColor: AppTheme.success.withAlpha(51),
+                              backgroundColor: AppTheme.success.withAlpha(38),
                               labelStyle: const TextStyle(color: AppTheme.success, fontWeight: FontWeight.bold),
                             ),
                           ],
@@ -368,7 +373,7 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
       floatingActionButton: FloatingActionButton(
         onPressed: _showAddTaskDialog,
         backgroundColor: AppTheme.primary,
-        child: const Icon(Icons.add),
+        child: Icon(LucideIcons.plus),
       ),
     );
   }
@@ -400,22 +405,21 @@ class _TaskTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final color = _getPriorityColor();
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       decoration: BoxDecoration(
         color: AppTheme.surfaceElevated,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(14),
         border: Border.all(
-          color: task.isCompleted ? Colors.transparent : color.withAlpha(38),
+          color: task.isCompleted ? Colors.transparent : color.withAlpha(30),
         ),
       ),
       child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
         leading: GestureDetector(
           onTap: onComplete,
-          child: AnimatedContainer(
-            duration: 300.ms,
-            width: 24,
-            height: 24,
+          child: Container(
+            width: 22,
+            height: 22,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               border: Border.all(
@@ -425,7 +429,7 @@ class _TaskTile extends StatelessWidget {
               color: task.isCompleted ? AppTheme.success : Colors.transparent,
             ),
             child: task.isCompleted
-                ? const Icon(Icons.check, size: 16, color: Colors.white)
+                ? Icon(LucideIcons.check, size: 14, color: Colors.white)
                 : null,
           ),
         ),
@@ -452,7 +456,7 @@ class _TaskTile extends StatelessWidget {
             if (task.dueDate != null)
               Row(
                 children: [
-                  const Icon(Icons.event, size: 14, color: AppTheme.textMuted),
+                  Icon(LucideIcons.calendar, size: 13, color: AppTheme.textMuted),
                   const SizedBox(width: 4),
                   Text(
                     DateFormat('MMM dd, yyyy').format(task.dueDate!),
@@ -468,29 +472,28 @@ class _TaskTile extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
               decoration: BoxDecoration(
-                color: color.withAlpha(38),
-                borderRadius: BorderRadius.circular(20),
+                color: color.withAlpha(30),
+                borderRadius: BorderRadius.circular(16),
               ),
               child: Text(
                 task.priority.toUpperCase(),
                 style: Theme.of(context).textTheme.labelSmall?.copyWith(
                       color: color,
                       fontWeight: FontWeight.w700,
-                      fontSize: 10,
+                      fontSize: 9,
                     ),
               ),
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: 6),
             IconButton(
-              icon: const Icon(Icons.delete_outline, size: 20, color: AppTheme.textMuted),
+              icon: Icon(LucideIcons.trash2, size: 18, color: AppTheme.textMuted),
               onPressed: onDelete,
             ),
           ],
         ),
-        tileColor: task.isCompleted ? AppTheme.surface.withAlpha(128) : null,
-      ).animate().fadeIn(duration: 300.ms).slideX(begin: 0.1, end: 0),
+      ),
     );
   }
 }

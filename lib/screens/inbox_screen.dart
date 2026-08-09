@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:intl/intl.dart';
 import '../providers/message_provider.dart';
 import '../theme/app_theme.dart';
+import '../core/motion.dart';
 
 class InboxScreen extends ConsumerWidget {
   const InboxScreen({super.key});
@@ -19,7 +21,7 @@ class InboxScreen extends ConsumerWidget {
         title: const Text('Inbox Feed'),
         actions: [
           IconButton(
-            icon: const Icon(Icons.refresh),
+            icon: Icon(LucideIcons.rotateCcw, size: 18),
             onPressed: () {
               ref.invalidate(messageListProvider);
             },
@@ -27,41 +29,41 @@ class InboxScreen extends ConsumerWidget {
         ],
       ),
       body: msgs.isEmpty
-          ? const Center(
+          ? Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.inbox_outlined, size: 64, color: AppTheme.textMuted),
-                  SizedBox(height: 16),
-                  Text(
+                  Icon(LucideIcons.inbox, size: 56, color: AppTheme.textMuted),
+                  const SizedBox(height: 16),
+                  const Text(
                     'No messages yet',
                     style: TextStyle(color: AppTheme.textMuted),
                   ),
-                  SizedBox(height: 6),
-                  Text(
+                  const SizedBox(height: 6),
+                  const Text(
                     'Share a message from WhatsApp to ASTRA',
                     style: TextStyle(color: AppTheme.textMuted, fontSize: 12),
                   ),
                 ],
               ),
-            )
+            ).withPremiumEntry()
           : ListView.builder(
               padding: const EdgeInsets.symmetric(vertical: 8),
               itemCount: msgs.length,
               itemBuilder: (context, index) {
                 final msg = msgs[index];
                 return Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                  margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                   decoration: BoxDecoration(
                     color: AppTheme.surfaceElevated,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: AppTheme.primary.withAlpha(25)),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: AppTheme.primary.withAlpha(20)),
                   ),
                   child: ListTile(
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
                     leading: CircleAvatar(
-                      backgroundColor: AppTheme.primary.withAlpha(38),
-                      child: const Icon(Icons.chat_bubble_outline, color: AppTheme.primary, size: 20),
+                      backgroundColor: AppTheme.primary.withAlpha(30),
+                      child: Icon(LucideIcons.messageSquare, color: AppTheme.primary, size: 18),
                     ),
                     title: Text(
                       msg.text,
@@ -75,20 +77,20 @@ class InboxScreen extends ConsumerWidget {
                         'Received: ${DateFormat('MMM dd, hh:mm a').format(msg.receivedAt)}',
                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                               color: AppTheme.textMuted,
-                              fontSize: 12,
+                              fontSize: 11,
                             ),
                       ),
                     ),
                     trailing: msg.processed
-                        ? const Icon(Icons.check_circle, color: AppTheme.success, size: 20)
-                        : const Icon(Icons.pending, color: AppTheme.warning, size: 20),
+                        ? Icon(LucideIcons.checkCircle2, color: AppTheme.success, size: 18)
+                        : Icon(LucideIcons.clock, color: AppTheme.warning, size: 18),
                     onTap: () {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(content: Text('Message: ${msg.text}')),
                       );
                     },
                   ),
-                );
+                ).withPremiumEntry(delayMs: index * 40);
               },
             ),
     );

@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'theme/app_theme.dart';
 import 'screens/home_screen.dart';
 import 'screens/inbox_screen.dart';
 import 'screens/tasks_screen.dart';
 import 'screens/focus_screen.dart';
+import 'screens/assistant_screen.dart';
 import 'providers/message_provider.dart';
 
 void main() {
@@ -46,6 +48,7 @@ class _MainScreenState extends ConsumerState<MainScreen> {
     InboxScreen(),
     TasksScreen(),
     FocusScreen(),
+    AssistantScreen(),
   ];
 
   @override
@@ -55,14 +58,12 @@ class _MainScreenState extends ConsumerState<MainScreen> {
   }
 
   void _initShareListener() {
-    // 1. Check for initial shared text (cold start)
     _shareChannel.invokeMethod<String>('getInitialShareText').then((text) {
       if (text != null && text.isNotEmpty) {
         _handleSharedText(text);
       }
     }).catchError((_) {});
 
-    // 2. Listen for incoming shares while app is open (warm start)
     _shareChannel.setMethodCallHandler((call) async {
       if (call.method == 'onShareReceived') {
         final text = call.arguments as String?;
@@ -74,11 +75,9 @@ class _MainScreenState extends ConsumerState<MainScreen> {
   }
 
   void _handleSharedText(String text) {
-    // Add to inbox
     ref.read(messageNotifierProvider.notifier).addMessage(text);
-    // Switch to inbox tab
     setState(() {
-      _selectedIndex = 1; // Inbox index
+      _selectedIndex = 1;
     });
   }
 
@@ -92,7 +91,7 @@ class _MainScreenState extends ConsumerState<MainScreen> {
       bottomNavigationBar: NavigationBar(
         selectedIndex: _selectedIndex,
         backgroundColor: AppTheme.surface,
-        indicatorColor: AppTheme.primary.withAlpha(51),
+        indicatorColor: AppTheme.primary.withAlpha(38),
         onDestinationSelected: (index) {
           setState(() {
             _selectedIndex = index;
@@ -100,24 +99,29 @@ class _MainScreenState extends ConsumerState<MainScreen> {
         },
         destinations: const [
           NavigationDestination(
-            icon: Icon(Icons.home_outlined, color: AppTheme.textMuted),
-            selectedIcon: Icon(Icons.home, color: AppTheme.primary),
+            icon: Icon(LucideIcons.house, color: AppTheme.textMuted, size: 20),
+            selectedIcon: Icon(LucideIcons.house, color: AppTheme.primary, size: 20),
             label: 'Home',
           ),
           NavigationDestination(
-            icon: Icon(Icons.inbox_outlined, color: AppTheme.textMuted),
-            selectedIcon: Icon(Icons.inbox, color: AppTheme.primary),
+            icon: Icon(LucideIcons.inbox, color: AppTheme.textMuted, size: 20),
+            selectedIcon: Icon(LucideIcons.inbox, color: AppTheme.primary, size: 20),
             label: 'Inbox',
           ),
           NavigationDestination(
-            icon: Icon(Icons.checklist_outlined, color: AppTheme.textMuted),
-            selectedIcon: Icon(Icons.checklist, color: AppTheme.primary),
+            icon: Icon(LucideIcons.checkSquare, color: AppTheme.textMuted, size: 20),
+            selectedIcon: Icon(LucideIcons.checkSquare, color: AppTheme.primary, size: 20),
             label: 'Tasks',
           ),
           NavigationDestination(
-            icon: Icon(Icons.timer_outlined, color: AppTheme.textMuted),
-            selectedIcon: Icon(Icons.timer, color: AppTheme.primary),
+            icon: Icon(LucideIcons.timer, color: AppTheme.textMuted, size: 20),
+            selectedIcon: Icon(LucideIcons.timer, color: AppTheme.primary, size: 20),
             label: 'Focus',
+          ),
+          NavigationDestination(
+            icon: Icon(LucideIcons.bot, color: AppTheme.textMuted, size: 20),
+            selectedIcon: Icon(LucideIcons.bot, color: AppTheme.primary, size: 20),
+            label: 'Assistant',
           ),
         ],
       ),

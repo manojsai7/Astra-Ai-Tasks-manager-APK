@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../providers/focus_provider.dart';
 import '../theme/app_theme.dart';
 
@@ -83,9 +84,16 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
       builder: (ctx) => AlertDialog(
         backgroundColor: AppTheme.surfaceElevated,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('🎉 Session Complete!', style: TextStyle(color: AppTheme.textPrimary)),
+        title: Row(
+          children: [
+            Icon(LucideIcons.trophy, color: AppTheme.warning, size: 24),
+            const SizedBox(width: 8),
+            const Text('Session Complete!', style: TextStyle(color: AppTheme.textPrimary)),
+          ],
+        ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
               'You focused for $_selectedDuration minutes!',
@@ -133,12 +141,12 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
           padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
           child: Column(
             children: [
-              // Stats header with Expanded to prevent overflow
+              // Stats header
               Row(
                 children: [
                   Expanded(
                     child: _StatPill(
-                      icon: Icons.check_circle_outline,
+                      icon: LucideIcons.checkCircle2,
                       label: 'Sessions',
                       value: '${stats.totalSessions}',
                       color: AppTheme.primary,
@@ -147,18 +155,18 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
                   const SizedBox(width: 8),
                   Expanded(
                     child: _StatPill(
-                      icon: Icons.timer_outlined,
+                      icon: LucideIcons.timer,
                       label: 'Total min',
                       value: '${stats.totalMinutes}',
                       color: AppTheme.accent,
                     ),
                   ),
                   const SizedBox(width: 8),
-                  const Expanded(
+                  Expanded(
                     child: _StatPill(
-                      icon: Icons.trending_up,
+                      icon: LucideIcons.flame,
                       label: 'Streak',
-                      value: '3🔥',
+                      value: '3',
                       color: AppTheme.warning,
                     ),
                   ),
@@ -170,12 +178,16 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
               Stack(
                 alignment: Alignment.center,
                 children: [
-                  SizedBox(
+                  Container(
                     width: 240,
                     height: 240,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: AppTheme.surfaceElevated.withAlpha(50),
+                    ),
                     child: CircularProgressIndicator(
                       value: progress,
-                      strokeWidth: 12,
+                      strokeWidth: 10,
                       backgroundColor: AppTheme.surfaceElevated,
                       valueColor: AlwaysStoppedAnimation<Color>(
                         _remainingSeconds < 60
@@ -199,9 +211,9 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
                       ),
                       const SizedBox(height: 4),
                       _isRunning
-                          ? Text(
+                          ? const Text(
                               'FOCUSING',
-                              style: const TextStyle(
+                              style: TextStyle(
                                 color: AppTheme.success,
                                 fontSize: 14,
                                 fontWeight: FontWeight.w600,
@@ -248,21 +260,21 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
                 children: [
                   if (_isRunning)
                     _ControlButton(
-                      icon: Icons.pause,
+                      icon: LucideIcons.pause,
                       label: 'Pause',
                       onTap: _pauseTimer,
                       color: AppTheme.warning,
                     )
                   else
                     _ControlButton(
-                      icon: Icons.play_arrow,
+                      icon: LucideIcons.play,
                       label: 'Start',
                       onTap: _startTimer,
                       color: AppTheme.success,
                     ),
                   const SizedBox(width: 16),
                   _ControlButton(
-                    icon: Icons.refresh,
+                    icon: LucideIcons.rotateCcw,
                     label: 'Reset',
                     onTap: _resetTimer,
                     color: AppTheme.textMuted,
@@ -271,7 +283,6 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
               ),
               const SizedBox(height: 24),
 
-              // Tip text
               const Text(
                 'Stay focused. Every second counts.',
                 style: TextStyle(color: AppTheme.textMuted, fontSize: 12),
@@ -304,7 +315,7 @@ class _StatPill extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppTheme.surfaceElevated,
         borderRadius: BorderRadius.circular(30),
-        border: Border.all(color: color.withAlpha(51)),
+        border: Border.all(color: color.withAlpha(40)),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -390,7 +401,7 @@ class _ControlButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return ElevatedButton.icon(
       onPressed: onTap,
-      icon: Icon(icon, color: Colors.white),
+      icon: Icon(icon, color: Colors.white, size: 16),
       label: Text(label),
       style: ElevatedButton.styleFrom(
         backgroundColor: color == AppTheme.textMuted ? AppTheme.surfaceElevated : color,
