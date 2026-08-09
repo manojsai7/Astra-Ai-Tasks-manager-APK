@@ -2,34 +2,55 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class AppTheme {
-  // Premium Dark Palette – Zinc inspired
-  static const Color background = Color(0xFF0C0C12);
-  static const Color backgroundGradient = Color(0xFF15151F);
-  static const Color surface = Color(0xFF14141C);
-  static const Color surfaceElevated = Color(0xFF1C1C28);
-  static const Color surfaceGlow = Color(0xFF28283A);
+  // Premium Dark Palette
+  static const Color background = Color(0xFF0A0A12);
+  static const Color surface = Color(0xFF12121E);
+  static const Color surfaceElevated = Color(0xFF1A1A2E);
+  static const Color surfaceGlass = Color(0xFF1E1E32);
   
-  // Zinc Primary
-  static const Color primary = Color(0xFF6C63FF);
-  static const Color primaryLight = Color(0xFF8B83FF);
-  static const Color primaryDark = Color(0xFF4C44CC);
+  // Premium Primary – Refined Indigo
+  static const Color primary = Color(0xFF6366F1);
+  static const Color primaryLight = Color(0xFF818CF8);
+  static const Color primaryDark = Color(0xFF4F46E5);
   
-  // Zinc Accents
-  static const Color accent = Color(0xFF00C9A7);
-  static const Color accentGlow = Color(0xFF00D4AA);
+  // Premium Accents – Muted but Vibrant
+  static const Color accent = Color(0xFF06B6D4);
+  static const Color accentGlow = Color(0xFF22D3EE);
   
-  // Semantic – Professional colors
-  static const Color success = Color(0xFF00D26A);
-  static const Color error = Color(0xFFFF5A5A);
-  static const Color warning = Color(0xFFFFAB40);
+  // Semantic – Professional Colors
+  static const Color success = Color(0xFF10B981);
+  static const Color error = Color(0xFFEF4444);
+  static const Color warning = Color(0xFFF59E0B);
   
-  // Text – Clean hierarchy
-  static const Color textPrimary = Color(0xFFF5F5FA);
-  static const Color textSecondary = Color(0xFFA8A8B8);
-  static const Color textMuted = Color(0xFF6A6A7A);
-  static const Color textInverse = Color(0xFF0C0C12);
+  // Text – Hierarchical
+  static const Color textPrimary = Color(0xFFF8FAFC);
+  static const Color textSecondary = Color(0xFF94A3B8);
+  static const Color textMuted = Color(0xFF475569);
+  static const Color textInverse = Color(0xFF0A0A12);
 
-  static const Color opponent = Color(0xFFFF6B6B);
+  // Glassmorphism effect
+  static BoxDecoration glassCard = BoxDecoration(
+    gradient: LinearGradient(
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
+      colors: [
+        surfaceGlass.withAlpha(153),
+        surfaceGlass.withAlpha(76),
+      ],
+    ),
+    borderRadius: BorderRadius.circular(16),
+    border: Border.all(
+      color: Colors.white.withAlpha(15),
+      width: 1,
+    ),
+    boxShadow: [
+      BoxShadow(
+        color: primary.withAlpha(13),
+        blurRadius: 30,
+        spreadRadius: -10,
+      ),
+    ],
+  );
 
   static ThemeData darkTheme = ThemeData(
     useMaterial3: true,
@@ -43,30 +64,26 @@ class AppTheme {
       onPrimary: Colors.white,
     ),
     scaffoldBackgroundColor: background,
-    fontFamily: GoogleFonts.inter().fontFamily,
+    fontFamily: GoogleFonts.montserrat().fontFamily,
     
-    // Premium Card Theme
+    // Card Theme – Glassmorphism
     cardTheme: CardThemeData(
-      color: surfaceElevated,
+      color: Colors.transparent,
       elevation: 0,
       shadowColor: Colors.transparent,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
-        side: BorderSide(
-          color: Colors.white.withAlpha(10),
-          width: 1,
-        ),
       ),
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
     ),
     
-    // AppBar – clean, transparent
-    appBarTheme: const AppBarTheme(
+    // AppBar – Minimal
+    appBarTheme: AppBarTheme(
       backgroundColor: Colors.transparent,
       elevation: 0,
       centerTitle: false,
-      iconTheme: IconThemeData(color: textPrimary),
-      titleTextStyle: TextStyle(
+      iconTheme: const IconThemeData(color: textPrimary),
+      titleTextStyle: GoogleFonts.montserrat(
         color: textPrimary,
         fontSize: 20,
         fontWeight: FontWeight.w600,
@@ -74,77 +91,82 @@ class AppTheme {
       ),
     ),
     
-    // Typography – tight hierarchy
+    // Premium Typography
     textTheme: TextTheme(
-      displayLarge: GoogleFonts.inter(
-        fontSize: 40,
-        fontWeight: FontWeight.bold,
+      // Headlines – Bebas Neue for impact
+      displayLarge: GoogleFonts.bebasNeue(
+        fontSize: 48,
         color: textPrimary,
-        letterSpacing: -1,
+        letterSpacing: 1,
       ),
-      displayMedium: GoogleFonts.inter(
+      displayMedium: GoogleFonts.bebasNeue(
         fontSize: 32,
-        fontWeight: FontWeight.w700,
         color: textPrimary,
-        letterSpacing: -0.5,
+        letterSpacing: 0.5,
       ),
-      headlineMedium: GoogleFonts.inter(
+      headlineMedium: GoogleFonts.bebasNeue(
         fontSize: 24,
-        fontWeight: FontWeight.w600,
         color: textPrimary,
-        letterSpacing: -0.3,
+        letterSpacing: 0.3,
       ),
-      titleLarge: GoogleFonts.inter(
+      
+      // Body – Montserrat for readability
+      titleLarge: GoogleFonts.montserrat(
         fontSize: 20,
         fontWeight: FontWeight.w600,
         color: textPrimary,
         letterSpacing: -0.2,
       ),
-      titleMedium: GoogleFonts.inter(
+      titleMedium: GoogleFonts.montserrat(
         fontSize: 16,
         fontWeight: FontWeight.w500,
         color: textPrimary,
+        letterSpacing: -0.1,
       ),
-      bodyLarge: GoogleFonts.inter(
+      bodyLarge: GoogleFonts.montserrat(
         fontSize: 16,
         color: textSecondary,
         height: 1.5,
       ),
-      bodyMedium: GoogleFonts.inter(
+      bodyMedium: GoogleFonts.montserrat(
         fontSize: 14,
         color: textSecondary,
         height: 1.5,
       ),
-      labelLarge: GoogleFonts.inter(
+      
+      // Labels
+      labelLarge: GoogleFonts.montserrat(
         fontSize: 14,
         fontWeight: FontWeight.w600,
         color: primary,
         letterSpacing: 0.2,
       ),
-      labelSmall: GoogleFonts.inter(
-        fontSize: 12,
+      labelSmall: GoogleFonts.montserrat(
+        fontSize: 11,
         fontWeight: FontWeight.w500,
         color: textMuted,
         letterSpacing: 0.3,
       ),
     ),
     
-    // Bottom Navigation Theme
-    bottomNavigationBarTheme: const BottomNavigationBarThemeData(
+    // Bottom Navigation – Premium
+    bottomNavigationBarTheme: BottomNavigationBarThemeData(
       backgroundColor: surface,
       selectedItemColor: primary,
       unselectedItemColor: textMuted,
-      selectedLabelStyle: TextStyle(
+      selectedLabelStyle: GoogleFonts.montserrat(
         fontSize: 11,
         fontWeight: FontWeight.w600,
         letterSpacing: 0.2,
       ),
-      unselectedLabelStyle: TextStyle(fontSize: 11),
+      unselectedLabelStyle: GoogleFonts.montserrat(
+        fontSize: 11,
+      ),
       type: BottomNavigationBarType.fixed,
       elevation: 0,
     ),
     
-    // FAB
+    // Floating Action Button – Clean
     floatingActionButtonTheme: const FloatingActionButtonThemeData(
       backgroundColor: primary,
       foregroundColor: Colors.white,
@@ -152,11 +174,11 @@ class AppTheme {
       elevation: 4,
     ),
     
-    // Chip
+    // Chip – Subtle
     chipTheme: ChipThemeData(
       backgroundColor: surfaceElevated,
       selectedColor: primary.withAlpha(38),
-      labelStyle: const TextStyle(
+      labelStyle: GoogleFonts.montserrat(
         color: textSecondary,
         fontSize: 12,
         fontWeight: FontWeight.w500,

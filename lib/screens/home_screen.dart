@@ -24,36 +24,50 @@ class HomeScreen extends ConsumerWidget {
     final focusHours = (focusStats.totalMinutes) ~/ 60;
 
     return Scaffold(
-      backgroundColor: AppTheme.background,
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Header
-              _buildHeader(context, ref),
-              const SizedBox(height: 24),
-              // Stats Grid
-              _buildStatsGrid(context, pending, high, completed, focusHours),
-              const SizedBox(height: 20),
-              // Quick Actions
-              _buildQuickActions(context),
-              const SizedBox(height: 24),
-              // Today's Schedule
-              _buildTodaySection(context, ref, tasks),
-              const Spacer(),
-              // Motivational Quote
-              _buildMotivationalQuote(context),
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              AppTheme.background,
+              AppTheme.surface,
             ],
+          ),
+        ),
+        child: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Header – Premium
+                _buildHeader(context),
+                const SizedBox(height: 28),
+                
+                // Stats Grid – Glassmorphism
+                _buildStatsGrid(context, pending, high, completed, focusHours),
+                const SizedBox(height: 20),
+                
+                // Quick Actions – Premium Buttons
+                _buildQuickActions(context),
+                const SizedBox(height: 24),
+                
+                // Today's Schedule – Executive View
+                _buildTodaySection(context, ref, tasks),
+                const Spacer(),
+                
+                // Motivational Quote – Premium
+                _buildMotivationalQuote(context),
+              ],
+            ),
           ),
         ),
       ),
     );
   }
 
-  Widget _buildHeader(BuildContext context, WidgetRef ref) {
-    final theme = Theme.of(context);
+  Widget _buildHeader(BuildContext context) {
     final hour = DateTime.now().hour;
     String greeting = 'Good Morning';
     if (hour >= 12 && hour < 17) greeting = 'Good Afternoon';
@@ -66,33 +80,27 @@ class HomeScreen extends ConsumerWidget {
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              children: [
-                Icon(
-                  LucideIcons.sun,
-                  size: 16,
-                  color: AppTheme.textMuted,
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  greeting,
-                  style: theme.textTheme.bodyLarge?.copyWith(
-                    color: AppTheme.textMuted,
-                    fontWeight: FontWeight.w400,
-                  ),
-                ),
-              ],
+            Text(
+              greeting,
+              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                color: AppTheme.textMuted,
+                fontWeight: FontWeight.w400,
+                letterSpacing: 1,
+                fontSize: 12,
+              ),
             ),
             const SizedBox(height: 2),
             Text(
               'Manoj',
-              style: theme.textTheme.headlineMedium?.copyWith(
-                fontWeight: FontWeight.w700,
+              style: Theme.of(context).textTheme.displayMedium?.copyWith(
+                fontSize: 28,
+                fontWeight: FontWeight.w600,
                 letterSpacing: -0.5,
               ),
             ),
           ],
         ),
+        // Avatar with premium gradient ring
         Container(
           padding: const EdgeInsets.all(2),
           decoration: const BoxDecoration(
@@ -127,34 +135,115 @@ class HomeScreen extends ConsumerWidget {
   Widget _buildStatsGrid(BuildContext context, int pending, int high, int completed, int focusHours) {
     return Row(
       children: [
-        _StatCard(
-          icon: LucideIcons.checkSquare,
-          value: '$pending',
-          label: 'Tasks',
-          subtitle: completed > 0 ? '$completed done' : 'No tasks',
-          color: AppTheme.primary,
-          glowColor: AppTheme.primary.withAlpha(38),
+        Expanded(
           flex: 2,
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            decoration: AppTheme.glassCard,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(
+                      LucideIcons.checkSquare,
+                      size: 16,
+                      color: AppTheme.primary,
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      'Tasks',
+                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        color: AppTheme.textMuted,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  '$pending',
+                  style: Theme.of(context).textTheme.displayLarge?.copyWith(
+                    fontSize: 32,
+                    color: AppTheme.primary,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                Text(
+                  completed > 0 ? '$completed completed' : 'No tasks',
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    color: AppTheme.textMuted,
+                    fontSize: 10,
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
         const SizedBox(width: 12),
-        _StatCard(
-          icon: LucideIcons.flag,
-          value: '$high',
-          label: 'Priority',
-          subtitle: high > 0 ? 'High priority' : 'All clear',
-          color: AppTheme.error,
-          glowColor: AppTheme.error.withAlpha(38),
-          flex: 1,
+        Expanded(
+          child: Container(
+            padding: const EdgeInsets.all(14),
+            decoration: AppTheme.glassCard,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(
+                  LucideIcons.flag,
+                  size: 16,
+                  color: high > 0 ? AppTheme.error : AppTheme.textMuted,
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  '$high',
+                  style: Theme.of(context).textTheme.displayLarge?.copyWith(
+                    fontSize: 24,
+                    color: high > 0 ? AppTheme.error : AppTheme.textMuted,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                Text(
+                  high > 0 ? 'Priority' : 'All clear',
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    color: AppTheme.textMuted,
+                    fontSize: 10,
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
         const SizedBox(width: 12),
-        _StatCard(
-          icon: LucideIcons.timer,
-          value: '$focusHours',
-          label: 'Focus',
-          subtitle: '${focusHours}h logged',
-          color: AppTheme.accent,
-          glowColor: AppTheme.accent.withAlpha(38),
-          flex: 1,
+        Expanded(
+          child: Container(
+            padding: const EdgeInsets.all(14),
+            decoration: AppTheme.glassCard,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(
+                  LucideIcons.timer,
+                  size: 16,
+                  color: AppTheme.accent,
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  '$focusHours',
+                  style: Theme.of(context).textTheme.displayLarge?.copyWith(
+                    fontSize: 24,
+                    color: AppTheme.accent,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                Text(
+                  'Focus Hours',
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    color: AppTheme.textMuted,
+                    fontSize: 10,
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
       ],
     );
@@ -172,17 +261,17 @@ class HomeScreen extends ConsumerWidget {
             );
           },
         ),
-        const SizedBox(width: 12),
+        const SizedBox(width: 8),
         _ActionButton(
           icon: LucideIcons.plus,
-          label: 'New Task',
+          label: 'Task',
           onTap: () {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(content: Text('Switch to Tasks tab to add tasks')),
             );
           },
         ),
-        const SizedBox(width: 12),
+        const SizedBox(width: 8),
         _ActionButton(
           icon: LucideIcons.play,
           label: 'Focus',
@@ -192,10 +281,10 @@ class HomeScreen extends ConsumerWidget {
             );
           },
         ),
-        const SizedBox(width: 12),
+        const SizedBox(width: 8),
         _ActionButton(
           icon: LucideIcons.messageSquare,
-          label: 'Assistant',
+          label: 'Ask',
           onTap: () {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(content: Text('Switch to Assistant tab to chat')),
@@ -226,8 +315,9 @@ class HomeScreen extends ConsumerWidget {
             ),
             const SizedBox(width: 8),
             Text(
-              'Today\'s Schedule',
-              style: theme.textTheme.titleMedium?.copyWith(
+              'Today',
+              style: theme.textTheme.titleLarge?.copyWith(
+                fontSize: 18,
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -236,6 +326,7 @@ class HomeScreen extends ConsumerWidget {
               DateFormat('EEE, MMM d').format(DateTime.now()),
               style: theme.textTheme.labelSmall?.copyWith(
                 color: AppTheme.textMuted,
+                fontSize: 11,
               ),
             ),
           ],
@@ -243,41 +334,27 @@ class HomeScreen extends ConsumerWidget {
         const SizedBox(height: 12),
         todayTasks.isEmpty
             ? Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: AppTheme.surfaceElevated,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: Colors.white.withAlpha(10),
-                    width: 1,
-                  ),
-                ),
+                padding: const EdgeInsets.all(24),
+                decoration: AppTheme.glassCard,
                 child: Center(
                   child: Column(
                     children: [
                       Icon(
                         LucideIcons.checkCircle2,
                         size: 32,
-                        color: AppTheme.textMuted,
+                        color: AppTheme.textMuted.withAlpha(76),
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        'All clear!',
-                        style: theme.textTheme.bodyLarge?.copyWith(
-                          color: AppTheme.textMuted,
-                        ),
-                      ),
-                      Text(
-                        'No tasks scheduled today',
+                        'No tasks scheduled',
                         style: theme.textTheme.bodyMedium?.copyWith(
                           color: AppTheme.textMuted,
-                          fontSize: 12,
                         ),
                       ),
                     ],
                   ),
                 ),
-              ).animate().fadeIn(duration: 300.ms)
+              )
             : Column(
                 children: todayTasks.take(4).map((task) {
                   return _UpcomingTaskTile(task: task);
@@ -289,31 +366,34 @@ class HomeScreen extends ConsumerWidget {
 
   Widget _buildMotivationalQuote(BuildContext context) {
     final quotes = [
-      'Focus on progress, not perfection.',
-      'Small daily improvements lead to big results.',
-      'The secret of getting ahead is getting started.',
-      'Don\'t watch the clock; do what it does. Keep going.',
-      'Your future is created by what you do today.',
+      'Progress over perfection.',
+      'Small daily wins build big results.',
+      'Start where you are. Use what you have.',
+      'Your future is created by today\'s actions.',
+      'Focus on the step, not the staircase.',
+      'Discipline is choosing between now and later.',
+      'The best time to start was yesterday.',
     ];
     final quote = quotes[DateTime.now().day % quotes.length];
 
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 12),
+      padding: const EdgeInsets.symmetric(vertical: 8),
       child: Row(
         children: [
           Icon(
             LucideIcons.quote,
             size: 14,
-            color: AppTheme.primary.withAlpha(102),
+            color: AppTheme.primary.withAlpha(51),
           ),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
               '"$quote"',
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: AppTheme.textMuted,
+              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                color: AppTheme.textMuted.withAlpha(153),
                 fontSize: 12,
                 fontStyle: FontStyle.italic,
+                letterSpacing: 0.2,
               ),
             ),
           ),
@@ -323,97 +403,7 @@ class HomeScreen extends ConsumerWidget {
   }
 }
 
-// ---- Reusable Widgets ----
-
-class _StatCard extends StatelessWidget {
-  final IconData icon;
-  final String value;
-  final String label;
-  final String subtitle;
-  final Color color;
-  final Color glowColor;
-  final int flex;
-
-  const _StatCard({
-    required this.icon,
-    required this.value,
-    required this.label,
-    required this.subtitle,
-    required this.color,
-    required this.glowColor,
-    this.flex = 1,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Expanded(
-      flex: flex,
-      child: Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              AppTheme.surfaceElevated,
-              AppTheme.background,
-            ],
-          ),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(
-            color: glowColor,
-            width: 1,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: glowColor,
-              blurRadius: 20,
-              spreadRadius: -5,
-            ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  label,
-                  style: theme.textTheme.labelSmall?.copyWith(
-                    color: AppTheme.textMuted,
-                  ),
-                ),
-                Icon(icon, size: 16, color: color),
-              ],
-            ),
-            const SizedBox(height: 6),
-            Text(
-              value,
-              style: theme.textTheme.headlineMedium?.copyWith(
-                color: color,
-                fontSize: flex == 2 ? 28 : 22,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-            Text(
-              subtitle,
-              style: theme.textTheme.labelSmall?.copyWith(
-                color: AppTheme.textMuted,
-                fontSize: 10,
-              ),
-            ),
-          ],
-        ),
-      ).animate().fadeIn(
-        duration: 400.ms,
-        delay: Duration(milliseconds: flex == 2 ? 0 : 200),
-      ),
-    );
-  }
-}
-
+// ---- Reusable Action Button ----
 class _ActionButton extends StatelessWidget {
   final IconData icon;
   final String label;
@@ -433,7 +423,14 @@ class _ActionButton extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 12),
           decoration: BoxDecoration(
-            color: AppTheme.surfaceElevated,
+            gradient: const LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                AppTheme.surfaceElevated,
+                AppTheme.surfaceGlass,
+              ],
+            ),
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
               color: Colors.white.withAlpha(10),
@@ -442,13 +439,19 @@ class _ActionButton extends StatelessWidget {
           ),
           child: Column(
             children: [
-              Icon(icon, size: 20, color: AppTheme.textSecondary),
+              Icon(
+                icon,
+                size: 20,
+                color: AppTheme.textSecondary,
+              ),
               const SizedBox(height: 4),
               Text(
                 label,
                 style: Theme.of(context).textTheme.labelSmall?.copyWith(
                   color: AppTheme.textMuted,
                   fontSize: 10,
+                  fontWeight: FontWeight.w500,
+                  letterSpacing: 0.3,
                 ),
               ),
             ],
@@ -459,6 +462,7 @@ class _ActionButton extends StatelessWidget {
   }
 }
 
+// ---- Upcoming Task Tile ----
 class _UpcomingTaskTile extends StatelessWidget {
   final Task task;
 
@@ -474,10 +478,9 @@ class _UpcomingTaskTile extends StatelessWidget {
 
     return Container(
       margin: const EdgeInsets.only(bottom: 6),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-      decoration: BoxDecoration(
-        color: AppTheme.surfaceElevated,
-        borderRadius: BorderRadius.circular(10),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: AppTheme.glassCard.copyWith(
+        borderRadius: BorderRadius.circular(12),
         border: Border.all(
           color: color.withAlpha(20),
           width: 1,
@@ -487,7 +490,7 @@ class _UpcomingTaskTile extends StatelessWidget {
         children: [
           Container(
             width: 3,
-            height: 24,
+            height: 28,
             decoration: BoxDecoration(
               color: color,
               borderRadius: BorderRadius.circular(2),
@@ -502,13 +505,14 @@ class _UpcomingTaskTile extends StatelessWidget {
                   task.title,
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                     fontWeight: FontWeight.w500,
+                    fontSize: 14,
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
                 if (task.dueDate != null)
                   Text(
-                    'Due: ${DateFormat('MMM d, h:mm a').format(task.dueDate!)}',
+                    DateFormat('MMM d • h:mm a').format(task.dueDate!),
                     style: Theme.of(context).textTheme.labelSmall?.copyWith(
                       color: AppTheme.textMuted,
                       fontSize: 10,
@@ -519,7 +523,7 @@ class _UpcomingTaskTile extends StatelessWidget {
           ),
           if (task.priority == 'high')
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
               decoration: BoxDecoration(
                 color: AppTheme.error.withAlpha(30),
                 borderRadius: BorderRadius.circular(4),
@@ -530,14 +534,15 @@ class _UpcomingTaskTile extends StatelessWidget {
                   color: AppTheme.error,
                   fontSize: 8,
                   fontWeight: FontWeight.w700,
+                  letterSpacing: 0.5,
                 ),
               ),
             ),
         ],
       ),
     ).animate().fadeIn(
-      duration: 300.ms,
-      delay: Duration(milliseconds: 100 * (task.title.length % 3)),
+      duration: 400.ms,
+      delay: Duration(milliseconds: 50 * (task.id.hashCode % 5)),
     );
   }
 }
