@@ -7,6 +7,7 @@ import '../providers/task_provider.dart';
 import '../models/task.dart';
 import '../theme/app_theme.dart';
 import '../core/motion.dart';
+import '../services/notification_service.dart';
 
 class TasksScreen extends ConsumerStatefulWidget {
   const TasksScreen({super.key});
@@ -208,7 +209,7 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
                     const SizedBox(width: 12),
                     Expanded(
                       child: ElevatedButton(
-                        onPressed: () {
+                        onPressed: () async {
                           if (_titleController.text.trim().isEmpty) return;
                           final task = Task(
                             id: DateTime.now().millisecondsSinceEpoch.toString(),
@@ -222,7 +223,21 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
                           );
                           ref.read(taskNotifierProvider.notifier).addTask(task);
                           ref.invalidate(taskListProvider);
-                          Navigator.pop(ctx);
+
+                          // Schedule local notification if due date set
+                          if (task.dueDate != null) {
+                            final notificationTime = task.dueDate!.isAfter(DateTime.now())
+                                ? task.dueDate!
+                                : DateTime.now().add(const Duration(minutes: 1));
+                            await NotificationService.scheduleNotification(
+                              id: task.id.hashCode,
+                              title: 'ASTRA Task Reminder: ${task.title}',
+                              body: 'Priority: ${task.priority.toUpperCase()} - Due today!',
+                              scheduledTime: notificationTime,
+                            );
+                          }
+
+                          if (ctx.mounted) Navigator.pop(ctx);
                         },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppTheme.primary,
@@ -261,7 +276,7 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
         title: const Text('Tasks Arena'),
         actions: [
           IconButton(
-            icon: Icon(LucideIcons.plus),
+            icon: const Icon(LucideIcons.plus),
             onPressed: _showAddTaskDialog,
           ),
         ],
@@ -273,7 +288,7 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(LucideIcons.checkSquare, size: 56, color: AppTheme.textMuted),
+                      const Icon(LucideIcons.checkSquare, size: 56, color: AppTheme.textMuted),
                       const SizedBox(height: 16),
                       const Text('No tasks yet', style: TextStyle(color: AppTheme.textMuted)),
                       const SizedBox(height: 8),
@@ -310,9 +325,10 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
                             ref.invalidate(taskListProvider);
                             _confettiController?.play();
                           },
-                          onDelete: () {
+                          onDelete: () async {
                             ref.read(taskNotifierProvider.notifier).deleteTask(task.id);
                             ref.invalidate(taskListProvider);
+                            await NotificationService.cancelNotification(task.id.hashCode);
                           },
                         ).withPremiumEntry(delayMs: index * 40);
                       }),
@@ -339,9 +355,10 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
                               ref.read(taskNotifierProvider.notifier).toggleComplete(task.id);
                               ref.invalidate(taskListProvider);
                             },
-                            onDelete: () {
+                            onDelete: () async {
                               ref.read(taskNotifierProvider.notifier).deleteTask(task.id);
                               ref.invalidate(taskListProvider);
+                              await NotificationService.cancelNotification(task.id.hashCode);
                             },
                           )),
                     ],
@@ -373,7 +390,7 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
       floatingActionButton: FloatingActionButton(
         onPressed: _showAddTaskDialog,
         backgroundColor: AppTheme.primary,
-        child: Icon(LucideIcons.plus),
+        child: const Icon(LucideIcons.plus),
       ),
     );
   }
@@ -429,7 +446,7 @@ class _TaskTile extends StatelessWidget {
               color: task.isCompleted ? AppTheme.success : Colors.transparent,
             ),
             child: task.isCompleted
-                ? Icon(LucideIcons.check, size: 14, color: Colors.white)
+                ? const Icon(LucideIcons.check, size: 14, color: Colors.white)
                 : null,
           ),
         ),
@@ -456,7 +473,7 @@ class _TaskTile extends StatelessWidget {
             if (task.dueDate != null)
               Row(
                 children: [
-                  Icon(LucideIcons.calendar, size: 13, color: AppTheme.textMuted),
+                  const Icon(LucideIcons.calendar, size: 13, color: AppTheme.textMuted),
                   const SizedBox(width: 4),
                   Text(
                     DateFormat('MMM dd, yyyy').format(task.dueDate!),
@@ -488,7 +505,7 @@ class _TaskTile extends StatelessWidget {
             ),
             const SizedBox(width: 6),
             IconButton(
-              icon: Icon(LucideIcons.trash2, size: 18, color: AppTheme.textMuted),
+              icon: const Icon(LucideIcons.trash2, size: 18, color: AppTheme.textMuted),
               onPressed: onDelete,
             ),
           ],

@@ -9,8 +9,12 @@ import 'screens/tasks_screen.dart';
 import 'screens/focus_screen.dart';
 import 'screens/assistant_screen.dart';
 import 'providers/message_provider.dart';
+import 'services/notification_service.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await NotificationService.initialize();
+
   runApp(
     const ProviderScope(
       child: AstraApp(),
