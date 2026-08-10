@@ -226,14 +226,33 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
 
                           // Schedule local notification if due date set
                           if (task.dueDate != null) {
-                            final notificationTime = task.dueDate!.isAfter(DateTime.now())
+                            // 1. Schedule reminder 24 hours before
+                            final reminderTime = task.dueDate!.subtract(const Duration(days: 1));
+                            await NotificationService.scheduleTaskReminder(
+                              id: task.id.hashCode,
+                              title: 'Task Due Tomorrow: ${task.title}',
+                              body: 'Your task is due tomorrow. Stay ahead!',
+                              scheduledTime: reminderTime,
+                            );
+                            
+                            // 2. Schedule a second reminder 2 hours before
+                            final finalReminder = task.dueDate!.subtract(const Duration(hours: 2));
+                            await NotificationService.scheduleTaskReminder(
+                              id: task.id.hashCode + 9999,
+                              title: 'Urgent: ${task.title}',
+                              body: 'This task is due in 2 hours!',
+                              scheduledTime: finalReminder,
+                            );
+
+                            // 3. Direct due date / short-term reminder if due in future
+                            final directReminder = task.dueDate!.isAfter(DateTime.now())
                                 ? task.dueDate!
                                 : DateTime.now().add(const Duration(minutes: 1));
-                            await NotificationService.scheduleNotification(
-                              id: task.id.hashCode,
+                            await NotificationService.scheduleTaskReminder(
+                              id: task.id.hashCode + 8888,
                               title: 'ASTRA Task Reminder: ${task.title}',
-                              body: 'Priority: ${task.priority.toUpperCase()} - Due today!',
-                              scheduledTime: notificationTime,
+                              body: 'Priority: ${task.priority.toUpperCase()} - Due now!',
+                              scheduledTime: directReminder,
                             );
                           }
 

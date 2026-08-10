@@ -381,7 +381,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
                   ),
                 ),
                 Text(
-                  high > 0 ? '${high} flagged' : 'None',
+                  high > 0 ? '$high flagged' : 'None',
                   style: Theme.of(context).textTheme.labelSmall?.copyWith(
                     color: AppTheme.textMuted.withAlpha(153),
                     fontSize: 9,

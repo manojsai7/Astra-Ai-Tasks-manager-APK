@@ -2,31 +2,31 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class AppTheme {
-  // Premium Dark Palette
-  static const Color background = Color(0xFF0A0A12);
-  static const Color surface = Color(0xFF12121E);
-  static const Color surfaceElevated = Color(0xFF1A1A2E);
-  static const Color surfaceGlass = Color(0xFF1E1E32);
+  // Ultimate Premium Palette – Slate & Warm Amber
+  static const Color background = Color(0xFF0B0D11);    // Deep slate
+  static const Color surface = Color(0xFF13161A);       // Dark charcoal
+  static const Color surfaceElevated = Color(0xFF1C2128); // Elevated
+  static const Color surfaceGlass = Color(0xFF242A33);
   
-  // Premium Primary – Refined Indigo
-  static const Color primary = Color(0xFF6366F1);
-  static const Color primaryLight = Color(0xFF818CF8);
-  static const Color primaryDark = Color(0xFF4F46E5);
+  // Primary – Refined Indigo
+  static const Color primary = Color(0xFF7C65F4);       // Softer, elegant indigo
+  static const Color primaryLight = Color(0xFF9B85FF);
+  static const Color primaryDark = Color(0xFF5B4AC4);
   
-  // Premium Accents – Muted but Vibrant
-  static const Color accent = Color(0xFF06B6D4);
-  static const Color accentGlow = Color(0xFF22D3EE);
+  // Accent – Warm Amber (energy without being loud)
+  static const Color accent = Color(0xFFF97316);        // Premium orange/amber
+  static const Color accentGlow = Color(0xFFFB923C);
   
-  // Semantic – Professional Colors
-  static const Color success = Color(0xFF10B981);
-  static const Color error = Color(0xFFEF4444);
-  static const Color warning = Color(0xFFF59E0B);
+  // Semantic – Clear & Professional
+  static const Color success = Color(0xFF10B981);       // Emerald green
+  static const Color error = Color(0xFFEF4444);         // Clean red
+  static const Color warning = Color(0xFFF59E0B);       // Golden yellow
   
-  // Text – Hierarchical
-  static const Color textPrimary = Color(0xFFF8FAFC);
-  static const Color textSecondary = Color(0xFF94A3B8);
-  static const Color textMuted = Color(0xFF475569);
-  static const Color textInverse = Color(0xFF0A0A12);
+  // Text – Hierarchical (cool white to slate)
+  static const Color textPrimary = Color(0xFFF1F5F9);   // Cool white
+  static const Color textSecondary = Color(0xFF94A3B8); // Slate 400
+  static const Color textMuted = Color(0xFF475569);     // Slate 600
+  static const Color textInverse = Color(0xFF0B0D11);
 
   // Glassmorphism effect
   static BoxDecoration glassCard = BoxDecoration(
