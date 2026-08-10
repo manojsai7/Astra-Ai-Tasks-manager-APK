@@ -3,6 +3,8 @@ import 'package:google_generative_ai/google_generative_ai.dart' hide TaskType;
 import '../../domain/entities/task_context.dart';
 import '../../../../features/tasks/domain/entities/task.dart';
 
+import 'package:flutter/services.dart';
+
 /// Structured result returned after AI context extraction.
 class ExtractedTaskWithContext {
   final bool isTask;
@@ -28,7 +30,6 @@ class ExtractedTaskWithContext {
 /// to extract structured task & full contextual details.
 class GeminiContextExtractor {
   /// Default Gemini API Key placeholder.
-  /// 🔑 MODIFY HERE: Replace "YOUR_GEMINI_API_KEY_HERE" below with your actual Gemini API Key from Google AI Studio (https://aistudio.google.com/app/apikey)
   static const String defaultApiKeyPlaceholder = "YOUR_GEMINI_API_KEY_HERE";
 
   final String? apiKey;
@@ -37,6 +38,82 @@ class GeminiContextExtractor {
       : apiKey = (apiKey != null && apiKey.isNotEmpty)
             ? apiKey
             : (defaultApiKeyPlaceholder != "YOUR_GEMINI_API_KEY_HERE" ? defaultApiKeyPlaceholder : null);
+
+  Future<String?> _getEffectiveApiKey() async {
+    if (apiKey != null && apiKey!.isNotEmpty) return apiKey;
+
+    try {
+      final envString = await rootBundle.loadString('assets/.env');
+      for (final line in envString.split('\n')) {
+        final trimmed = line.trim();
+        if (trimmed.startsWith('GEMINI_API_KEY=')) {
+          final val = trimmed.substring('GEMINI_API_KEY='.length).split('#').first.trim();
+          if (val.isNotEmpty && !val.contains('YOUR_GEMINI_API_KEY_HERE')) {
+            return val;
+          }
+        }
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  /// Extracts task details from user prompt text.
+  Future<ExtractedTaskWithContext> extractFromUserPrompt(String promptText) async {
+    final key = await _getEffectiveApiKey();
+    if (key != null && key.isNotEmpty) {
+      try {
+        final model = GenerativeModel(
+          model: 'gemini-1.5-flash',
+          apiKey: key,
+        );
+
+        final prompt = '''
+You are an expert AI Life Scheduler for ASTRA app.
+Extract structured task details from the user's input: "$promptText"
+
+Return ONLY valid raw JSON with the following structure:
+{
+  "is_task": true,
+  "title": "Concise task title",
+  "event_type": "reminder",
+  "company_name": "Company/Org if mentioned, else null",
+  "role": "Role if mentioned, else null",
+  "location": null,
+  "stipend": null,
+  "requirements": null,
+  "deadline": "ISO-8601 date string if deadline mentioned e.g. 2026-08-20T18:00:00, or null",
+  "application_link": null,
+  "action_items": "Task description",
+  "priority": "HIGH" // options: "LOW", "MEDIUM", "HIGH"
+}
+''';
+
+        final content = [Content.text(prompt)];
+        final response = await model.generateContent(content);
+        final text = response.text;
+
+        if (text != null && text.isNotEmpty) {
+          final cleanedJson = _cleanJsonString(text);
+          final Map<String, dynamic> json = jsonDecode(cleanedJson);
+          return _mapJsonToExtractedResult(
+            json: json,
+            taskId: DateTime.now().millisecondsSinceEpoch.toString(),
+            fullEmail: promptText,
+            snippet: promptText,
+            source: 'prompt',
+          );
+        }
+      } catch (_) {}
+    }
+
+    return _heuristicExtraction(
+      subject: promptText,
+      sender: 'User',
+      body: promptText,
+      taskId: DateTime.now().millisecondsSinceEpoch.toString(),
+      source: 'prompt',
+    );
+  }
 
   /// Extracts task details and rich context from raw email text.
   Future<ExtractedTaskWithContext> extractFromEmail({

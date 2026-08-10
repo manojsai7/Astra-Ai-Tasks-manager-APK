@@ -8,6 +8,9 @@ import '../models/task.dart';
 import 'ritual_provider.dart';
 import 'task_provider.dart';
 
+import '../features/scheduler/data/services/gemini_chat_service.dart';
+import '../features/scheduler/data/services/gemini_context_extractor.dart';
+
 // ─── Service Providers ───────────────────────────────────────────────────────
 
 final googleAuthServiceProvider = Provider<GoogleAuthService>((ref) {
@@ -20,6 +23,14 @@ final gmailSyncServiceProvider = Provider<GmailSyncService>((ref) {
 
 final calendarSyncServiceProvider = Provider<CalendarSyncService>((ref) {
   return CalendarSyncService();
+});
+
+final geminiContextExtractorProvider = Provider<GeminiContextExtractor>((ref) {
+  return GeminiContextExtractor();
+});
+
+final geminiChatServiceProvider = Provider<GeminiChatService>((ref) {
+  return GeminiChatService();
 });
 
 final aiLifeSchedulerServiceProvider = Provider<AiLifeSchedulerService>((ref) {
@@ -176,7 +187,7 @@ class AssistantNotifier extends StateNotifier<AssistantState> {
         return;
       }
 
-      if (lower.contains('remind me') || lower.contains('create task') || lower.contains('add task')) {
+      if (lower.contains('remind me') || lower.contains('create task') || lower.contains('add task') || lower.contains('remind')) {
         await handleCreateTask(trimmed);
         return;
       }
@@ -191,18 +202,10 @@ class AssistantNotifier extends StateNotifier<AssistantState> {
         return;
       }
 
-      // Default Help
-      addMessage(
-        '🤖 Here is what I can do:\n\n'
-        '🔐 "Sign in" — Connect Google Account (Gmail & Calendar)\n'
-        '📧 "Sync emails" — Scan inbox for task-relevant emails\n'
-        '📅 "Sync calendar" — Fetch Google Calendar schedule\n'
-        '🔄 "Sync all" — Perform full AI Life Sync\n'
-        '✅ "Remind me to [task]" — Create new task\n'
-        '📋 "List my tasks" — View pending tasks\n'
-        '☑️ "Complete [task]" — Mark task as done',
-        type: AssistantMessageType.info,
-      );
+      // ─── Gemini Conversational Chat ───────────────────────────────────────
+      final chatService = ref.read(geminiChatServiceProvider);
+      final response = await chatService.chat(trimmed);
+      addMessage(response, type: AssistantMessageType.text);
     } catch (e) {
       state = state.copyWith(isLoading: false, error: e.toString());
       addMessage(
@@ -383,37 +386,44 @@ class AssistantNotifier extends StateNotifier<AssistantState> {
   }
 
   Future<void> handleCreateTask(String input) async {
-    String title = input
-        .replaceAll(RegExp(r'remind me to|create task|add task|please', caseSensitive: false), '')
-        .trim();
+    try {
+      final extractor = ref.read(geminiContextExtractorProvider);
+      final extracted = await extractor.extractFromUserPrompt(input);
 
-    if (title.isEmpty) {
-      addMessage('What would you like to be reminded about?', type: AssistantMessageType.info);
-      return;
+      final taskTitle = extracted.title.isNotEmpty ? extracted.title : input;
+      final task = Task(
+        id: DateTime.now().millisecondsSinceEpoch.toString(),
+        title: taskTitle[0].toUpperCase() + taskTitle.substring(1),
+        description: extracted.description ?? 'Added via ASTRA Assistant',
+        dueDate: extracted.dueAt,
+        priority: extracted.priority.name,
+        isCompleted: false,
+        createdAt: DateTime.now(),
+      );
+
+      await ref.read(taskNotifierProvider.notifier).addTask(task);
+      ref.invalidate(taskListProvider);
+
+      String response = '✅ Task created: "${task.title}"\nPriority: ${task.priority.toUpperCase()}';
+      if (task.dueDate != null) {
+        response += '\n📅 Due: ${DateFormat('MMM d, yyyy - h:mm a').format(task.dueDate!)}';
+      }
+      if (extracted.context.companyName != null || extracted.context.role != null) {
+        response += '\n\n📋 Context:\n';
+        if (extracted.context.companyName != null) response += '• Company: ${extracted.context.companyName}\n';
+        if (extracted.context.role != null) response += '• Role: ${extracted.context.role}\n';
+      }
+
+      addMessage(
+        response,
+        type: AssistantMessageType.success,
+      );
+    } catch (e) {
+      addMessage(
+        '⚠️ Error creating task: ${_friendlyError(e)}',
+        type: AssistantMessageType.error,
+      );
     }
-
-    String priority = 'medium';
-    if (input.contains('urgent') || input.contains('high') || input.contains('important')) {
-      priority = 'high';
-    } else if (input.contains('low')) {
-      priority = 'low';
-    }
-
-    final task = Task(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
-      title: title[0].toUpperCase() + title.substring(1),
-      description: 'Added via ASTRA Assistant',
-      priority: priority,
-      createdAt: DateTime.now(),
-    );
-
-    await ref.read(taskNotifierProvider.notifier).addTask(task);
-    ref.invalidate(taskListProvider);
-
-    addMessage(
-      '✅ Task created: "${task.title}"\nPriority: ${priority.toUpperCase()}',
-      type: AssistantMessageType.success,
-    );
   }
 
   Future<void> handleCompleteTask(String input) async {
