@@ -19,7 +19,7 @@ class GoogleAuthService {
   ];
 
   /// 🔑 Web Client ID from Google Cloud Console / google-services.json
-  static const String defaultClientIdPlaceholder = "1016085578580-ugurj686fc753v8k6tqs0o314qkar8p1.apps.googleusercontent.com";
+  static const String defaultClientIdPlaceholder = "1016085578580-mjpfc4pvte0qvn36n3hlasiltpsefrv4.apps.googleusercontent.com";
 
   late GoogleSignIn _googleSignIn;
 
