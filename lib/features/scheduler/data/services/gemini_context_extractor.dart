@@ -102,8 +102,9 @@ Return ONLY valid raw JSON with the following structure:
             snippet: promptText,
             source: 'prompt',
           );
-        }
-      } catch (_) {}
+      } catch (e) {
+        print('GeminiContextExtractor error: $e');
+      }
     }
 
     return _heuristicExtraction(

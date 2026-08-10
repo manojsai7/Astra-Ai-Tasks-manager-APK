@@ -23,7 +23,9 @@ class GeminiChatService {
           }
         }
       }
-    } catch (_) {}
+    } catch (e) {
+      print('GeminiChatService .env load error: $e');
+    }
 
     if (_apiKey != null && _apiKey!.isNotEmpty) {
       _model = GenerativeModel(
@@ -34,31 +36,56 @@ class GeminiChatService {
           maxOutputTokens: 500,
         ),
       );
+    } else {
+      throw Exception('GEMINI_API_KEY is missing or invalid in assets/.env file');
     }
   }
 
   Future<String> chat(String userMessage) async {
-    await initialize();
     if (_model == null) {
-      return "I'm ASTRA, your AI Assistant! To enable full conversational AI, please add your Gemini API key to assets/.env.";
+      try {
+        await initialize();
+      } catch (e) {
+        return '⚠️ Gemini setup error: $e\n\nPlease check assets/.env and add your Gemini API Key from https://aistudio.google.com/app/apikey!';
+      }
     }
 
     try {
       final prompt = '''
-You are ASTRA, a calm, intelligent, and helpful AI life scheduler assistant.
-The user said: "$userMessage"
+You are ASTRA, a calm, intelligent AI life scheduler assistant. 
+The user just said: "$userMessage"
 
-Instructions:
-- If the user asks about scheduling, productivity, tasks, or life planning, give clear, encouraging, practical advice.
-- Keep your response friendly, clear, and under 3-4 sentences unless detailed assistance is required.
-- Do NOT mention that you are a language model or AI software. Respond as ASTRA.
+Your job:
+- If the user is asking about their schedule, respond conversationally.
+- If they are asking to create a task or reminder, acknowledge it and ask for clarification if needed.
+- If they are just chatting, respond naturally and helpfully.
+
+Keep your response friendly, clear, and under 3 sentences unless more detail is needed.
+Do NOT mention that you are an AI.
+Return only the response text.
 ''';
-
-      final content = [Content.text(prompt)];
-      final response = await _model!.generateContent(content);
+      final response = await _model!.generateContent([Content.text(prompt)]);
       return response.text?.trim() ?? "I didn't quite catch that. Could you rephrase?";
     } catch (e) {
-      return "I'm having trouble connecting right now. Please check your internet or try again shortly.";
+      print('GeminiChatService error: $e');
+
+      // Attempt model fallback if gemini-1.5-flash encounters model-specific error
+      if (_apiKey != null && _apiKey!.isNotEmpty) {
+        try {
+          final fallbackModel = GenerativeModel(
+            model: 'gemini-2.0-flash',
+            apiKey: _apiKey!,
+          );
+          final res = await fallbackModel.generateContent([Content.text(userMessage)]);
+          if (res.text != null && res.text!.isNotEmpty) {
+            return res.text!.trim();
+          }
+        } catch (fallbackError) {
+          print('GeminiChatService fallback error: $fallbackError');
+        }
+      }
+
+      return '⚠️ Gemini error: $e';
     }
   }
 }
