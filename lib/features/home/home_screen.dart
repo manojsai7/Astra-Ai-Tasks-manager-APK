@@ -1,15 +1,8 @@
-/// ASTRA — Temporary foundation home screen (Phase 0)
-///
-/// This screen exists only to verify that:
-///  1. Application startup succeeds.
-///  2. The Material 3 theme is applied correctly.
-///  3. The project structure compiles and routes work.
-library;
-
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../app/router/router.dart';
 
-/// Temporary foundation screen — validates theme + routing only.
+/// Main home screen showcasing ASTRA AI Life Scheduler and features.
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
 
@@ -27,6 +20,12 @@ class HomeScreen extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              Icon(
+                LucideIcons.sparkles,
+                size: 56,
+                color: colorScheme.primary,
+              ),
+              const SizedBox(height: 12),
               Text(
                 'ASTRA',
                 style: theme.textTheme.headlineLarge?.copyWith(
@@ -36,103 +35,109 @@ class HomeScreen extends StatelessWidget {
                 ),
                 textAlign: TextAlign.center,
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 8),
               Text(
-                'AI-assisted personal planning and reminder application.',
+                'AI-assisted Life Scheduler & Task Context Engine',
                 style: theme.textTheme.bodyMedium?.copyWith(
                   color: colorScheme.onSurfaceVariant,
                 ),
                 textAlign: TextAlign.center,
               ),
-              const SizedBox(height: 48),
-              // Simple visual check to ensure Material 3 theme colors are loaded
+              const SizedBox(height: 36),
+
+              // --- AI Scheduler Feature Card ---
               Card(
+                elevation: 0,
+                color: colorScheme.primaryContainer.withValues(alpha: 0.4),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  side: BorderSide(color: colorScheme.primary.withValues(alpha: 0.3)),
+                ),
                 child: Padding(
-                  padding: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.all(20),
                   child: Column(
                     children: [
-                      Text(
-                        'Material 3 Theme Check',
-                        style: theme.textTheme.titleMedium,
-                      ),
-                      const SizedBox(height: 16),
                       Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                         children: [
-                          _ColorIndicator(
-                            color: colorScheme.primary,
-                            label: 'Primary',
-                            onColor: colorScheme.onPrimary,
-                          ),
-                          _ColorIndicator(
-                            color: colorScheme.secondary,
-                            label: 'Secondary',
-                            onColor: colorScheme.onSecondary,
-                          ),
-                          _ColorIndicator(
-                            color: colorScheme.primaryContainer,
-                            label: 'Container',
-                            onColor: colorScheme.onPrimaryContainer,
+                          Icon(LucideIcons.globe, color: colorScheme.primary, size: 24),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'AI Life Scheduler',
+                                  style: theme.textTheme.titleMedium?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                Text(
+                                  'Gmail, Calendar & Gemini Context Extraction',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: colorScheme.onSurfaceVariant,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                         ],
+                      ),
+                      const SizedBox(height: 16),
+                      SizedBox(
+                        width: double.infinity,
+                        child: FilledButton.icon(
+                          onPressed: () {
+                            Navigator.of(context).pushNamed(AstraRoutes.tasks);
+                          },
+                          icon: const Icon(LucideIcons.sparkles, size: 18),
+                          label: const Text('Open AI Life Scheduler & Sign In'),
+                          style: FilledButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                        ),
                       ),
                     ],
                   ),
                 ),
               ),
-              const SizedBox(height: 24),
-              FilledButton.icon(
+
+              const SizedBox(height: 20),
+
+              OutlinedButton.icon(
                 onPressed: () {
                   Navigator.of(context).pushNamed(AstraRoutes.inbox);
                 },
-                icon: const Icon(Icons.inbox_outlined),
+                icon: const Icon(LucideIcons.inbox, size: 18),
                 label: const Text('Go to Inbox'),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
               ),
               const SizedBox(height: 12),
-              FilledButton.icon(
+              OutlinedButton.icon(
                 onPressed: () {
                   Navigator.of(context).pushNamed(AstraRoutes.tasks);
                 },
-                icon: const Icon(Icons.task_alt_outlined),
+                icon: const Icon(LucideIcons.checkSquare, size: 18),
                 label: const Text('Go to Tasks'),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
               ),
             ],
           ),
         ),
       ),
-    );
-  }
-}
-
-class _ColorIndicator extends StatelessWidget {
-  const _ColorIndicator({
-    required this.color,
-    required this.label,
-    required this.onColor,
-  });
-
-  final Color color;
-  final String label;
-  final Color onColor;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Container(
-          width: 48,
-          height: 48,
-          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-          child: Center(
-            child: Text(
-              'Aa',
-              style: TextStyle(color: onColor, fontWeight: FontWeight.bold),
-            ),
-          ),
-        ),
-        const SizedBox(height: 8),
-        Text(label, style: Theme.of(context).textTheme.labelSmall),
-      ],
     );
   }
 }

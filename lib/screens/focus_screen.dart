@@ -1,10 +1,12 @@
 import 'dart:async';
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../providers/focus_provider.dart';
 import '../theme/app_theme.dart';
+import '../widgets/design_system/astra_stat_pill.dart';
 
 class FocusScreen extends ConsumerStatefulWidget {
   const FocusScreen({super.key});
@@ -13,35 +15,38 @@ class FocusScreen extends ConsumerStatefulWidget {
   ConsumerState<FocusScreen> createState() => _FocusScreenState();
 }
 
-class _FocusScreenState extends ConsumerState<FocusScreen> {
+class _FocusScreenState extends ConsumerState<FocusScreen>
+    with SingleTickerProviderStateMixin {
   int _selectedDuration = 25; // minutes
   late int _remainingSeconds;
   bool _isRunning = false;
   Timer? _timer;
+  late AnimationController _ringCtrl;
 
   @override
   void initState() {
     super.initState();
     _remainingSeconds = _selectedDuration * 60;
+    _ringCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1200),
+    )..repeat(reverse: true);
   }
 
   @override
   void dispose() {
     _timer?.cancel();
+    _ringCtrl.dispose();
     super.dispose();
   }
 
   void _startTimer() {
     if (_isRunning) return;
-    setState(() {
-      _isRunning = true;
-    });
+    setState(() => _isRunning = true);
 
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (_remainingSeconds > 0) {
-        setState(() {
-          _remainingSeconds--;
-        });
+        setState(() => _remainingSeconds--);
       } else {
         _timer?.cancel();
         setState(() {
@@ -56,9 +61,7 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
 
   void _pauseTimer() {
     _timer?.cancel();
-    setState(() {
-      _isRunning = false;
-    });
+    setState(() => _isRunning = false);
   }
 
   void _resetTimer() {
@@ -87,8 +90,9 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
         title: Row(
           children: [
             Icon(LucideIcons.trophy, color: AppTheme.warning, size: 24),
-            const SizedBox(width: 8),
-            const Text('Session Complete!', style: TextStyle(color: AppTheme.textPrimary)),
+            const SizedBox(width: 10),
+            const Text('Session Done!',
+                style: TextStyle(color: AppTheme.textPrimary)),
           ],
         ),
         content: Column(
@@ -96,12 +100,12 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'You focused for $_selectedDuration minutes!',
+              'You focused for $_selectedDuration minutes.',
               style: const TextStyle(color: AppTheme.textSecondary),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 4),
             const Text(
-              'Keep up the momentum!',
+              'I\'ve logged it to your stats.',
               style: TextStyle(color: AppTheme.textMuted, fontSize: 12),
             ),
           ],
@@ -112,7 +116,9 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
               Navigator.pop(ctx);
               _resetTimer();
             },
-            child: const Text('Awesome!', style: TextStyle(color: AppTheme.primary, fontWeight: FontWeight.bold)),
+            child: const Text('Keep going →',
+                style: TextStyle(
+                    color: AppTheme.primary, fontWeight: FontWeight.bold)),
           ),
         ],
       ),
@@ -125,168 +131,251 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
     return '${mins.toString().padLeft(2, '0')}:${secs.toString().padLeft(2, '0')}';
   }
 
+  Color get _timerColor {
+    if (_remainingSeconds < 60) return AppTheme.error;
+    if (_remainingSeconds < 300) return AppTheme.warning;
+    if (_isRunning) return AppTheme.accentGreen;
+    return AppTheme.primary;
+  }
+
   @override
   Widget build(BuildContext context) {
     final stats = ref.watch(focusStatsProvider);
     final totalSeconds = _selectedDuration * 60;
-    final progress = totalSeconds > 0 ? (1 - (_remainingSeconds / totalSeconds)) : 0.0;
+    final progress =
+        totalSeconds > 0 ? (1 - (_remainingSeconds / totalSeconds)) : 0.0;
 
     return Scaffold(
       backgroundColor: AppTheme.background,
-      appBar: AppBar(
-        title: const Text('Focus Arena'),
-      ),
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: RadialGradient(
+            center: Alignment.center,
+            radius: 1.0,
+            colors: [
+              _timerColor.withAlpha(_isRunning ? 22 : 8),
+              AppTheme.background.withAlpha(240),
+              AppTheme.background,
+            ],
+            stops: const [0.0, 0.5, 1.0],
+          ),
+        ),
+        child: SafeArea(
           child: Column(
             children: [
-              // Stats header
-              Row(
-                children: [
-                  Expanded(
-                    child: _StatPill(
+              // ── Top Bar ─────────────────────────────────────────
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
+                child: Row(
+                  children: [
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'FOCUS',
+                          style: Theme.of(context)
+                              .textTheme
+                              .displaySmall
+                              ?.copyWith(
+                                letterSpacing: 2,
+                                color: AppTheme.textPrimary,
+                              ),
+                        ),
+                        Text(
+                          'Deep work mode',
+                          style: TextStyle(
+                              fontSize: 11, color: AppTheme.textMuted),
+                        ),
+                      ],
+                    ),
+                    const Spacer(),
+                    // Stats pills row
+                    AstraStatPill(
                       icon: LucideIcons.checkCircle2,
-                      label: 'Sessions',
                       value: '${stats.totalSessions}',
-                      color: AppTheme.primary,
+                      label: 'sessions',
+                      iconColor: AppTheme.primary,
                     ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: _StatPill(
-                      icon: LucideIcons.timer,
-                      label: 'Total min',
-                      value: '${stats.totalMinutes}',
-                      color: AppTheme.accent,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: _StatPill(
+                    const SizedBox(width: 8),
+                    AstraStatPill(
                       icon: LucideIcons.flame,
-                      label: 'Streak',
-                      value: '3',
-                      color: AppTheme.warning,
+                      value: '${stats.totalMinutes}m',
+                      iconColor: AppTheme.accent,
                     ),
-                  ),
-                ],
-              ),
-              const Spacer(),
+                  ],
+                ),
+              ).animate().fadeIn(duration: 400.ms),
 
-              // Circular timer with progress ring
-              Stack(
-                alignment: Alignment.center,
-                children: [
-                  Container(
-                    width: 240,
-                    height: 240,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: AppTheme.surfaceElevated.withAlpha(50),
-                    ),
-                    child: CircularProgressIndicator(
-                      value: progress,
-                      strokeWidth: 10,
-                      backgroundColor: AppTheme.surfaceElevated,
-                      valueColor: AlwaysStoppedAnimation<Color>(
-                        _remainingSeconds < 60
-                            ? AppTheme.error
-                            : _remainingSeconds < 300
-                                ? AppTheme.warning
-                                : AppTheme.primary,
-                      ),
-                    ),
-                  ),
-                  Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        _formatTime(_remainingSeconds),
-                        style: Theme.of(context).textTheme.displayLarge?.copyWith(
-                              fontSize: 52,
-                              fontWeight: FontWeight.w700,
-                              color: AppTheme.textPrimary,
-                            ),
-                      ),
-                      const SizedBox(height: 4),
-                      _isRunning
-                          ? const Text(
-                              'FOCUSING',
-                              style: TextStyle(
-                                color: AppTheme.success,
-                                fontSize: 14,
-                                fontWeight: FontWeight.w600,
-                                letterSpacing: 2,
-                              ),
-                            )
-                              .animate(onPlay: (controller) => controller.repeat(reverse: true))
-                              .fade(duration: 1000.ms, begin: 0.5, end: 1.0)
-                          : const Text(
-                              'READY',
-                              style: TextStyle(
-                                color: AppTheme.textMuted,
-                                fontSize: 14,
-                                fontWeight: FontWeight.w600,
-                                letterSpacing: 2,
-                              ),
-                            ),
-                    ],
-                  ),
-                ],
-              ),
-              const Spacer(),
+              const Spacer(flex: 2),
 
-              // Duration presets
+              // ── Duration Presets ────────────────────────────────
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
-                children: [15, 25, 45, 60].map((mins) {
+                children: [15, 25, 45, 90].map((mins) {
                   final isSelected = _selectedDuration == mins;
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 4),
-                    child: _DurationChip(
-                      label: '${mins}m',
-                      isSelected: isSelected,
-                      onTap: () => _selectDuration(mins),
+                  return GestureDetector(
+                    onTap: () => _selectDuration(mins),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      margin: const EdgeInsets.symmetric(horizontal: 5),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: isSelected
+                            ? AppTheme.primary.withAlpha(25)
+                            : AppTheme.surfaceElevated,
+                        borderRadius: BorderRadius.circular(30),
+                        border: Border.all(
+                          color: isSelected
+                              ? AppTheme.primary
+                              : AppTheme.borderSubtle,
+                          width: 1.5,
+                        ),
+                      ),
+                      child: Text(
+                        '${mins}m',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: isSelected
+                              ? AppTheme.primary
+                              : AppTheme.textMuted,
+                        ),
+                      ),
                     ),
                   );
                 }).toList(),
-              ),
-              const SizedBox(height: 24),
+              ).animate().fadeIn(duration: 400.ms, delay: 100.ms),
 
-              // Controls
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  if (_isRunning)
-                    _ControlButton(
-                      icon: LucideIcons.pause,
-                      label: 'Pause',
-                      onTap: _pauseTimer,
-                      color: AppTheme.warning,
-                    )
-                  else
-                    _ControlButton(
-                      icon: LucideIcons.play,
-                      label: 'Start',
-                      onTap: _startTimer,
-                      color: AppTheme.success,
-                    ),
-                  const SizedBox(width: 16),
-                  _ControlButton(
-                    icon: LucideIcons.rotateCcw,
-                    label: 'Reset',
-                    onTap: _resetTimer,
-                    color: AppTheme.textMuted,
+              const Spacer(),
+
+              // ── Central Timer Ring ───────────────────────────────
+              _TimerRing(
+                progress: progress,
+                isRunning: _isRunning,
+                remainingSeconds: _remainingSeconds,
+                timerColor: _timerColor,
+                formatTime: _formatTime,
+              ).animate().scale(
+                    duration: 600.ms,
+                    curve: Curves.elasticOut,
+                    delay: 200.ms,
                   ),
-                ],
-              ),
-              const SizedBox(height: 24),
 
-              const Text(
-                'Stay focused. Every second counts.',
-                style: TextStyle(color: AppTheme.textMuted, fontSize: 12),
-              ),
+              const Spacer(),
+
+              // ── AI Hint ─────────────────────────────────────────
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: AppTheme.secondary.withAlpha(12),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                        color: AppTheme.secondary.withAlpha(30), width: 1),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.auto_awesome,
+                          size: 13, color: AppTheme.secondary),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          _isRunning
+                              ? 'You\'re in the zone. Stay there.'
+                              : 'You usually focus best in the evening.',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: AppTheme.textMuted,
+                            fontStyle: FontStyle.italic,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ).animate().fadeIn(duration: 400.ms, delay: 300.ms),
+
+              const SizedBox(height: 20),
+
+              // ── Controls ──────────────────────────────────────────
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 40),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    // Reset button
+                    GestureDetector(
+                      onTap: _resetTimer,
+                      child: Container(
+                        width: 52,
+                        height: 52,
+                        decoration: BoxDecoration(
+                          color: AppTheme.surfaceElevated,
+                          shape: BoxShape.circle,
+                          border: Border.all(color: AppTheme.borderSubtle),
+                        ),
+                        child: const Icon(LucideIcons.rotateCcw,
+                            size: 20, color: AppTheme.textMuted),
+                      ),
+                    ),
+                    const SizedBox(width: 20),
+
+                    // Main play/pause button
+                    GestureDetector(
+                      onTap: _isRunning ? _pauseTimer : _startTimer,
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        width: 72,
+                        height: 72,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: _isRunning
+                              ? AppTheme.warning
+                              : AppTheme.primary,
+                          boxShadow: [
+                            BoxShadow(
+                              color: (_isRunning
+                                      ? AppTheme.warning
+                                      : AppTheme.primary)
+                                  .withAlpha(70),
+                              blurRadius: 24,
+                              spreadRadius: -4,
+                            ),
+                          ],
+                        ),
+                        child: Icon(
+                          _isRunning ? LucideIcons.pause : LucideIcons.play,
+                          color: Colors.white,
+                          size: 30,
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(width: 20),
+                    // Skip button placeholder
+                    Container(
+                      width: 52,
+                      height: 52,
+                      decoration: BoxDecoration(
+                        color: AppTheme.surfaceElevated,
+                        shape: BoxShape.circle,
+                        border: Border.all(color: AppTheme.borderSubtle),
+                      ),
+                      child: Icon(
+                        LucideIcons.skipForward,
+                        size: 20,
+                        color: AppTheme.textMuted,
+                      ),
+                    ),
+                  ],
+                ),
+              ).animate().fadeIn(duration: 400.ms, delay: 200.ms),
+
+              const SizedBox(height: 32),
             ],
           ),
         ),
@@ -295,51 +384,85 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
   }
 }
 
-class _StatPill extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final String value;
-  final Color color;
+// ─── Timer Ring Component ─────────────────────────────────────────────────
 
-  const _StatPill({
-    required this.icon,
-    required this.label,
-    required this.value,
-    required this.color,
+class _TimerRing extends StatelessWidget {
+  final double progress;
+  final bool isRunning;
+  final int remainingSeconds;
+  final Color timerColor;
+  final String Function(int) formatTime;
+
+  const _TimerRing({
+    required this.progress,
+    required this.isRunning,
+    required this.remainingSeconds,
+    required this.timerColor,
+    required this.formatTime,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-      decoration: BoxDecoration(
-        color: AppTheme.surfaceElevated,
-        borderRadius: BorderRadius.circular(30),
-        border: Border.all(color: color.withAlpha(40)),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
+    return SizedBox(
+      width: 240,
+      height: 240,
+      child: Stack(
+        alignment: Alignment.center,
         children: [
-          Icon(icon, size: 14, color: color),
-          const SizedBox(width: 4),
-          Flexible(
-            child: Text(
-              value,
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    color: AppTheme.textPrimary,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 13,
-                  ),
-              overflow: TextOverflow.ellipsis,
+          // Outer glow ring
+          Container(
+            width: 240,
+            height: 240,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: timerColor.withAlpha(isRunning ? 25 : 10),
+                  blurRadius: 40,
+                  spreadRadius: 10,
+                ),
+              ],
             ),
           ),
-          const SizedBox(width: 3),
-          Flexible(
-            child: Text(
-              label,
-              style: const TextStyle(color: AppTheme.textMuted, fontSize: 10),
-              overflow: TextOverflow.ellipsis,
+
+          // Track + progress arc
+          CustomPaint(
+            size: const Size(240, 240),
+            painter: _RingPainter(
+              progress: progress,
+              trackColor: AppTheme.surfaceRaised,
+              fillColor: timerColor,
             ),
+          ),
+
+          // Center content
+          Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                formatTime(remainingSeconds),
+                style: Theme.of(context).textTheme.displayLarge?.copyWith(
+                      fontSize: 56,
+                      color: AppTheme.textPrimary,
+                      letterSpacing: 2,
+                      fontFeatures: const [FontFeature.tabularFigures()],
+                    ),
+              ),
+              const SizedBox(height: 4),
+              AnimatedSwitcher(
+                duration: const Duration(milliseconds: 300),
+                child: Text(
+                  isRunning ? 'FOCUSING' : 'READY',
+                  key: ValueKey(isRunning),
+                  style: TextStyle(
+                    color: isRunning ? timerColor : AppTheme.textMuted,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 2.5,
+                  ),
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -347,70 +470,49 @@ class _StatPill extends StatelessWidget {
   }
 }
 
-class _DurationChip extends StatelessWidget {
-  final String label;
-  final bool isSelected;
-  final VoidCallback onTap;
+class _RingPainter extends CustomPainter {
+  final double progress;
+  final Color trackColor;
+  final Color fillColor;
 
-  const _DurationChip({
-    required this.label,
-    required this.isSelected,
-    required this.onTap,
+  _RingPainter({
+    required this.progress,
+    required this.trackColor,
+    required this.fillColor,
   });
 
   @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-        decoration: BoxDecoration(
-          color: isSelected ? AppTheme.primary : AppTheme.surfaceElevated,
-          borderRadius: BorderRadius.circular(30),
-          border: Border.all(
-            color: isSelected ? AppTheme.primary : AppTheme.surfaceElevated,
-          ),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            color: isSelected ? Colors.white : AppTheme.textSecondary,
-            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-          ),
-        ),
-      ),
-    );
+  void paint(Canvas canvas, Size size) {
+    const strokeWidth = 10.0;
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = (size.width - strokeWidth) / 2;
+
+    // Track
+    final trackPaint = Paint()
+      ..color = trackColor
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = strokeWidth
+      ..strokeCap = StrokeCap.round;
+    canvas.drawCircle(center, radius, trackPaint);
+
+    // Fill arc
+    if (progress > 0) {
+      final fillPaint = Paint()
+        ..color = fillColor
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = strokeWidth
+        ..strokeCap = StrokeCap.round;
+      canvas.drawArc(
+        Rect.fromCircle(center: center, radius: radius),
+        -math.pi / 2,
+        2 * math.pi * progress,
+        false,
+        fillPaint,
+      );
+    }
   }
-}
-
-class _ControlButton extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final VoidCallback onTap;
-  final Color color;
-
-  const _ControlButton({
-    required this.icon,
-    required this.label,
-    required this.onTap,
-    required this.color,
-  });
 
   @override
-  Widget build(BuildContext context) {
-    return ElevatedButton.icon(
-      onPressed: onTap,
-      icon: Icon(icon, color: Colors.white, size: 16),
-      label: Text(label),
-      style: ElevatedButton.styleFrom(
-        backgroundColor: color == AppTheme.textMuted ? AppTheme.surfaceElevated : color,
-        foregroundColor: Colors.white,
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
-      ),
-    );
-  }
+  bool shouldRepaint(_RingPainter old) =>
+      old.progress != progress || old.fillColor != fillColor;
 }

@@ -289,7 +289,7 @@ void main() {
       await tester.pumpAndSettle();
 
       // Verify task shows up in list
-      expect(find.text('Persisted Tasks'), findsOneWidget);
+      expect(find.text('ASTRA Tasks & AI Scheduler'), findsOneWidget);
       expect(find.text('Apply for Amazon SDE Internship'), findsOneWidget);
 
       // Clean up

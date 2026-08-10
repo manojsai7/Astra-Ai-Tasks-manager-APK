@@ -2188,6 +2188,876 @@ class RitualRulesCompanion extends UpdateCompanion<RitualRuleEntry> {
   }
 }
 
+class $TaskContextsTable extends TaskContexts
+    with TableInfo<$TaskContextsTable, TaskContextEntry> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $TaskContextsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _taskIdMeta = const VerificationMeta('taskId');
+  @override
+  late final GeneratedColumn<String> taskId = GeneratedColumn<String>(
+    'task_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _companyNameMeta = const VerificationMeta(
+    'companyName',
+  );
+  @override
+  late final GeneratedColumn<String> companyName = GeneratedColumn<String>(
+    'company_name',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _roleMeta = const VerificationMeta('role');
+  @override
+  late final GeneratedColumn<String> role = GeneratedColumn<String>(
+    'role',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _requirementsMeta = const VerificationMeta(
+    'requirements',
+  );
+  @override
+  late final GeneratedColumn<String> requirements = GeneratedColumn<String>(
+    'requirements',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _applicationLinkMeta = const VerificationMeta(
+    'applicationLink',
+  );
+  @override
+  late final GeneratedColumn<String> applicationLink = GeneratedColumn<String>(
+    'application_link',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _emailSnippetMeta = const VerificationMeta(
+    'emailSnippet',
+  );
+  @override
+  late final GeneratedColumn<String> emailSnippet = GeneratedColumn<String>(
+    'email_snippet',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _fullEmailMeta = const VerificationMeta(
+    'fullEmail',
+  );
+  @override
+  late final GeneratedColumn<String> fullEmail = GeneratedColumn<String>(
+    'full_email',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _hasAppliedMeta = const VerificationMeta(
+    'hasApplied',
+  );
+  @override
+  late final GeneratedColumn<bool> hasApplied = GeneratedColumn<bool>(
+    'has_applied',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("has_applied" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _appliedAtMeta = const VerificationMeta(
+    'appliedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> appliedAt = GeneratedColumn<DateTime>(
+    'applied_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _eventTypeMeta = const VerificationMeta(
+    'eventType',
+  );
+  @override
+  late final GeneratedColumn<String> eventType = GeneratedColumn<String>(
+    'event_type',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _locationMeta = const VerificationMeta(
+    'location',
+  );
+  @override
+  late final GeneratedColumn<String> location = GeneratedColumn<String>(
+    'location',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _stipendMeta = const VerificationMeta(
+    'stipend',
+  );
+  @override
+  late final GeneratedColumn<String> stipend = GeneratedColumn<String>(
+    'stipend',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _actionItemsMeta = const VerificationMeta(
+    'actionItems',
+  );
+  @override
+  late final GeneratedColumn<String> actionItems = GeneratedColumn<String>(
+    'action_items',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _sourceMeta = const VerificationMeta('source');
+  @override
+  late final GeneratedColumn<String> source = GeneratedColumn<String>(
+    'source',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('gmail'),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    taskId,
+    companyName,
+    role,
+    requirements,
+    applicationLink,
+    emailSnippet,
+    fullEmail,
+    hasApplied,
+    appliedAt,
+    eventType,
+    location,
+    stipend,
+    actionItems,
+    source,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'task_contexts';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<TaskContextEntry> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('task_id')) {
+      context.handle(
+        _taskIdMeta,
+        taskId.isAcceptableOrUnknown(data['task_id']!, _taskIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_taskIdMeta);
+    }
+    if (data.containsKey('company_name')) {
+      context.handle(
+        _companyNameMeta,
+        companyName.isAcceptableOrUnknown(
+          data['company_name']!,
+          _companyNameMeta,
+        ),
+      );
+    }
+    if (data.containsKey('role')) {
+      context.handle(
+        _roleMeta,
+        role.isAcceptableOrUnknown(data['role']!, _roleMeta),
+      );
+    }
+    if (data.containsKey('requirements')) {
+      context.handle(
+        _requirementsMeta,
+        requirements.isAcceptableOrUnknown(
+          data['requirements']!,
+          _requirementsMeta,
+        ),
+      );
+    }
+    if (data.containsKey('application_link')) {
+      context.handle(
+        _applicationLinkMeta,
+        applicationLink.isAcceptableOrUnknown(
+          data['application_link']!,
+          _applicationLinkMeta,
+        ),
+      );
+    }
+    if (data.containsKey('email_snippet')) {
+      context.handle(
+        _emailSnippetMeta,
+        emailSnippet.isAcceptableOrUnknown(
+          data['email_snippet']!,
+          _emailSnippetMeta,
+        ),
+      );
+    }
+    if (data.containsKey('full_email')) {
+      context.handle(
+        _fullEmailMeta,
+        fullEmail.isAcceptableOrUnknown(data['full_email']!, _fullEmailMeta),
+      );
+    }
+    if (data.containsKey('has_applied')) {
+      context.handle(
+        _hasAppliedMeta,
+        hasApplied.isAcceptableOrUnknown(data['has_applied']!, _hasAppliedMeta),
+      );
+    }
+    if (data.containsKey('applied_at')) {
+      context.handle(
+        _appliedAtMeta,
+        appliedAt.isAcceptableOrUnknown(data['applied_at']!, _appliedAtMeta),
+      );
+    }
+    if (data.containsKey('event_type')) {
+      context.handle(
+        _eventTypeMeta,
+        eventType.isAcceptableOrUnknown(data['event_type']!, _eventTypeMeta),
+      );
+    }
+    if (data.containsKey('location')) {
+      context.handle(
+        _locationMeta,
+        location.isAcceptableOrUnknown(data['location']!, _locationMeta),
+      );
+    }
+    if (data.containsKey('stipend')) {
+      context.handle(
+        _stipendMeta,
+        stipend.isAcceptableOrUnknown(data['stipend']!, _stipendMeta),
+      );
+    }
+    if (data.containsKey('action_items')) {
+      context.handle(
+        _actionItemsMeta,
+        actionItems.isAcceptableOrUnknown(
+          data['action_items']!,
+          _actionItemsMeta,
+        ),
+      );
+    }
+    if (data.containsKey('source')) {
+      context.handle(
+        _sourceMeta,
+        source.isAcceptableOrUnknown(data['source']!, _sourceMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  TaskContextEntry map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return TaskContextEntry(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      taskId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}task_id'],
+      )!,
+      companyName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}company_name'],
+      ),
+      role: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}role'],
+      ),
+      requirements: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}requirements'],
+      ),
+      applicationLink: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}application_link'],
+      ),
+      emailSnippet: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}email_snippet'],
+      ),
+      fullEmail: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}full_email'],
+      ),
+      hasApplied: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}has_applied'],
+      )!,
+      appliedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}applied_at'],
+      ),
+      eventType: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}event_type'],
+      ),
+      location: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}location'],
+      ),
+      stipend: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}stipend'],
+      ),
+      actionItems: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}action_items'],
+      ),
+      source: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}source'],
+      )!,
+    );
+  }
+
+  @override
+  $TaskContextsTable createAlias(String alias) {
+    return $TaskContextsTable(attachedDatabase, alias);
+  }
+}
+
+class TaskContextEntry extends DataClass
+    implements Insertable<TaskContextEntry> {
+  final int id;
+  final String taskId;
+  final String? companyName;
+  final String? role;
+  final String? requirements;
+  final String? applicationLink;
+  final String? emailSnippet;
+  final String? fullEmail;
+  final bool hasApplied;
+  final DateTime? appliedAt;
+  final String? eventType;
+  final String? location;
+  final String? stipend;
+  final String? actionItems;
+  final String source;
+  const TaskContextEntry({
+    required this.id,
+    required this.taskId,
+    this.companyName,
+    this.role,
+    this.requirements,
+    this.applicationLink,
+    this.emailSnippet,
+    this.fullEmail,
+    required this.hasApplied,
+    this.appliedAt,
+    this.eventType,
+    this.location,
+    this.stipend,
+    this.actionItems,
+    required this.source,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['task_id'] = Variable<String>(taskId);
+    if (!nullToAbsent || companyName != null) {
+      map['company_name'] = Variable<String>(companyName);
+    }
+    if (!nullToAbsent || role != null) {
+      map['role'] = Variable<String>(role);
+    }
+    if (!nullToAbsent || requirements != null) {
+      map['requirements'] = Variable<String>(requirements);
+    }
+    if (!nullToAbsent || applicationLink != null) {
+      map['application_link'] = Variable<String>(applicationLink);
+    }
+    if (!nullToAbsent || emailSnippet != null) {
+      map['email_snippet'] = Variable<String>(emailSnippet);
+    }
+    if (!nullToAbsent || fullEmail != null) {
+      map['full_email'] = Variable<String>(fullEmail);
+    }
+    map['has_applied'] = Variable<bool>(hasApplied);
+    if (!nullToAbsent || appliedAt != null) {
+      map['applied_at'] = Variable<DateTime>(appliedAt);
+    }
+    if (!nullToAbsent || eventType != null) {
+      map['event_type'] = Variable<String>(eventType);
+    }
+    if (!nullToAbsent || location != null) {
+      map['location'] = Variable<String>(location);
+    }
+    if (!nullToAbsent || stipend != null) {
+      map['stipend'] = Variable<String>(stipend);
+    }
+    if (!nullToAbsent || actionItems != null) {
+      map['action_items'] = Variable<String>(actionItems);
+    }
+    map['source'] = Variable<String>(source);
+    return map;
+  }
+
+  TaskContextsCompanion toCompanion(bool nullToAbsent) {
+    return TaskContextsCompanion(
+      id: Value(id),
+      taskId: Value(taskId),
+      companyName: companyName == null && nullToAbsent
+          ? const Value.absent()
+          : Value(companyName),
+      role: role == null && nullToAbsent ? const Value.absent() : Value(role),
+      requirements: requirements == null && nullToAbsent
+          ? const Value.absent()
+          : Value(requirements),
+      applicationLink: applicationLink == null && nullToAbsent
+          ? const Value.absent()
+          : Value(applicationLink),
+      emailSnippet: emailSnippet == null && nullToAbsent
+          ? const Value.absent()
+          : Value(emailSnippet),
+      fullEmail: fullEmail == null && nullToAbsent
+          ? const Value.absent()
+          : Value(fullEmail),
+      hasApplied: Value(hasApplied),
+      appliedAt: appliedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(appliedAt),
+      eventType: eventType == null && nullToAbsent
+          ? const Value.absent()
+          : Value(eventType),
+      location: location == null && nullToAbsent
+          ? const Value.absent()
+          : Value(location),
+      stipend: stipend == null && nullToAbsent
+          ? const Value.absent()
+          : Value(stipend),
+      actionItems: actionItems == null && nullToAbsent
+          ? const Value.absent()
+          : Value(actionItems),
+      source: Value(source),
+    );
+  }
+
+  factory TaskContextEntry.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return TaskContextEntry(
+      id: serializer.fromJson<int>(json['id']),
+      taskId: serializer.fromJson<String>(json['taskId']),
+      companyName: serializer.fromJson<String?>(json['companyName']),
+      role: serializer.fromJson<String?>(json['role']),
+      requirements: serializer.fromJson<String?>(json['requirements']),
+      applicationLink: serializer.fromJson<String?>(json['applicationLink']),
+      emailSnippet: serializer.fromJson<String?>(json['emailSnippet']),
+      fullEmail: serializer.fromJson<String?>(json['fullEmail']),
+      hasApplied: serializer.fromJson<bool>(json['hasApplied']),
+      appliedAt: serializer.fromJson<DateTime?>(json['appliedAt']),
+      eventType: serializer.fromJson<String?>(json['eventType']),
+      location: serializer.fromJson<String?>(json['location']),
+      stipend: serializer.fromJson<String?>(json['stipend']),
+      actionItems: serializer.fromJson<String?>(json['actionItems']),
+      source: serializer.fromJson<String>(json['source']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'taskId': serializer.toJson<String>(taskId),
+      'companyName': serializer.toJson<String?>(companyName),
+      'role': serializer.toJson<String?>(role),
+      'requirements': serializer.toJson<String?>(requirements),
+      'applicationLink': serializer.toJson<String?>(applicationLink),
+      'emailSnippet': serializer.toJson<String?>(emailSnippet),
+      'fullEmail': serializer.toJson<String?>(fullEmail),
+      'hasApplied': serializer.toJson<bool>(hasApplied),
+      'appliedAt': serializer.toJson<DateTime?>(appliedAt),
+      'eventType': serializer.toJson<String?>(eventType),
+      'location': serializer.toJson<String?>(location),
+      'stipend': serializer.toJson<String?>(stipend),
+      'actionItems': serializer.toJson<String?>(actionItems),
+      'source': serializer.toJson<String>(source),
+    };
+  }
+
+  TaskContextEntry copyWith({
+    int? id,
+    String? taskId,
+    Value<String?> companyName = const Value.absent(),
+    Value<String?> role = const Value.absent(),
+    Value<String?> requirements = const Value.absent(),
+    Value<String?> applicationLink = const Value.absent(),
+    Value<String?> emailSnippet = const Value.absent(),
+    Value<String?> fullEmail = const Value.absent(),
+    bool? hasApplied,
+    Value<DateTime?> appliedAt = const Value.absent(),
+    Value<String?> eventType = const Value.absent(),
+    Value<String?> location = const Value.absent(),
+    Value<String?> stipend = const Value.absent(),
+    Value<String?> actionItems = const Value.absent(),
+    String? source,
+  }) => TaskContextEntry(
+    id: id ?? this.id,
+    taskId: taskId ?? this.taskId,
+    companyName: companyName.present ? companyName.value : this.companyName,
+    role: role.present ? role.value : this.role,
+    requirements: requirements.present ? requirements.value : this.requirements,
+    applicationLink: applicationLink.present
+        ? applicationLink.value
+        : this.applicationLink,
+    emailSnippet: emailSnippet.present ? emailSnippet.value : this.emailSnippet,
+    fullEmail: fullEmail.present ? fullEmail.value : this.fullEmail,
+    hasApplied: hasApplied ?? this.hasApplied,
+    appliedAt: appliedAt.present ? appliedAt.value : this.appliedAt,
+    eventType: eventType.present ? eventType.value : this.eventType,
+    location: location.present ? location.value : this.location,
+    stipend: stipend.present ? stipend.value : this.stipend,
+    actionItems: actionItems.present ? actionItems.value : this.actionItems,
+    source: source ?? this.source,
+  );
+  TaskContextEntry copyWithCompanion(TaskContextsCompanion data) {
+    return TaskContextEntry(
+      id: data.id.present ? data.id.value : this.id,
+      taskId: data.taskId.present ? data.taskId.value : this.taskId,
+      companyName: data.companyName.present
+          ? data.companyName.value
+          : this.companyName,
+      role: data.role.present ? data.role.value : this.role,
+      requirements: data.requirements.present
+          ? data.requirements.value
+          : this.requirements,
+      applicationLink: data.applicationLink.present
+          ? data.applicationLink.value
+          : this.applicationLink,
+      emailSnippet: data.emailSnippet.present
+          ? data.emailSnippet.value
+          : this.emailSnippet,
+      fullEmail: data.fullEmail.present ? data.fullEmail.value : this.fullEmail,
+      hasApplied: data.hasApplied.present
+          ? data.hasApplied.value
+          : this.hasApplied,
+      appliedAt: data.appliedAt.present ? data.appliedAt.value : this.appliedAt,
+      eventType: data.eventType.present ? data.eventType.value : this.eventType,
+      location: data.location.present ? data.location.value : this.location,
+      stipend: data.stipend.present ? data.stipend.value : this.stipend,
+      actionItems: data.actionItems.present
+          ? data.actionItems.value
+          : this.actionItems,
+      source: data.source.present ? data.source.value : this.source,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('TaskContextEntry(')
+          ..write('id: $id, ')
+          ..write('taskId: $taskId, ')
+          ..write('companyName: $companyName, ')
+          ..write('role: $role, ')
+          ..write('requirements: $requirements, ')
+          ..write('applicationLink: $applicationLink, ')
+          ..write('emailSnippet: $emailSnippet, ')
+          ..write('fullEmail: $fullEmail, ')
+          ..write('hasApplied: $hasApplied, ')
+          ..write('appliedAt: $appliedAt, ')
+          ..write('eventType: $eventType, ')
+          ..write('location: $location, ')
+          ..write('stipend: $stipend, ')
+          ..write('actionItems: $actionItems, ')
+          ..write('source: $source')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    taskId,
+    companyName,
+    role,
+    requirements,
+    applicationLink,
+    emailSnippet,
+    fullEmail,
+    hasApplied,
+    appliedAt,
+    eventType,
+    location,
+    stipend,
+    actionItems,
+    source,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is TaskContextEntry &&
+          other.id == this.id &&
+          other.taskId == this.taskId &&
+          other.companyName == this.companyName &&
+          other.role == this.role &&
+          other.requirements == this.requirements &&
+          other.applicationLink == this.applicationLink &&
+          other.emailSnippet == this.emailSnippet &&
+          other.fullEmail == this.fullEmail &&
+          other.hasApplied == this.hasApplied &&
+          other.appliedAt == this.appliedAt &&
+          other.eventType == this.eventType &&
+          other.location == this.location &&
+          other.stipend == this.stipend &&
+          other.actionItems == this.actionItems &&
+          other.source == this.source);
+}
+
+class TaskContextsCompanion extends UpdateCompanion<TaskContextEntry> {
+  final Value<int> id;
+  final Value<String> taskId;
+  final Value<String?> companyName;
+  final Value<String?> role;
+  final Value<String?> requirements;
+  final Value<String?> applicationLink;
+  final Value<String?> emailSnippet;
+  final Value<String?> fullEmail;
+  final Value<bool> hasApplied;
+  final Value<DateTime?> appliedAt;
+  final Value<String?> eventType;
+  final Value<String?> location;
+  final Value<String?> stipend;
+  final Value<String?> actionItems;
+  final Value<String> source;
+  const TaskContextsCompanion({
+    this.id = const Value.absent(),
+    this.taskId = const Value.absent(),
+    this.companyName = const Value.absent(),
+    this.role = const Value.absent(),
+    this.requirements = const Value.absent(),
+    this.applicationLink = const Value.absent(),
+    this.emailSnippet = const Value.absent(),
+    this.fullEmail = const Value.absent(),
+    this.hasApplied = const Value.absent(),
+    this.appliedAt = const Value.absent(),
+    this.eventType = const Value.absent(),
+    this.location = const Value.absent(),
+    this.stipend = const Value.absent(),
+    this.actionItems = const Value.absent(),
+    this.source = const Value.absent(),
+  });
+  TaskContextsCompanion.insert({
+    this.id = const Value.absent(),
+    required String taskId,
+    this.companyName = const Value.absent(),
+    this.role = const Value.absent(),
+    this.requirements = const Value.absent(),
+    this.applicationLink = const Value.absent(),
+    this.emailSnippet = const Value.absent(),
+    this.fullEmail = const Value.absent(),
+    this.hasApplied = const Value.absent(),
+    this.appliedAt = const Value.absent(),
+    this.eventType = const Value.absent(),
+    this.location = const Value.absent(),
+    this.stipend = const Value.absent(),
+    this.actionItems = const Value.absent(),
+    this.source = const Value.absent(),
+  }) : taskId = Value(taskId);
+  static Insertable<TaskContextEntry> custom({
+    Expression<int>? id,
+    Expression<String>? taskId,
+    Expression<String>? companyName,
+    Expression<String>? role,
+    Expression<String>? requirements,
+    Expression<String>? applicationLink,
+    Expression<String>? emailSnippet,
+    Expression<String>? fullEmail,
+    Expression<bool>? hasApplied,
+    Expression<DateTime>? appliedAt,
+    Expression<String>? eventType,
+    Expression<String>? location,
+    Expression<String>? stipend,
+    Expression<String>? actionItems,
+    Expression<String>? source,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (taskId != null) 'task_id': taskId,
+      if (companyName != null) 'company_name': companyName,
+      if (role != null) 'role': role,
+      if (requirements != null) 'requirements': requirements,
+      if (applicationLink != null) 'application_link': applicationLink,
+      if (emailSnippet != null) 'email_snippet': emailSnippet,
+      if (fullEmail != null) 'full_email': fullEmail,
+      if (hasApplied != null) 'has_applied': hasApplied,
+      if (appliedAt != null) 'applied_at': appliedAt,
+      if (eventType != null) 'event_type': eventType,
+      if (location != null) 'location': location,
+      if (stipend != null) 'stipend': stipend,
+      if (actionItems != null) 'action_items': actionItems,
+      if (source != null) 'source': source,
+    });
+  }
+
+  TaskContextsCompanion copyWith({
+    Value<int>? id,
+    Value<String>? taskId,
+    Value<String?>? companyName,
+    Value<String?>? role,
+    Value<String?>? requirements,
+    Value<String?>? applicationLink,
+    Value<String?>? emailSnippet,
+    Value<String?>? fullEmail,
+    Value<bool>? hasApplied,
+    Value<DateTime?>? appliedAt,
+    Value<String?>? eventType,
+    Value<String?>? location,
+    Value<String?>? stipend,
+    Value<String?>? actionItems,
+    Value<String>? source,
+  }) {
+    return TaskContextsCompanion(
+      id: id ?? this.id,
+      taskId: taskId ?? this.taskId,
+      companyName: companyName ?? this.companyName,
+      role: role ?? this.role,
+      requirements: requirements ?? this.requirements,
+      applicationLink: applicationLink ?? this.applicationLink,
+      emailSnippet: emailSnippet ?? this.emailSnippet,
+      fullEmail: fullEmail ?? this.fullEmail,
+      hasApplied: hasApplied ?? this.hasApplied,
+      appliedAt: appliedAt ?? this.appliedAt,
+      eventType: eventType ?? this.eventType,
+      location: location ?? this.location,
+      stipend: stipend ?? this.stipend,
+      actionItems: actionItems ?? this.actionItems,
+      source: source ?? this.source,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (taskId.present) {
+      map['task_id'] = Variable<String>(taskId.value);
+    }
+    if (companyName.present) {
+      map['company_name'] = Variable<String>(companyName.value);
+    }
+    if (role.present) {
+      map['role'] = Variable<String>(role.value);
+    }
+    if (requirements.present) {
+      map['requirements'] = Variable<String>(requirements.value);
+    }
+    if (applicationLink.present) {
+      map['application_link'] = Variable<String>(applicationLink.value);
+    }
+    if (emailSnippet.present) {
+      map['email_snippet'] = Variable<String>(emailSnippet.value);
+    }
+    if (fullEmail.present) {
+      map['full_email'] = Variable<String>(fullEmail.value);
+    }
+    if (hasApplied.present) {
+      map['has_applied'] = Variable<bool>(hasApplied.value);
+    }
+    if (appliedAt.present) {
+      map['applied_at'] = Variable<DateTime>(appliedAt.value);
+    }
+    if (eventType.present) {
+      map['event_type'] = Variable<String>(eventType.value);
+    }
+    if (location.present) {
+      map['location'] = Variable<String>(location.value);
+    }
+    if (stipend.present) {
+      map['stipend'] = Variable<String>(stipend.value);
+    }
+    if (actionItems.present) {
+      map['action_items'] = Variable<String>(actionItems.value);
+    }
+    if (source.present) {
+      map['source'] = Variable<String>(source.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('TaskContextsCompanion(')
+          ..write('id: $id, ')
+          ..write('taskId: $taskId, ')
+          ..write('companyName: $companyName, ')
+          ..write('role: $role, ')
+          ..write('requirements: $requirements, ')
+          ..write('applicationLink: $applicationLink, ')
+          ..write('emailSnippet: $emailSnippet, ')
+          ..write('fullEmail: $fullEmail, ')
+          ..write('hasApplied: $hasApplied, ')
+          ..write('appliedAt: $appliedAt, ')
+          ..write('eventType: $eventType, ')
+          ..write('location: $location, ')
+          ..write('stipend: $stipend, ')
+          ..write('actionItems: $actionItems, ')
+          ..write('source: $source')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -2195,6 +3065,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $TasksTable tasks = $TasksTable(this);
   late final $PanchangEventsTable panchangEvents = $PanchangEventsTable(this);
   late final $RitualRulesTable ritualRules = $RitualRulesTable(this);
+  late final $TaskContextsTable taskContexts = $TaskContextsTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -2204,6 +3075,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     tasks,
     panchangEvents,
     ritualRules,
+    taskContexts,
   ];
 }
 
@@ -3288,6 +4160,402 @@ typedef $$RitualRulesTableProcessedTableManager =
       RitualRuleEntry,
       PrefetchHooks Function()
     >;
+typedef $$TaskContextsTableCreateCompanionBuilder =
+    TaskContextsCompanion Function({
+      Value<int> id,
+      required String taskId,
+      Value<String?> companyName,
+      Value<String?> role,
+      Value<String?> requirements,
+      Value<String?> applicationLink,
+      Value<String?> emailSnippet,
+      Value<String?> fullEmail,
+      Value<bool> hasApplied,
+      Value<DateTime?> appliedAt,
+      Value<String?> eventType,
+      Value<String?> location,
+      Value<String?> stipend,
+      Value<String?> actionItems,
+      Value<String> source,
+    });
+typedef $$TaskContextsTableUpdateCompanionBuilder =
+    TaskContextsCompanion Function({
+      Value<int> id,
+      Value<String> taskId,
+      Value<String?> companyName,
+      Value<String?> role,
+      Value<String?> requirements,
+      Value<String?> applicationLink,
+      Value<String?> emailSnippet,
+      Value<String?> fullEmail,
+      Value<bool> hasApplied,
+      Value<DateTime?> appliedAt,
+      Value<String?> eventType,
+      Value<String?> location,
+      Value<String?> stipend,
+      Value<String?> actionItems,
+      Value<String> source,
+    });
+
+class $$TaskContextsTableFilterComposer
+    extends Composer<_$AppDatabase, $TaskContextsTable> {
+  $$TaskContextsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get taskId => $composableBuilder(
+    column: $table.taskId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get companyName => $composableBuilder(
+    column: $table.companyName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get role => $composableBuilder(
+    column: $table.role,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get requirements => $composableBuilder(
+    column: $table.requirements,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get applicationLink => $composableBuilder(
+    column: $table.applicationLink,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get emailSnippet => $composableBuilder(
+    column: $table.emailSnippet,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get fullEmail => $composableBuilder(
+    column: $table.fullEmail,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get hasApplied => $composableBuilder(
+    column: $table.hasApplied,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get appliedAt => $composableBuilder(
+    column: $table.appliedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get eventType => $composableBuilder(
+    column: $table.eventType,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get location => $composableBuilder(
+    column: $table.location,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get stipend => $composableBuilder(
+    column: $table.stipend,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get actionItems => $composableBuilder(
+    column: $table.actionItems,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get source => $composableBuilder(
+    column: $table.source,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$TaskContextsTableOrderingComposer
+    extends Composer<_$AppDatabase, $TaskContextsTable> {
+  $$TaskContextsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get taskId => $composableBuilder(
+    column: $table.taskId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get companyName => $composableBuilder(
+    column: $table.companyName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get role => $composableBuilder(
+    column: $table.role,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get requirements => $composableBuilder(
+    column: $table.requirements,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get applicationLink => $composableBuilder(
+    column: $table.applicationLink,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get emailSnippet => $composableBuilder(
+    column: $table.emailSnippet,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get fullEmail => $composableBuilder(
+    column: $table.fullEmail,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get hasApplied => $composableBuilder(
+    column: $table.hasApplied,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get appliedAt => $composableBuilder(
+    column: $table.appliedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get eventType => $composableBuilder(
+    column: $table.eventType,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get location => $composableBuilder(
+    column: $table.location,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get stipend => $composableBuilder(
+    column: $table.stipend,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get actionItems => $composableBuilder(
+    column: $table.actionItems,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get source => $composableBuilder(
+    column: $table.source,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$TaskContextsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $TaskContextsTable> {
+  $$TaskContextsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get taskId =>
+      $composableBuilder(column: $table.taskId, builder: (column) => column);
+
+  GeneratedColumn<String> get companyName => $composableBuilder(
+    column: $table.companyName,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get role =>
+      $composableBuilder(column: $table.role, builder: (column) => column);
+
+  GeneratedColumn<String> get requirements => $composableBuilder(
+    column: $table.requirements,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get applicationLink => $composableBuilder(
+    column: $table.applicationLink,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get emailSnippet => $composableBuilder(
+    column: $table.emailSnippet,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get fullEmail =>
+      $composableBuilder(column: $table.fullEmail, builder: (column) => column);
+
+  GeneratedColumn<bool> get hasApplied => $composableBuilder(
+    column: $table.hasApplied,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get appliedAt =>
+      $composableBuilder(column: $table.appliedAt, builder: (column) => column);
+
+  GeneratedColumn<String> get eventType =>
+      $composableBuilder(column: $table.eventType, builder: (column) => column);
+
+  GeneratedColumn<String> get location =>
+      $composableBuilder(column: $table.location, builder: (column) => column);
+
+  GeneratedColumn<String> get stipend =>
+      $composableBuilder(column: $table.stipend, builder: (column) => column);
+
+  GeneratedColumn<String> get actionItems => $composableBuilder(
+    column: $table.actionItems,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get source =>
+      $composableBuilder(column: $table.source, builder: (column) => column);
+}
+
+class $$TaskContextsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $TaskContextsTable,
+          TaskContextEntry,
+          $$TaskContextsTableFilterComposer,
+          $$TaskContextsTableOrderingComposer,
+          $$TaskContextsTableAnnotationComposer,
+          $$TaskContextsTableCreateCompanionBuilder,
+          $$TaskContextsTableUpdateCompanionBuilder,
+          (
+            TaskContextEntry,
+            BaseReferences<_$AppDatabase, $TaskContextsTable, TaskContextEntry>,
+          ),
+          TaskContextEntry,
+          PrefetchHooks Function()
+        > {
+  $$TaskContextsTableTableManager(_$AppDatabase db, $TaskContextsTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$TaskContextsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$TaskContextsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$TaskContextsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String> taskId = const Value.absent(),
+                Value<String?> companyName = const Value.absent(),
+                Value<String?> role = const Value.absent(),
+                Value<String?> requirements = const Value.absent(),
+                Value<String?> applicationLink = const Value.absent(),
+                Value<String?> emailSnippet = const Value.absent(),
+                Value<String?> fullEmail = const Value.absent(),
+                Value<bool> hasApplied = const Value.absent(),
+                Value<DateTime?> appliedAt = const Value.absent(),
+                Value<String?> eventType = const Value.absent(),
+                Value<String?> location = const Value.absent(),
+                Value<String?> stipend = const Value.absent(),
+                Value<String?> actionItems = const Value.absent(),
+                Value<String> source = const Value.absent(),
+              }) => TaskContextsCompanion(
+                id: id,
+                taskId: taskId,
+                companyName: companyName,
+                role: role,
+                requirements: requirements,
+                applicationLink: applicationLink,
+                emailSnippet: emailSnippet,
+                fullEmail: fullEmail,
+                hasApplied: hasApplied,
+                appliedAt: appliedAt,
+                eventType: eventType,
+                location: location,
+                stipend: stipend,
+                actionItems: actionItems,
+                source: source,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required String taskId,
+                Value<String?> companyName = const Value.absent(),
+                Value<String?> role = const Value.absent(),
+                Value<String?> requirements = const Value.absent(),
+                Value<String?> applicationLink = const Value.absent(),
+                Value<String?> emailSnippet = const Value.absent(),
+                Value<String?> fullEmail = const Value.absent(),
+                Value<bool> hasApplied = const Value.absent(),
+                Value<DateTime?> appliedAt = const Value.absent(),
+                Value<String?> eventType = const Value.absent(),
+                Value<String?> location = const Value.absent(),
+                Value<String?> stipend = const Value.absent(),
+                Value<String?> actionItems = const Value.absent(),
+                Value<String> source = const Value.absent(),
+              }) => TaskContextsCompanion.insert(
+                id: id,
+                taskId: taskId,
+                companyName: companyName,
+                role: role,
+                requirements: requirements,
+                applicationLink: applicationLink,
+                emailSnippet: emailSnippet,
+                fullEmail: fullEmail,
+                hasApplied: hasApplied,
+                appliedAt: appliedAt,
+                eventType: eventType,
+                location: location,
+                stipend: stipend,
+                actionItems: actionItems,
+                source: source,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$TaskContextsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $TaskContextsTable,
+      TaskContextEntry,
+      $$TaskContextsTableFilterComposer,
+      $$TaskContextsTableOrderingComposer,
+      $$TaskContextsTableAnnotationComposer,
+      $$TaskContextsTableCreateCompanionBuilder,
+      $$TaskContextsTableUpdateCompanionBuilder,
+      (
+        TaskContextEntry,
+        BaseReferences<_$AppDatabase, $TaskContextsTable, TaskContextEntry>,
+      ),
+      TaskContextEntry,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -3300,4 +4568,6 @@ class $AppDatabaseManager {
       $$PanchangEventsTableTableManager(_db, _db.panchangEvents);
   $$RitualRulesTableTableManager get ritualRules =>
       $$RitualRulesTableTableManager(_db, _db.ritualRules);
+  $$TaskContextsTableTableManager get taskContexts =>
+      $$TaskContextsTableTableManager(_db, _db.taskContexts);
 }

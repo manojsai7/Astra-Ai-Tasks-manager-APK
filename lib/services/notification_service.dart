@@ -88,6 +88,47 @@ class NotificationService {
     );
   }
 
+  /// Dedicated Panchang reminder — uses its own notification channel so users
+  /// can manage them separately in Android Settings.
+  static Future<void> schedulePanchangReminder({
+    required int id,
+    required String title,
+    required String body,
+    required DateTime scheduledTime,
+  }) async {
+    if (scheduledTime.isBefore(DateTime.now())) return;
+
+    const androidDetails = AndroidNotificationDetails(
+      'panchang_channel',
+      'Panchang Reminders',
+      importance: Importance.high,
+      priority: Priority.high,
+      enableVibration: true,
+      enableLights: true,
+      channelDescription: 'Reminders for Ekadashi, Purnima, Amavasya and other events',
+    );
+
+    const iosDetails = DarwinNotificationDetails();
+
+    const details = NotificationDetails(
+      android: androidDetails,
+      iOS: iosDetails,
+    );
+
+    try {
+      await _plugin.zonedSchedule(
+        id: id,
+        title: title,
+        body: body,
+        scheduledDate: tz.TZDateTime.from(scheduledTime, tz.local),
+        notificationDetails: details,
+        androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+      );
+    } catch (e) {
+      debugPrint('[NotificationService] schedulePanchangReminder failed: $e');
+    }
+  }
+
   static Future<void> cancelNotification(int id) async {
     await _plugin.cancel(id: id);
   }

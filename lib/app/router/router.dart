@@ -8,7 +8,9 @@ import 'package:flutter/material.dart';
 
 import '../../features/home/home_screen.dart';
 import '../../features/inbox/presentation/screens/inbox_screen.dart';
+import '../../features/tasks/domain/entities/task.dart';
 import '../../features/tasks/domain/entities/task_extraction_proposal.dart';
+import '../../features/tasks/presentation/screens/task_detail_screen.dart';
 import '../../features/tasks/presentation/screens/task_review_screen.dart';
 import '../../features/tasks/presentation/screens/tasks_screen.dart';
 import '../app.dart';
@@ -32,6 +34,9 @@ abstract final class AstraRoutes {
 
   /// Task review screen route.
   static const String taskReview = '/task-review';
+
+  /// Task full context detail screen route.
+  static const String taskDetail = '/task-detail';
 }
 
 // ---------------------------------------------------------------------------
@@ -63,7 +68,10 @@ Route<dynamic>? onGenerateRoute(
     case AstraRoutes.tasks:
       return MaterialPageRoute<void>(
         settings: settings,
-        builder: (_) => TasksScreen(repository: dependencies.taskRepository),
+        builder: (_) => TasksScreen(
+          repository: dependencies.taskRepository,
+          database: dependencies.database,
+        ),
       );
     case AstraRoutes.taskReview:
       final args = settings.arguments as Map<String, dynamic>;
@@ -78,6 +86,16 @@ Route<dynamic>? onGenerateRoute(
           inboxItemId: inboxItemId,
           inboxReceivedAt: inboxReceivedAt,
           useCase: dependencies.confirmTaskUseCase,
+        ),
+      );
+    case AstraRoutes.taskDetail:
+      final args = settings.arguments as Map<String, dynamic>;
+      final task = args['task'] as Task;
+      return MaterialPageRoute<void>(
+        settings: settings,
+        builder: (_) => TaskDetailScreen(
+          task: task,
+          database: dependencies.database,
         ),
       );
     default:

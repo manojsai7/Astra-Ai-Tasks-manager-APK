@@ -66,13 +66,33 @@ class RitualRules extends Table {
   BoolColumn get isActive => boolean().withDefault(const Constant(true))();
 }
 
+/// Local SQLite table schema for full task context (Company, Role, Requirements, Links, AI Email summary).
+@DataClassName('TaskContextEntry')
+class TaskContexts extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  TextColumn get taskId => text()();
+  TextColumn get companyName => text().nullable()();
+  TextColumn get role => text().nullable()();
+  TextColumn get requirements => text().nullable()();
+  TextColumn get applicationLink => text().nullable()();
+  TextColumn get emailSnippet => text().nullable()();
+  TextColumn get fullEmail => text().nullable()();
+  BoolColumn get hasApplied => boolean().withDefault(const Constant(false))();
+  DateTimeColumn get appliedAt => dateTime().nullable()();
+  TextColumn get eventType => text().nullable()(); // 'exam', 'application', 'meeting', 'reminder'
+  TextColumn get location => text().nullable()();
+  TextColumn get stipend => text().nullable()();
+  TextColumn get actionItems => text().nullable()();
+  TextColumn get source => text().withDefault(const Constant('gmail'))();
+}
+
 /// The local application database.
-@DriftDatabase(tables: [InboxItems, Tasks, PanchangEvents, RitualRules])
+@DriftDatabase(tables: [InboxItems, Tasks, PanchangEvents, RitualRules, TaskContexts])
 class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 4;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -86,6 +106,9 @@ class AppDatabase extends _$AppDatabase {
       if (from < 3) {
         await m.createTable(panchangEvents);
         await m.createTable(ritualRules);
+      }
+      if (from < 4) {
+        await m.createTable(taskContexts);
       }
     },
   );
@@ -150,6 +173,35 @@ class AppDatabase extends _$AppDatabase {
         ]);
       });
     }
+  }
+
+  // --- TaskContext Queries ---
+
+  Future<TaskContextEntry?> getTaskContextByTaskId(String taskId) {
+    return (select(taskContexts)..where((c) => c.taskId.equals(taskId))).getSingleOrNull();
+  }
+
+  Stream<TaskContextEntry?> watchTaskContextByTaskId(String taskId) {
+    return (select(taskContexts)..where((c) => c.taskId.equals(taskId))).watchSingleOrNull();
+  }
+
+  Future<void> saveTaskContext(TaskContextsCompanion contextCompanion) async {
+    final existing = await getTaskContextByTaskId(contextCompanion.taskId.value);
+    if (existing != null) {
+      await (update(taskContexts)..where((c) => c.taskId.equals(contextCompanion.taskId.value)))
+          .write(contextCompanion);
+    } else {
+      await into(taskContexts).insert(contextCompanion);
+    }
+  }
+
+  Future<void> updateAppliedStatus(String taskId, bool hasApplied, {DateTime? appliedAt}) async {
+    await (update(taskContexts)..where((c) => c.taskId.equals(taskId))).write(
+      TaskContextsCompanion(
+        hasApplied: Value(hasApplied),
+        appliedAt: Value(appliedAt ?? (hasApplied ? DateTime.now() : null)),
+      ),
+    );
   }
 }
 
