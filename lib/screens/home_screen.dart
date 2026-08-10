@@ -326,12 +326,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
             ),
           ),
         ),
-        const SizedBox(width: 10),
+        const SizedBox(width: 8),
 
         // Priority Card
         Expanded(
           child: Container(
-            padding: const EdgeInsets.all(14),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.topLeft,
@@ -354,16 +354,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
                   children: [
                     Icon(
                       high > 0 ? LucideIcons.alertTriangle : LucideIcons.flag,
-                      size: 14,
+                      size: 12,
                       color: high > 0 ? AppTheme.error : AppTheme.textMuted,
                     ),
-                    const SizedBox(width: 4),
-                    Text(
-                      'Priority',
-                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                        color: AppTheme.textMuted,
-                        fontSize: 10,
-                        fontWeight: FontWeight.w500,
+                    const SizedBox(width: 3),
+                    Flexible(
+                      child: Text(
+                        'Priority',
+                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                          color: AppTheme.textMuted,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w500,
+                        ),
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
                   ],
@@ -372,28 +375,29 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
                 Text(
                   high > 0 ? '$high' : '0',
                   style: Theme.of(context).textTheme.displayLarge?.copyWith(
-                    fontSize: 22,
+                    fontSize: 20,
                     color: high > 0 ? AppTheme.error : AppTheme.textMuted,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
                 Text(
-                  high > 0 ? '${high > 1 ? 'tasks' : 'task'} flagged' : 'No flags today',
+                  high > 0 ? '${high} flagged' : 'None',
                   style: Theme.of(context).textTheme.labelSmall?.copyWith(
                     color: AppTheme.textMuted.withAlpha(153),
                     fontSize: 9,
                   ),
+                  overflow: TextOverflow.ellipsis,
                 ),
               ],
             ),
           ),
         ),
-        const SizedBox(width: 10),
+        const SizedBox(width: 8),
 
         // Focus Card
         Expanded(
           child: Container(
-            padding: const EdgeInsets.all(14),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.topLeft,
@@ -416,27 +420,34 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
                   children: [
                     Icon(
                       LucideIcons.timer,
-                      size: 14,
+                      size: 12,
                       color: AppTheme.accent,
                     ),
-                    const SizedBox(width: 4),
-                    Text(
-                      'Focus',
-                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                        color: AppTheme.textMuted,
-                        fontSize: 10,
-                        fontWeight: FontWeight.w500,
+                    const SizedBox(width: 3),
+                    Flexible(
+                      child: Text(
+                        'Focus',
+                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                          color: AppTheme.textMuted,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w500,
+                        ),
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
                   ],
                 ),
                 const SizedBox(height: 4),
-                Text(
-                  '${focusHours}h ${focusMinutes.toString().padLeft(2, '0')}m',
-                  style: Theme.of(context).textTheme.displayLarge?.copyWith(
-                    fontSize: 20,
-                    color: AppTheme.accent,
-                    fontWeight: FontWeight.bold,
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    '${focusHours}h ${focusMinutes.toString().padLeft(2, '0')}m',
+                    style: Theme.of(context).textTheme.displayLarge?.copyWith(
+                      fontSize: 18,
+                      color: AppTheme.accent,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
                 Text(
