@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:google_generative_ai/google_generative_ai.dart' hide TaskType;
 import '../../domain/entities/task_context.dart';
 import '../../../../features/tasks/domain/entities/task.dart';
@@ -102,8 +103,9 @@ Return ONLY valid raw JSON with the following structure:
             snippet: promptText,
             source: 'prompt',
           );
+        }
       } catch (e) {
-        print('GeminiContextExtractor error: $e');
+        debugPrint('GeminiContextExtractor error: $e');
       }
     }
 

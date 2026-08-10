@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:google_generative_ai/google_generative_ai.dart';
 
@@ -24,7 +25,7 @@ class GeminiChatService {
         }
       }
     } catch (e) {
-      print('GeminiChatService .env load error: $e');
+      debugPrint('GeminiChatService .env load error: $e');
     }
 
     if (_apiKey != null && _apiKey!.isNotEmpty) {
@@ -67,7 +68,7 @@ Return only the response text.
       final response = await _model!.generateContent([Content.text(prompt)]);
       return response.text?.trim() ?? "I didn't quite catch that. Could you rephrase?";
     } catch (e) {
-      print('GeminiChatService error: $e');
+      debugPrint('GeminiChatService error: $e');
 
       // Attempt model fallback if gemini-1.5-flash encounters model-specific error
       if (_apiKey != null && _apiKey!.isNotEmpty) {
@@ -81,7 +82,7 @@ Return only the response text.
             return res.text!.trim();
           }
         } catch (fallbackError) {
-          print('GeminiChatService fallback error: $fallbackError');
+          debugPrint('GeminiChatService fallback error: $fallbackError');
         }
       }
 
