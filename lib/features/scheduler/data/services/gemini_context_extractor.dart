@@ -62,13 +62,7 @@ class GeminiContextExtractor {
   Future<ExtractedTaskWithContext> extractFromUserPrompt(String promptText) async {
     final key = await _getEffectiveApiKey();
     if (key != null && key.isNotEmpty) {
-      try {
-        final model = GenerativeModel(
-          model: 'gemini-1.5-flash',
-          apiKey: key,
-        );
-
-        final prompt = '''
+      final prompt = '''
 You are an expert AI Life Scheduler for ASTRA app.
 Extract structured task details from the user's input: "$promptText"
 
@@ -89,23 +83,40 @@ Return ONLY valid raw JSON with the following structure:
 }
 ''';
 
-        final content = [Content.text(prompt)];
-        final response = await model.generateContent(content);
-        final text = response.text;
+      final modelsToTry = [
+        'gemini-1.5-flash',
+        'gemini-1.5-flash-latest',
+        'gemini-2.0-flash-exp',
+        'gemini-2.0-flash',
+        'gemini-1.5-pro',
+        'gemini-1.0-pro',
+        'gemini-pro',
+      ];
 
-        if (text != null && text.isNotEmpty) {
-          final cleanedJson = _cleanJsonString(text);
-          final Map<String, dynamic> json = jsonDecode(cleanedJson);
-          return _mapJsonToExtractedResult(
-            json: json,
-            taskId: DateTime.now().millisecondsSinceEpoch.toString(),
-            fullEmail: promptText,
-            snippet: promptText,
-            source: 'prompt',
+      for (final mName in modelsToTry) {
+        try {
+          final model = GenerativeModel(
+            model: mName,
+            apiKey: key,
           );
+
+          final response = await model.generateContent([Content.text(prompt)]);
+          final text = response.text;
+
+          if (text != null && text.isNotEmpty) {
+            final cleanedJson = _cleanJsonString(text);
+            final Map<String, dynamic> json = jsonDecode(cleanedJson);
+            return _mapJsonToExtractedResult(
+              json: json,
+              taskId: DateTime.now().millisecondsSinceEpoch.toString(),
+              fullEmail: promptText,
+              snippet: promptText,
+              source: 'prompt',
+            );
+          }
+        } catch (e) {
+          debugPrint('GeminiContextExtractor model [$mName] failed: $e');
         }
-      } catch (e) {
-        debugPrint('GeminiContextExtractor error: $e');
       }
     }
 

@@ -7,11 +7,22 @@ class GeminiChatService {
   factory GeminiChatService() => _instance;
   GeminiChatService._internal();
 
-  GenerativeModel? _model;
+  static const List<String> freeTierModels = [
+    'gemini-1.5-flash',
+    'gemini-1.5-flash-latest',
+    'gemini-2.0-flash-exp',
+    'gemini-2.0-flash',
+    'gemini-1.5-pro',
+    'gemini-1.5-pro-latest',
+    'gemini-1.0-pro',
+    'gemini-pro',
+  ];
+
   String? _apiKey;
+  String? _workingModelName;
 
   Future<void> initialize() async {
-    if (_model != null) return;
+    if (_apiKey != null && _apiKey!.isNotEmpty) return;
 
     try {
       final envString = await rootBundle.loadString('assets/.env');
@@ -28,31 +39,19 @@ class GeminiChatService {
       debugPrint('GeminiChatService .env load error: $e');
     }
 
-    if (_apiKey != null && _apiKey!.isNotEmpty) {
-      _model = GenerativeModel(
-        model: 'gemini-1.5-flash',
-        apiKey: _apiKey!,
-        generationConfig: GenerationConfig(
-          temperature: 0.7,
-          maxOutputTokens: 500,
-        ),
-      );
-    } else {
+    if (_apiKey == null || _apiKey!.isEmpty) {
       throw Exception('GEMINI_API_KEY is missing or invalid in assets/.env file');
     }
   }
 
   Future<String> chat(String userMessage) async {
-    if (_model == null) {
-      try {
-        await initialize();
-      } catch (e) {
-        return '⚠️ Gemini setup error: $e\n\nPlease check assets/.env and add your Gemini API Key from https://aistudio.google.com/app/apikey!';
-      }
+    try {
+      await initialize();
+    } catch (e) {
+      return '⚠️ Gemini setup error: $e\n\nPlease add your Gemini API Key from https://aistudio.google.com/app/apikey to assets/.env!';
     }
 
-    try {
-      final prompt = '''
+    final prompt = '''
 You are ASTRA, a calm, intelligent AI life scheduler assistant. 
 The user just said: "$userMessage"
 
@@ -65,28 +64,45 @@ Keep your response friendly, clear, and under 3 sentences unless more detail is 
 Do NOT mention that you are an AI.
 Return only the response text.
 ''';
-      final response = await _model!.generateContent([Content.text(prompt)]);
-      return response.text?.trim() ?? "I didn't quite catch that. Could you rephrase?";
-    } catch (e) {
-      debugPrint('GeminiChatService error: $e');
 
-      // Attempt model fallback if gemini-1.5-flash encounters model-specific error
-      if (_apiKey != null && _apiKey!.isNotEmpty) {
-        try {
-          final fallbackModel = GenerativeModel(
-            model: 'gemini-2.0-flash',
-            apiKey: _apiKey!,
-          );
-          final res = await fallbackModel.generateContent([Content.text(userMessage)]);
-          if (res.text != null && res.text!.isNotEmpty) {
-            return res.text!.trim();
-          }
-        } catch (fallbackError) {
-          debugPrint('GeminiChatService fallback error: $fallbackError');
-        }
-      }
-
-      return '⚠️ Gemini error: $e';
+    // Order models starting with known working model if available
+    final modelsToTry = <String>[];
+    if (_workingModelName != null) {
+      modelsToTry.add(_workingModelName!);
     }
+    for (final m in freeTierModels) {
+      if (m != _workingModelName) {
+        modelsToTry.add(m);
+      }
+    }
+
+    Object? lastError;
+
+    for (final modelName in modelsToTry) {
+      try {
+        final model = GenerativeModel(
+          model: modelName,
+          apiKey: _apiKey!,
+          generationConfig: GenerationConfig(
+            temperature: 0.7,
+            maxOutputTokens: 500,
+          ),
+        );
+
+        final response = await model.generateContent([Content.text(prompt)]);
+        final text = response.text?.trim();
+
+        if (text != null && text.isNotEmpty) {
+          _workingModelName = modelName;
+          debugPrint('GeminiChatService using working model: $modelName');
+          return text;
+        }
+      } catch (e) {
+        debugPrint('GeminiChatService model [$modelName] failed: $e');
+        lastError = e;
+      }
+    }
+
+    return '⚠️ Gemini API error: $lastError\n\nPlease verify your API key at https://aistudio.google.com/app/apikey.';
   }
 }
