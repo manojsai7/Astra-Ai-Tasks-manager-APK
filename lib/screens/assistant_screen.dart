@@ -3,8 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:intl/intl.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../theme/app_theme.dart';
 import '../providers/assistant_provider.dart';
+import '../providers/chat_session_provider.dart';
 import '../features/scheduler/data/services/gmail_sync_service.dart';
 import '../features/scheduler/data/services/calendar_sync_service.dart';
 import '../core/motion.dart';
@@ -51,12 +53,158 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen>
     });
   }
 
-  void _sendInput() {
+  Future<void> _sendInput() async {
     final text = _controller.text.trim();
     if (text.isEmpty) return;
     _controller.clear();
+
+    final sessionNotifier = ref.read(chatSessionProvider.notifier);
+    var sessionId = ref.read(currentSessionIdProvider);
+
+    if (sessionId == null) {
+      final title = text.length > 25 ? '${text.substring(0, 25)}...' : text;
+      sessionId = await sessionNotifier.createSession(title: title);
+      ref.read(currentSessionIdProvider.notifier).state = sessionId;
+    }
+
     ref.read(assistantStateProvider.notifier).sendCommand(text);
     _scrollToBottom();
+  }
+
+  void _showSessionDrawer(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppTheme.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) {
+        return Consumer(
+          builder: (ctx, ref, _) {
+            final sessions = ref.watch(chatSessionProvider);
+            final currentId = ref.watch(currentSessionIdProvider);
+
+            return Container(
+              height: MediaQuery.of(context).size.height * 0.55,
+              padding: const EdgeInsets.all(AppTheme.s16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(LucideIcons.messageSquare, size: 18, color: AppTheme.secondary),
+                      const SizedBox(width: AppTheme.s8),
+                      Text(
+                        'Chat Sessions',
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                              color: AppTheme.textPrimary,
+                              fontWeight: FontWeight.bold,
+                            ),
+                      ),
+                      const Spacer(),
+                      IconButton(
+                        icon: const Icon(Icons.close, color: AppTheme.textMuted),
+                        onPressed: () => Navigator.pop(ctx),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: AppTheme.s12),
+                  if (sessions.isEmpty)
+                    const Expanded(
+                      child: Center(
+                        child: Text(
+                          'No chat sessions yet. Tap "New Chat" to start!',
+                          style: TextStyle(color: AppTheme.textMuted, fontSize: 13),
+                        ),
+                      ),
+                    )
+                  else
+                    Expanded(
+                      child: ListView.builder(
+                        itemCount: sessions.length,
+                        itemBuilder: (ctx, index) {
+                          final session = sessions[index];
+                          final isActive = session.id == currentId;
+
+                          return Container(
+                            margin: const EdgeInsets.only(bottom: AppTheme.s8),
+                            decoration: BoxDecoration(
+                              color: isActive ? AppTheme.surfaceElevated : AppTheme.surfaceGlass,
+                              borderRadius: BorderRadius.circular(AppTheme.r12),
+                              border: Border.all(
+                                color: isActive ? AppTheme.primary : AppTheme.borderSubtle,
+                                width: isActive ? 1.5 : 1,
+                              ),
+                            ),
+                            child: ListTile(
+                              leading: Icon(
+                                LucideIcons.bot,
+                                color: isActive ? AppTheme.primary : AppTheme.textMuted,
+                                size: 20,
+                              ),
+                              title: Text(
+                                session.title,
+                                style: TextStyle(
+                                  color: isActive ? AppTheme.textPrimary : AppTheme.textSecondary,
+                                  fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
+                                  fontSize: 14,
+                                ),
+                              ),
+                              subtitle: Text(
+                                DateFormat('MMM d, h:mm a').format(session.updatedAt),
+                                style: const TextStyle(color: AppTheme.textMuted, fontSize: 11),
+                              ),
+                              trailing: IconButton(
+                                icon: const Icon(LucideIcons.trash2, size: 16, color: AppTheme.error),
+                                onPressed: () {
+                                  ref.read(chatSessionProvider.notifier).deleteSession(session.id);
+                                  if (currentId == session.id) {
+                                    ref.read(currentSessionIdProvider.notifier).state = null;
+                                    ref.read(assistantStateProvider.notifier).clearMessages();
+                                  }
+                                },
+                              ),
+                              onTap: () {
+                                ref.read(currentSessionIdProvider.notifier).state = session.id;
+                                Navigator.pop(ctx);
+                              },
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  const SizedBox(height: AppTheme.s12),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 48,
+                    child: ElevatedButton.icon(
+                      onPressed: () async {
+                        final id = await ref.read(chatSessionProvider.notifier).createSession();
+                        ref.read(currentSessionIdProvider.notifier).state = id;
+                        ref.read(assistantStateProvider.notifier).clearMessages();
+                        if (ctx.mounted) Navigator.pop(ctx);
+                      },
+                      icon: const Icon(Icons.add, color: Colors.white),
+                      label: const Text(
+                        'New Chat Session',
+                        style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppTheme.primary,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(AppTheme.r12),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
   }
 
   @override
@@ -82,12 +230,12 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen>
     );
   }
 
-  // ─── Header ────────────────────────────────────────────────────────────────
+  // ─── Header Component ──────────────────────────────────────────────────────
 
   Widget _buildHeader(BuildContext context, AssistantState state) {
     return Container(
-      padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
-      decoration: BoxDecoration(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+      decoration: const BoxDecoration(
         border: Border(bottom: BorderSide(color: AppTheme.borderFaint)),
       ),
       child: Row(
@@ -98,18 +246,18 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen>
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [
-                  AppTheme.secondary.withAlpha(30),
-                  AppTheme.accentPurple.withAlpha(20),
+                  AppTheme.secondary.withValues(alpha: 0.3),
+                  AppTheme.accentPurple.withValues(alpha: 0.2),
                 ],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
               borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: AppTheme.secondary.withAlpha(50)),
+              border: Border.all(color: AppTheme.secondary.withValues(alpha: 0.5)),
             ),
             child: const Icon(Icons.auto_awesome, size: 18, color: AppTheme.secondary),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 10),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -117,8 +265,9 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen>
                 Text(
                   'ASTRA',
                   style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                        letterSpacing: 2,
+                        letterSpacing: 1.5,
                         color: AppTheme.textPrimary,
+                        fontSize: 20,
                       ),
                 ),
                 Text(
@@ -142,74 +291,40 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen>
               ],
             ),
           ),
-          // Google Auth Action Button
-          GestureDetector(
-            onTap: () {
-              final notifier = ref.read(assistantStateProvider.notifier);
-              if (state.isAuthenticated) {
-                notifier.handleSignOut();
-              } else {
-                notifier.handleSignIn();
+
+          // ─── Actions: History Drawer, New Chat, Logout ─────────────
+          IconButton(
+            icon: const Icon(LucideIcons.history, size: 18, color: AppTheme.secondary),
+            tooltip: 'Chat History',
+            onPressed: () => _showSessionDrawer(context),
+          ),
+          IconButton(
+            icon: const Icon(LucideIcons.plusCircle, size: 18, color: AppTheme.primary),
+            tooltip: 'New Chat',
+            onPressed: () async {
+              final id = await ref.read(chatSessionProvider.notifier).createSession();
+              ref.read(currentSessionIdProvider.notifier).state = id;
+              ref.read(assistantStateProvider.notifier).clearMessages();
+            },
+          ),
+          IconButton(
+            icon: const Icon(LucideIcons.logOut, size: 18, color: AppTheme.textMuted),
+            tooltip: 'Logout',
+            onPressed: () async {
+              await ref.read(assistantStateProvider.notifier).handleSignOut();
+              final prefs = await SharedPreferences.getInstance();
+              await prefs.remove('hasSeenAuth');
+              if (context.mounted) {
+                Navigator.of(context).pushReplacementNamed('/auth');
               }
             },
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                color: state.isAuthenticated
-                    ? AppTheme.accentGreen.withAlpha(20)
-                    : AppTheme.primary.withAlpha(25),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color: state.isAuthenticated
-                      ? AppTheme.accentGreen.withAlpha(60)
-                      : AppTheme.primary.withAlpha(60),
-                ),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    state.isAuthenticated ? LucideIcons.check : LucideIcons.logIn,
-                    size: 12,
-                    color: state.isAuthenticated
-                        ? AppTheme.accentGreen
-                        : AppTheme.primary,
-                  ),
-                  const SizedBox(width: 4),
-                  Text(
-                    state.isAuthenticated ? 'Connected' : 'Sign In',
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: state.isAuthenticated
-                          ? AppTheme.accentGreen
-                          : AppTheme.primary,
-                    ),
-                  ),
-                ],
-              ),
-            ),
           ),
-          if (state.messages.isNotEmpty) ...[
-            const SizedBox(width: 8),
-            GestureDetector(
-              onTap: () => ref.read(assistantStateProvider.notifier).clearMessages(),
-              child: Container(
-                padding: const EdgeInsets.all(7),
-                decoration: BoxDecoration(
-                  color: AppTheme.surfaceElevated,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Icon(LucideIcons.trash2, size: 14, color: AppTheme.textMuted),
-              ),
-            ),
-          ],
         ],
       ),
     ).animate().fadeIn(duration: 400.ms);
   }
 
-  // ─── Empty State ───────────────────────────────────────────────────────────
+  // ─── Empty State Component ─────────────────────────────────────────────────
 
   Widget _buildEmptyState(BuildContext context, AssistantState state) {
     final suggestions = [
@@ -232,14 +347,14 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen>
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [
-                  AppTheme.secondary.withAlpha(25),
-                  AppTheme.accentPurple.withAlpha(20),
+                  AppTheme.secondary.withValues(alpha: 0.25),
+                  AppTheme.accentPurple.withValues(alpha: 0.2),
                 ],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
               shape: BoxShape.circle,
-              border: Border.all(color: AppTheme.secondary.withAlpha(50)),
+              border: Border.all(color: AppTheme.secondary.withValues(alpha: 0.5)),
             ),
             child: const Icon(Icons.auto_awesome, size: 30, color: AppTheme.secondary),
           ).animate().scale(duration: 600.ms, curve: Curves.elasticOut),
@@ -254,10 +369,9 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen>
           const SizedBox(height: 6),
           Text(
             state.isAuthenticated
-                ? 'Connected as ${state.userEmail}\nI can scan your emails, fetch calendar events, and schedule tasks automatically.'
+                ? 'Connected as ${state.userEmail}\nAsk me anything or let me organize your day.'
                 : 'Sign in with Google to automatically pull tasks from your emails and calendar.',
-            style: const TextStyle(
-                fontSize: 12, color: AppTheme.textMuted, height: 1.5),
+            style: const TextStyle(fontSize: 12, color: AppTheme.textMuted, height: 1.5),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 24),
@@ -279,8 +393,7 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen>
                 child: Container(
                   width: double.infinity,
                   margin: const EdgeInsets.only(bottom: 8),
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                   decoration: BoxDecoration(
                     color: AppTheme.surfaceElevated,
                     borderRadius: BorderRadius.circular(12),
@@ -306,8 +419,7 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen>
                       const SizedBox(width: 10),
                       Text(
                         s,
-                        style: const TextStyle(
-                            fontSize: 13, color: AppTheme.textSecondary),
+                        style: const TextStyle(fontSize: 13, color: AppTheme.textSecondary),
                       ),
                     ],
                   ),
@@ -318,7 +430,7 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen>
     ).withPremiumEntry();
   }
 
-  // ─── Message List ──────────────────────────────────────────────────────────
+  // ─── Message List Component ────────────────────────────────────────────────
 
   Widget _buildMessageList(BuildContext context, AssistantState state) {
     return ListView.builder(
@@ -340,11 +452,9 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen>
       alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
       child: Container(
         margin: const EdgeInsets.only(bottom: 12),
-        constraints: BoxConstraints(
-            maxWidth: MediaQuery.of(context).size.width * 0.82),
+        constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.82),
         child: Column(
-          crossAxisAlignment:
-              isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+          crossAxisAlignment: isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
           children: [
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
@@ -352,26 +462,22 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen>
                 color: isUser
                     ? AppTheme.primary
                     : msg.messageType == AssistantMessageType.error
-                        ? AppTheme.error.withAlpha(30)
+                        ? AppTheme.error.withValues(alpha: 0.2)
                         : msg.messageType == AssistantMessageType.success
-                            ? AppTheme.accentGreen.withAlpha(20)
+                            ? AppTheme.accentGreen.withValues(alpha: 0.15)
                             : AppTheme.surfaceElevated,
                 borderRadius: BorderRadius.circular(16).copyWith(
-                  bottomRight: isUser
-                      ? const Radius.circular(4)
-                      : const Radius.circular(16),
-                  bottomLeft: isUser
-                      ? const Radius.circular(16)
-                      : const Radius.circular(4),
+                  bottomRight: isUser ? const Radius.circular(4) : const Radius.circular(16),
+                  bottomLeft: isUser ? const Radius.circular(16) : const Radius.circular(4),
                 ),
                 border: isUser
                     ? null
                     : Border.all(
                         color: msg.messageType == AssistantMessageType.error
-                            ? AppTheme.error.withAlpha(80)
+                            ? AppTheme.error.withValues(alpha: 0.4)
                             : msg.messageType == AssistantMessageType.success
-                                ? AppTheme.accentGreen.withAlpha(60)
-                                : AppTheme.secondary.withAlpha(25),
+                                ? AppTheme.accentGreen.withValues(alpha: 0.3)
+                                : AppTheme.secondary.withValues(alpha: 0.2),
                         width: 1,
                       ),
               ),
@@ -432,16 +538,16 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen>
       decoration: BoxDecoration(
         color: AppTheme.surfaceElevated,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppTheme.secondary.withAlpha(40)),
+        border: Border.all(color: AppTheme.secondary.withValues(alpha: 0.3)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
+          const Row(
             children: [
-              const Icon(LucideIcons.mail, size: 13, color: AppTheme.secondary),
-              const SizedBox(width: 6),
-              const Text(
+              Icon(LucideIcons.mail, size: 13, color: AppTheme.secondary),
+              SizedBox(width: 6),
+              Text(
                 'GMAIL SCAN RESULTS',
                 style: TextStyle(
                   fontSize: 9,
@@ -483,8 +589,7 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen>
                           ),
                           Text(
                             email.sender,
-                            style: const TextStyle(
-                                fontSize: 10, color: AppTheme.textMuted),
+                            style: const TextStyle(fontSize: 10, color: AppTheme.textMuted),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
@@ -494,11 +599,6 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen>
                   ],
                 ),
               )),
-          if (emails.length > 5)
-            Text(
-              '+ ${emails.length - 5} more emails',
-              style: const TextStyle(fontSize: 10, color: AppTheme.textMuted),
-            ),
         ],
       ),
     );
@@ -511,16 +611,16 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen>
       decoration: BoxDecoration(
         color: AppTheme.surfaceElevated,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppTheme.accentPurple.withAlpha(40)),
+        border: Border.all(color: AppTheme.accentPurple.withValues(alpha: 0.3)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
+          const Row(
             children: [
-              const Icon(LucideIcons.calendar, size: 13, color: AppTheme.accentPurple),
-              const SizedBox(width: 6),
-              const Text(
+              Icon(LucideIcons.calendar, size: 13, color: AppTheme.accentPurple),
+              SizedBox(width: 6),
+              Text(
                 'GOOGLE CALENDAR EVENTS',
                 style: TextStyle(
                   fontSize: 9,
@@ -538,10 +638,9 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen>
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Container(
-                      padding:
-                          const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
                       decoration: BoxDecoration(
-                        color: AppTheme.accentPurple.withAlpha(20),
+                        color: AppTheme.accentPurple.withValues(alpha: 0.2),
                         borderRadius: BorderRadius.circular(6),
                       ),
                       child: Text(
@@ -570,8 +669,7 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen>
                           ),
                           Text(
                             DateFormat('h:mm a').format(event.startTime),
-                            style: const TextStyle(
-                                fontSize: 10, color: AppTheme.textMuted),
+                            style: const TextStyle(fontSize: 10, color: AppTheme.textMuted),
                           ),
                         ],
                       ),
@@ -579,11 +677,6 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen>
                   ],
                 ),
               )),
-          if (events.length > 5)
-            Text(
-              '+ ${events.length - 5} more events',
-              style: const TextStyle(fontSize: 10, color: AppTheme.textMuted),
-            ),
         ],
       ),
     );
@@ -603,7 +696,7 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen>
             borderRadius: BorderRadius.circular(14).copyWith(
               bottomLeft: const Radius.circular(4),
             ),
-            border: Border.all(color: AppTheme.secondary.withAlpha(25)),
+            border: Border.all(color: AppTheme.secondary.withValues(alpha: 0.25)),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
@@ -618,12 +711,14 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen>
     ).animate().fadeIn(duration: 200.ms).slideY(begin: 0.1, end: 0);
   }
 
-  // ─── Input Bar ─────────────────────────────────────────────────────────────
+  // ─── Input Bar Component (Fixed UI Padding for Keyboard & Bottom Nav) ──────
 
   Widget _buildInputBar(BuildContext context) {
+    final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+
     return Container(
-      padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
-      decoration: BoxDecoration(
+      padding: EdgeInsets.fromLTRB(12, 10, 12, bottomInset > 0 ? bottomInset + 8 : 12),
+      decoration: const BoxDecoration(
         color: AppTheme.surface,
         border: Border(top: BorderSide(color: AppTheme.borderFaint)),
       ),
@@ -640,11 +735,10 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen>
                 controller: _controller,
                 style: const TextStyle(color: AppTheme.textPrimary, fontSize: 14),
                 decoration: const InputDecoration(
-                  hintText: 'Type a command (e.g., "Sync all", "List tasks")...',
-                  hintStyle: TextStyle(color: AppTheme.textMuted),
+                  hintText: 'Ask ASTRA or type command...',
+                  hintStyle: TextStyle(color: AppTheme.textMuted, fontSize: 13),
                   border: InputBorder.none,
-                  contentPadding:
-                      EdgeInsets.symmetric(horizontal: 16, vertical: 11),
+                  contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 11),
                 ),
                 onSubmitted: (_) => _sendInput(),
                 textCapitalization: TextCapitalization.sentences,
@@ -666,7 +760,7 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen>
                 borderRadius: BorderRadius.circular(14),
                 boxShadow: [
                   BoxShadow(
-                    color: AppTheme.primary.withAlpha(50),
+                    color: AppTheme.primary.withValues(alpha: 0.3),
                     blurRadius: 12,
                     spreadRadius: -4,
                   ),
@@ -702,7 +796,7 @@ class _ThinkingDots extends StatelessWidget {
               width: 6,
               height: 6,
               decoration: BoxDecoration(
-                color: AppTheme.secondary.withAlpha((value * 200 + 55).toInt()),
+                color: AppTheme.secondary.withValues(alpha: value * 0.8 + 0.2),
                 shape: BoxShape.circle,
               ),
             );

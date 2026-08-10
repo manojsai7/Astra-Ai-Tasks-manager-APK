@@ -86,13 +86,33 @@ class TaskContexts extends Table {
   TextColumn get source => text().withDefault(const Constant('gmail'))();
 }
 
+/// Local SQLite table schema for Chat Sessions.
+@DataClassName('ChatSessionEntry')
+class ChatSessions extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  TextColumn get title => text().withDefault(const Constant('New Chat'))();
+  DateTimeColumn get createdAt => dateTime()();
+  DateTimeColumn get updatedAt => dateTime()();
+}
+
+/// Local SQLite table schema for Chat Messages.
+@DataClassName('ChatMessageEntry')
+class ChatMessages extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  IntColumn get sessionId => integer().references(ChatSessions, #id)();
+  TextColumn get role => text()(); // 'user' or 'assistant'
+  TextColumn get content => text()();
+  TextColumn get messageType => text().withDefault(const Constant('text'))();
+  DateTimeColumn get timestamp => dateTime()();
+}
+
 /// The local application database.
-@DriftDatabase(tables: [InboxItems, Tasks, PanchangEvents, RitualRules, TaskContexts])
+@DriftDatabase(tables: [InboxItems, Tasks, PanchangEvents, RitualRules, TaskContexts, ChatSessions, ChatMessages])
 class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 4;
+  int get schemaVersion => 5;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -109,6 +129,10 @@ class AppDatabase extends _$AppDatabase {
       }
       if (from < 4) {
         await m.createTable(taskContexts);
+      }
+      if (from < 5) {
+        await m.createTable(chatSessions);
+        await m.createTable(chatMessages);
       }
     },
   );
