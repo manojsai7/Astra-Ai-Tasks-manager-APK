@@ -49,22 +49,12 @@ async def completion(system_instruction: str, prompt: str, *, json_mode: bool = 
     except HTTPException:
         raise
     except Exception as exc:
-        raise HTTPException(500, f"Gemini provider error ({type(exc).__name__}): {exc}") from exc
+        raise HTTPException(502, "Gemini service temporarily unavailable.") from exc
 
 
 @app.get("/health")
 async def health() -> dict[str, str]:
     return {"status": "ok", "provider": "gemini", "model": GEMINI_MODEL}
-
-
-@app.get("/models")
-async def list_models() -> dict[str, Any]:
-    api_key = os.getenv("GEMINI_API_KEY")
-    if not api_key:
-        raise HTTPException(503, "AI service is not configured.")
-    client = genai.Client(api_key=api_key)
-    models = await asyncio.to_thread(lambda: [m.name for m in client.models.list()])
-    return {"models": models}
 
 
 @app.post("/v1/assistant/chat")
