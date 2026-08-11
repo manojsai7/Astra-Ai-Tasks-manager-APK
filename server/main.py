@@ -11,7 +11,8 @@ from pydantic import BaseModel, Field
 
 app = FastAPI(title="ASTRA AI Gateway", version="1.0.0")
 
-GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.0-flash")
+_raw_model = os.getenv("GEMINI_MODEL", "gemini-2.0-flash")
+GEMINI_MODEL = "gemini-2.0-flash" if _raw_model == "gemini-2.5-flash" else _raw_model
 
 
 class ChatRequest(BaseModel):
