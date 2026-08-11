@@ -293,31 +293,34 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen>
           ),
 
           // ─── Actions: History Drawer, New Chat, Logout ─────────────
-          IconButton(
-            icon: const Icon(LucideIcons.history, size: 18, color: AppTheme.secondary),
-            tooltip: 'Chat History',
-            onPressed: () => _showSessionDrawer(context),
-          ),
-          IconButton(
-            icon: const Icon(LucideIcons.plusCircle, size: 18, color: AppTheme.primary),
-            tooltip: 'New Chat',
-            onPressed: () async {
-              final id = await ref.read(chatSessionProvider.notifier).createSession();
-              ref.read(currentSessionIdProvider.notifier).state = id;
-              ref.read(assistantStateProvider.notifier).clearMessages();
-            },
-          ),
-          IconButton(
-            icon: const Icon(LucideIcons.logOut, size: 18, color: AppTheme.textMuted),
-            tooltip: 'Logout',
-            onPressed: () async {
-              await ref.read(assistantStateProvider.notifier).handleSignOut();
-              final prefs = await SharedPreferences.getInstance();
-              await prefs.remove('hasSeenAuth');
-              if (context.mounted) {
-                Navigator.of(context).pushReplacementNamed('/auth');
+          PopupMenuButton<_ChatAction>(
+            tooltip: 'Chat options',
+            icon: const Icon(Icons.more_horiz, color: AppTheme.textPrimary),
+            color: AppTheme.surfaceElevated,
+            onSelected: (action) async {
+              switch (action) {
+                case _ChatAction.history:
+                  _showSessionDrawer(context);
+                  break;
+                case _ChatAction.newChat:
+                  final id = await ref.read(chatSessionProvider.notifier).createSession();
+                  ref.read(currentSessionIdProvider.notifier).state = id;
+                  ref.read(assistantStateProvider.notifier).clearMessages();
+                  break;
+                case _ChatAction.logout:
+                  await ref.read(assistantStateProvider.notifier).handleSignOut();
+                  final prefs = await SharedPreferences.getInstance();
+                  await prefs.remove('hasSeenAuth');
+                  if (context.mounted) Navigator.of(context).pushReplacementNamed('/auth');
+                  break;
               }
             },
+            itemBuilder: (_) => const [
+              PopupMenuItem(value: _ChatAction.history, child: _ChatMenuItem(icon: LucideIcons.history, label: 'Chat history')),
+              PopupMenuItem(value: _ChatAction.newChat, child: _ChatMenuItem(icon: LucideIcons.plusCircle, label: 'New chat')),
+              PopupMenuDivider(),
+              PopupMenuItem(value: _ChatAction.logout, child: _ChatMenuItem(icon: LucideIcons.logOut, label: 'Sign out', color: AppTheme.error)),
+            ],
           ),
         ],
       ),
@@ -417,9 +420,13 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen>
                             : AppTheme.textMuted,
                       ),
                       const SizedBox(width: 10),
-                      Text(
-                        s,
-                        style: const TextStyle(fontSize: 13, color: AppTheme.textSecondary),
+                      Expanded(
+                        child: Text(
+                          s,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(fontSize: 13, color: AppTheme.textSecondary),
+                        ),
                       ),
                     ],
                   ),
@@ -452,7 +459,7 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen>
       alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
       child: Container(
         margin: const EdgeInsets.only(bottom: 12),
-        constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.82),
+        constraints: BoxConstraints(maxWidth: MediaQuery.sizeOf(context).width * 0.78),
         child: Column(
           crossAxisAlignment: isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
           children: [
@@ -504,6 +511,8 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen>
                   Flexible(
                     child: Text(
                       msg.text,
+                      softWrap: true,
+                      overflow: TextOverflow.visible,
                       style: TextStyle(
                         color: isUser ? Colors.white : AppTheme.textPrimary,
                         fontSize: 13,
@@ -714,10 +723,8 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen>
   // ─── Input Bar Component (Fixed UI Padding for Keyboard & Bottom Nav) ──────
 
   Widget _buildInputBar(BuildContext context) {
-    final bottomInset = MediaQuery.of(context).viewInsets.bottom;
-
     return Container(
-      padding: EdgeInsets.fromLTRB(12, 10, 12, bottomInset > 0 ? bottomInset + 8 : 12),
+      padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
       decoration: const BoxDecoration(
         color: AppTheme.surface,
         border: Border(top: BorderSide(color: AppTheme.borderFaint)),
@@ -776,6 +783,24 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen>
 }
 
 // ─── Thinking Dots ────────────────────────────────────────────────────────────
+
+enum _ChatAction { history, newChat, logout }
+
+class _ChatMenuItem extends StatelessWidget {
+  const _ChatMenuItem({required this.icon, required this.label, this.color = AppTheme.textPrimary});
+  final IconData icon;
+  final String label;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) => Row(
+        children: [
+          Icon(icon, size: 16, color: color),
+          const SizedBox(width: 10),
+          Text(label, style: TextStyle(color: color, fontSize: 13, fontWeight: FontWeight.w600)),
+        ],
+      );
+}
 
 class _ThinkingDots extends StatelessWidget {
   final AnimationController controller;

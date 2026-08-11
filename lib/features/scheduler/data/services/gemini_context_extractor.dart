@@ -1,10 +1,6 @@
-import 'dart:convert';
-import 'package:flutter/foundation.dart';
-import 'package:google_generative_ai/google_generative_ai.dart' hide TaskType;
 import '../../domain/entities/task_context.dart';
 import '../../../../features/tasks/domain/entities/task.dart';
-
-import 'package:flutter/services.dart';
+import '../../../../core/network/astra_ai_gateway.dart';
 
 /// Structured result returned after AI context extraction.
 class ExtractedTaskWithContext {
@@ -27,97 +23,26 @@ class ExtractedTaskWithContext {
   });
 }
 
-/// Service that parses email content or calendar text using Gemini AI
+/// Service that parses email content or calendar text using ASTRA's AI gateway.
 /// to extract structured task & full contextual details.
 class GeminiContextExtractor {
-  /// Default Gemini API Key placeholder.
-  static const String defaultApiKeyPlaceholder = "YOUR_GEMINI_API_KEY_HERE";
+  GeminiContextExtractor({AstraAiGateway? gateway}) : _gateway = gateway ?? AstraAiGateway();
 
-  final String? apiKey;
-
-  GeminiContextExtractor({String? apiKey})
-      : apiKey = (apiKey != null && apiKey.isNotEmpty)
-            ? apiKey
-            : (defaultApiKeyPlaceholder != "YOUR_GEMINI_API_KEY_HERE" ? defaultApiKeyPlaceholder : null);
-
-  Future<String?> _getEffectiveApiKey() async {
-    if (apiKey != null && apiKey!.isNotEmpty) return apiKey;
-
-    try {
-      final envString = await rootBundle.loadString('assets/.env');
-      for (final line in envString.split('\n')) {
-        final trimmed = line.trim();
-        if (trimmed.startsWith('GEMINI_API_KEY=')) {
-          final val = trimmed.substring('GEMINI_API_KEY='.length).split('#').first.trim();
-          if (val.isNotEmpty && !val.contains('YOUR_GEMINI_API_KEY_HERE')) {
-            return val;
-          }
-        }
-      }
-    } catch (_) {}
-    return null;
-  }
+  final AstraAiGateway _gateway;
 
   /// Extracts task details from user prompt text.
   Future<ExtractedTaskWithContext> extractFromUserPrompt(String promptText) async {
-    final key = await _getEffectiveApiKey();
-    if (key != null && key.isNotEmpty) {
-      final prompt = '''
-You are an expert AI Life Scheduler for ASTRA app.
-Extract structured task details from the user's input: "$promptText"
-
-Return ONLY valid raw JSON with the following structure:
-{
-  "is_task": true,
-  "title": "Concise task title",
-  "event_type": "reminder",
-  "company_name": "Company/Org if mentioned, else null",
-  "role": "Role if mentioned, else null",
-  "location": null,
-  "stipend": null,
-  "requirements": null,
-  "deadline": "ISO-8601 date string if deadline mentioned e.g. 2026-08-20T18:00:00, or null",
-  "application_link": null,
-  "action_items": "Task description",
-  "priority": "HIGH" // options: "LOW", "MEDIUM", "HIGH"
-}
-''';
-
-      final modelsToTry = [
-        'gemini-1.5-flash',
-        'gemini-1.5-flash-latest',
-        'gemini-2.0-flash-exp',
-        'gemini-2.0-flash',
-        'gemini-1.5-pro',
-        'gemini-1.0-pro',
-        'gemini-pro',
-      ];
-
-      for (final mName in modelsToTry) {
-        try {
-          final model = GenerativeModel(
-            model: mName,
-            apiKey: key,
-          );
-
-          final response = await model.generateContent([Content.text(prompt)]);
-          final text = response.text;
-
-          if (text != null && text.isNotEmpty) {
-            final cleanedJson = _cleanJsonString(text);
-            final Map<String, dynamic> json = jsonDecode(cleanedJson);
-            return _mapJsonToExtractedResult(
-              json: json,
-              taskId: DateTime.now().millisecondsSinceEpoch.toString(),
-              fullEmail: promptText,
-              snippet: promptText,
-              source: 'prompt',
-            );
-          }
-        } catch (e) {
-          debugPrint('GeminiContextExtractor model [$mName] failed: $e');
-        }
-      }
+    try {
+      final json = await _gateway.extractTask(text: promptText, source: 'prompt');
+      return _mapJsonToExtractedResult(
+        json: json,
+        taskId: DateTime.now().millisecondsSinceEpoch.toString(),
+        fullEmail: promptText,
+        snippet: promptText,
+        source: 'prompt',
+      );
+    } catch (_) {
+      // A deterministic fallback retains task capture when the gateway is unavailable.
     }
 
     return _heuristicExtraction(
@@ -136,57 +61,20 @@ Return ONLY valid raw JSON with the following structure:
     required String emailBody,
     required String messageId,
   }) async {
-    if (apiKey != null && apiKey!.isNotEmpty) {
-      try {
-        final model = GenerativeModel(
-          model: 'gemini-1.5-flash',
-          apiKey: apiKey!,
-        );
-
-        final prompt = '''
-You are an expert AI Life Scheduler for ASTRA app.
-Analyze this email and extract structured task details if it contains an upcoming exam, job/internship application, deadline, test, interview, or important actionable event.
-
-Email Subject: $emailSubject
-From: $emailSender
-Email Content:
-$emailBody
-
-Return ONLY valid raw JSON with the following structure:
-{
-  "is_task": true,
-  "title": "Clear concise task title (e.g. Amazon SDE Internship Application)",
-  "event_type": "application", // options: "application", "exam", "meeting", "reminder"
-  "company_name": "Company/Org name if applicable",
-  "role": "Role/Position title if applicable",
-  "location": "Location if applicable",
-  "stipend": "Stipend or salary info if mentioned",
-  "requirements": "Key requirements or qualifications as concise bullet points",
-  "deadline": "ISO-8601 date string if deadline/date mentioned e.g. 2026-08-20T18:00:00, or null",
-  "application_link": "URL link to apply or register if found, or null",
-  "action_items": "Specific action items for user",
-  "priority": "HIGH" // options: "LOW", "MEDIUM", "HIGH", "URGENT"
-}
-''';
-
-        final content = [Content.text(prompt)];
-        final response = await model.generateContent(content);
-        final text = response.text;
-
-        if (text != null && text.isNotEmpty) {
-          final cleanedJson = _cleanJsonString(text);
-          final Map<String, dynamic> json = jsonDecode(cleanedJson);
-          return _mapJsonToExtractedResult(
-            json: json,
-            taskId: messageId,
-            fullEmail: emailBody,
-            snippet: emailSubject,
-            source: 'gmail',
-          );
-        }
-      } catch (_) {
-        // Fallback to deterministic regex-based extraction if Gemini call fails
-      }
+    try {
+      final json = await _gateway.extractTask(
+        text: 'Subject: $emailSubject\nFrom: $emailSender\n\n$emailBody',
+        source: 'gmail',
+      );
+      return _mapJsonToExtractedResult(
+        json: json,
+        taskId: messageId,
+        fullEmail: emailBody,
+        snippet: emailSubject,
+        source: 'gmail',
+      );
+    } catch (_) {
+      // Fall through to deterministic extraction when the gateway is unavailable.
     }
 
     return _heuristicExtraction(
@@ -239,19 +127,6 @@ Return ONLY valid raw JSON with the following structure:
       dueAt: startTime,
       context: context,
     );
-  }
-
-  String _cleanJsonString(String text) {
-    String trimmed = text.trim();
-    if (trimmed.startsWith('```json')) {
-      trimmed = trimmed.substring(7);
-    } else if (trimmed.startsWith('```')) {
-      trimmed = trimmed.substring(3);
-    }
-    if (trimmed.endsWith('```')) {
-      trimmed = trimmed.substring(0, trimmed.length - 3);
-    }
-    return trimmed.trim();
   }
 
   ExtractedTaskWithContext _mapJsonToExtractedResult({

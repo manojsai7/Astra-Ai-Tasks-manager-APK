@@ -3,34 +3,34 @@ import 'package:google_fonts/google_fonts.dart';
 
 class AppTheme {
   // ─── Colors (Matiks-inspired) ──────────────────────────
-  static const Color background = Color(0xFF0A0A0F);
-  static const Color surface = Color(0xFF14141E);
-  static const Color surfaceElevated = Color(0xFF1A1A28);
-  static const Color surfaceGlass = Color(0xFF22223A);
-  static const Color surfaceRaised = Color(0xFF2E2F44);
+  static const Color background = Color(0xFF171717);
+  static const Color surface = Color(0xFF242424);
+  static const Color surfaceElevated = Color(0xFF2B2B2B);
+  static const Color surfaceGlass = Color(0xFF343434);
+  static const Color surfaceRaised = Color(0xFF3D3D3D);
 
-  static const Color primary = Color(0xFF7C65F4);
-  static const Color primaryLight = Color(0xFF9B85FF);
-  static const Color primaryDark = Color(0xFF5B4AC4);
+  static const Color primary = Color(0xFFC0FF03);
+  static const Color primaryLight = Color(0xFFD7FF62);
+  static const Color primaryDark = Color(0xFF8EB800);
 
   static const Color secondary = Color(0xFF06B6D4);
   static const Color secondaryLight = Color(0xFF22D3EE);
 
-  static const Color accent = Color(0xFFF97316);
+  static const Color accent = Color(0xFFFFC857);
   static const Color accentGreen = Color(0xFFC6FF3D);
   static const Color accentOrange = Color(0xFFF97316);
-  static const Color accentPurple = Color(0xFF8B7CF6);
+  static const Color accentPurple = Color(0xFF9B8AFB);
 
   static const Color success = Color(0xFF10B981);
   static const Color warning = Color(0xFFF59E0B);
   static const Color error = Color(0xFFEF4444);
 
-  static const Color textPrimary = Color(0xFFF1F5F9);
-  static const Color textSecondary = Color(0xFF94A3B8);
-  static const Color textMuted = Color(0xFF475569);
+  static const Color textPrimary = Color(0xFFF9F9F4);
+  static const Color textSecondary = Color(0xFFB8B8B0);
+  static const Color textMuted = Color(0xFF7F7F79);
 
-  static const Color borderSubtle = Color(0xFF2A2A3A);
-  static const Color borderFaint = Color(0xFF1E1F30);
+  static const Color borderSubtle = Color(0xFF444440);
+  static const Color borderFaint = Color(0xFF30302D);
 
   // ─── Typography ──────────────────────────────────────────
   static const String displayFont = 'BebasNeue';
@@ -59,14 +59,7 @@ class AppTheme {
 
   // ─── Glass & Card Decorations ─────────────────────────────
   static BoxDecoration get glassCard => BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            surfaceElevated.withValues(alpha: 0.9),
-            surface.withValues(alpha: 0.6),
-          ],
-        ),
+        color: surface,
         borderRadius: BorderRadius.circular(r20),
         border: Border.all(
           color: Colors.white.withValues(alpha: 0.08),
@@ -75,8 +68,7 @@ class AppTheme {
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.3),
-            blurRadius: 20,
-            spreadRadius: -5,
+            blurRadius: 0,
             offset: const Offset(0, 4),
           ),
         ],
@@ -84,14 +76,7 @@ class AppTheme {
 
   static BoxDecoration glassCardAccent({Color? accent}) {
     return BoxDecoration(
-      gradient: LinearGradient(
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-        colors: [
-          surfaceElevated.withValues(alpha: 0.9),
-          surface.withValues(alpha: 0.6),
-        ],
-      ),
+      color: surface,
       borderRadius: BorderRadius.circular(r20),
       border: Border.all(
         color: (accent ?? Colors.white).withValues(alpha: 0.08),
@@ -100,8 +85,7 @@ class AppTheme {
       boxShadow: [
         BoxShadow(
           color: Colors.black.withValues(alpha: 0.3),
-          blurRadius: 20,
-          spreadRadius: -5,
+          blurRadius: 0,
           offset: const Offset(0, 4),
         ),
       ],
@@ -109,14 +93,7 @@ class AppTheme {
   }
 
   static BoxDecoration get aiCard => BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            secondary.withValues(alpha: 0.15),
-            surfaceElevated.withValues(alpha: 0.9),
-          ],
-        ),
+      color: surface,
         borderRadius: BorderRadius.circular(r20),
         border: Border.all(
           color: secondary.withValues(alpha: 0.3),
@@ -125,14 +102,7 @@ class AppTheme {
       );
 
   static BoxDecoration primaryGlowCard = BoxDecoration(
-    gradient: LinearGradient(
-      begin: Alignment.topLeft,
-      end: Alignment.bottomRight,
-      colors: [
-        primary.withValues(alpha: 0.15),
-        surfaceElevated.withValues(alpha: 0.9),
-      ],
-    ),
+    color: surface,
     borderRadius: BorderRadius.circular(r20),
     border: Border.all(
       color: primary.withValues(alpha: 0.3),
@@ -141,22 +111,14 @@ class AppTheme {
     boxShadow: [
       BoxShadow(
         color: primary.withValues(alpha: 0.12),
-        blurRadius: 30,
-        spreadRadius: -8,
+        blurRadius: 0,
         offset: const Offset(0, 4),
       ),
     ],
   );
 
   static BoxDecoration accentGreenCard = BoxDecoration(
-    gradient: LinearGradient(
-      begin: Alignment.topLeft,
-      end: Alignment.bottomRight,
-      colors: [
-        accentGreen.withValues(alpha: 0.1),
-        surfaceElevated.withValues(alpha: 0.9),
-      ],
-    ),
+    color: surface,
     borderRadius: BorderRadius.circular(r20),
     border: Border.all(
       color: accentGreen.withValues(alpha: 0.25),
@@ -165,8 +127,7 @@ class AppTheme {
     boxShadow: [
       BoxShadow(
         color: accentGreen.withValues(alpha: 0.1),
-        blurRadius: 24,
-        spreadRadius: -8,
+        blurRadius: 0,
       ),
     ],
   );
@@ -181,7 +142,7 @@ class AppTheme {
       tertiary: accentOrange,
       error: error,
       onSurface: textPrimary,
-      onPrimary: Colors.white,
+      onPrimary: Colors.black,
     ),
     scaffoldBackgroundColor: background,
     cardTheme: CardThemeData(
@@ -227,7 +188,7 @@ class AppTheme {
     ),
     floatingActionButtonTheme: const FloatingActionButtonThemeData(
       backgroundColor: primary,
-      foregroundColor: Colors.white,
+      foregroundColor: Colors.black,
       shape: CircleBorder(),
       elevation: 4,
     ),

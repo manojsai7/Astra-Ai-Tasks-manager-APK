@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+
 import '../providers/panchang_provider.dart';
 import '../services/panchang_service.dart';
 import '../theme/app_theme.dart';
@@ -14,546 +15,250 @@ class PanchangScreen extends ConsumerStatefulWidget {
 }
 
 class _PanchangScreenState extends ConsumerState<PanchangScreen> {
+  static const _filters = ['All', 'Ekadashi', 'Purnima', 'Amavasya', 'Shivaratri'];
   String _selectedFilter = 'All';
-  final List<String> _filters = ['All', 'Ekadashi', 'Purnima', 'Amavasya', 'Shivaratri'];
 
   @override
   void initState() {
     super.initState();
-    // Auto-schedule notifications for upcoming events
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.read(panchangEventsProvider).whenData((events) {
-        ref
-            .read(panchangNotificationProvider.notifier)
-            .scheduleAllUpcomingReminders(events);
-      });
+      ref.read(panchangEventsProvider).whenData(
+        (events) => ref.read(panchangNotificationProvider.notifier).scheduleAllUpcomingReminders(events),
+      );
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    final eventsAsync = ref.watch(panchangEventsProvider);
-    final todayInfo = ref.watch(todayPanchangProvider);
+    final events = ref.watch(panchangEventsProvider);
+    final today = ref.watch(todayPanchangProvider);
 
     return Scaffold(
       backgroundColor: AppTheme.background,
       body: CustomScrollView(
+        physics: const BouncingScrollPhysics(),
         slivers: [
-          // Premium Header
           SliverAppBar(
-            expandedHeight: 240,
-            floating: false,
             pinned: true,
+            expandedHeight: 292,
             backgroundColor: AppTheme.background,
-            flexibleSpace: FlexibleSpaceBar(
-              collapseMode: CollapseMode.parallax,
-              background: _buildHeader(todayInfo),
-            ),
-            title: Text(
-              'Telugu Panchang',
-              style: TextStyle(
-                color: AppTheme.textPrimary,
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
+            surfaceTintColor: Colors.transparent,
+            title: Text('PANCHANG', style: Theme.of(context).textTheme.displaySmall?.copyWith(fontSize: 22)),
+            flexibleSpace: FlexibleSpaceBar(background: _PanchangHero(info: today)),
           ),
-
-          // Filter chips
-          SliverToBoxAdapter(
-            child: _buildFilterRow(),
-          ),
-
-          // Events list
-          eventsAsync.when(
-            data: (events) {
+          SliverToBoxAdapter(child: _filterBar()),
+          events.when(
+            data: (items) {
               final filtered = _selectedFilter == 'All'
-                  ? events
-                  : events.where((e) => e.eventName == _selectedFilter).toList();
-
-              if (filtered.isEmpty) {
-                return SliverFillRemaining(
-                  child: _buildEmptyState(),
-                );
-              }
-
-              return SliverList(
-                delegate: SliverChildBuilderDelegate(
-                  (ctx, index) {
-                    final event = filtered[index];
-                    return _PanchangEventCard(event: event, index: index);
-                  },
-                  childCount: filtered.length,
+                  ? items
+                  : items.where((event) => event.eventName == _selectedFilter).toList();
+              if (filtered.isEmpty) return SliverFillRemaining(child: _emptyState());
+              return SliverPadding(
+                padding: const EdgeInsets.fromLTRB(16, 10, 16, 32),
+                sliver: SliverList.separated(
+                  itemCount: filtered.length,
+                  separatorBuilder: (_, _) => const SizedBox(height: 10),
+                  itemBuilder: (_, index) => _PanchangEventCard(event: filtered[index], index: index),
                 ),
               );
             },
-            loading: () => SliverFillRemaining(
-              child: Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    CircularProgressIndicator(color: AppTheme.accent),
-                    const SizedBox(height: 16),
-                    Text(
-                      'Computing Panchang…',
-                      style: TextStyle(color: AppTheme.textMuted, fontSize: 14),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            error: (e, s) => SliverFillRemaining(
-              child: Center(
-                child: Text('Error: $e',
-                    style: TextStyle(color: AppTheme.error)),
-              ),
-            ),
-          ),
-
-          const SliverToBoxAdapter(child: SizedBox(height: 24)),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildHeader(Map<String, String> todayInfo) {
-    return Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            const Color(0xFF1A1025),
-            AppTheme.background,
-          ],
-        ),
-      ),
-      child: Stack(
-        children: [
-          // Decorative radial glow
-          Positioned(
-            top: -40,
-            right: -40,
-            child: Container(
-              width: 200,
-              height: 200,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: RadialGradient(
-                  colors: [
-                    AppTheme.accent.withAlpha(40),
-                    Colors.transparent,
-                  ],
-                ),
-              ),
-            ),
-          ),
-          Positioned(
-            top: -20,
-            left: -20,
-            child: Container(
-              width: 150,
-              height: 150,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: RadialGradient(
-                  colors: [
-                    AppTheme.primary.withAlpha(30),
-                    Colors.transparent,
-                  ],
-                ),
-              ),
-            ),
-          ),
-          // Header content
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 60, 20, 20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                Row(
-                  children: [
-                    Text('🕉️', style: const TextStyle(fontSize: 28)),
-                    const SizedBox(width: 10),
-                    Text(
-                      'Telugu Panchang',
-                      style: TextStyle(
-                        color: AppTheme.textPrimary,
-                        fontSize: 26,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: -0.5,
-                      ),
-                    ),
-                  ],
-                ).animate().fadeIn(delay: 100.ms).slideX(begin: -0.1),
-                const SizedBox(height: 4),
-                Text(
-                  'Hyderabad, Telangana · IST',
-                  style: TextStyle(color: AppTheme.textMuted, fontSize: 13),
-                ).animate().fadeIn(delay: 150.ms),
-                const SizedBox(height: 16),
-                // Today's Panchang card
-                Container(
-                  padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(
-                    color: AppTheme.surfaceElevated.withAlpha(180),
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(
-                      color: AppTheme.accent.withAlpha(50),
-                      width: 1,
-                    ),
-                  ),
-                  child: Row(
-                    children: [
-                      _TodayInfoChip(
-                        icon: '🌞',
-                        label: 'Tithi',
-                        value: todayInfo['tithi'] ?? '…',
-                      ),
-                      _VertDivider(),
-                      _TodayInfoChip(
-                        icon: '📅',
-                        label: 'Month',
-                        value: todayInfo['month'] ?? '…',
-                      ),
-                      _VertDivider(),
-                      _TodayInfoChip(
-                        icon: '🌅',
-                        label: 'Sunrise',
-                        value: todayInfo['sunrise'] ?? '…',
-                      ),
-                    ],
-                  ),
-                ).animate().fadeIn(delay: 200.ms).slideY(begin: 0.1),
-              ],
-            ),
+            loading: () => const SliverFillRemaining(child: Center(child: CircularProgressIndicator(color: AppTheme.primary))),
+            error: (_, _) => SliverFillRemaining(child: _errorState()),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildFilterRow() {
-    return Container(
-      height: 56,
-      color: AppTheme.background,
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-        itemCount: _filters.length,
-        itemBuilder: (ctx, i) {
-          final filter = _filters[i];
-          final isActive = _selectedFilter == filter;
-          return GestureDetector(
-            onTap: () => setState(() => _selectedFilter = filter),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              margin: const EdgeInsets.only(right: 8),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-              decoration: BoxDecoration(
-                color: isActive ? AppTheme.accent : AppTheme.surfaceElevated,
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color: isActive ? AppTheme.accent : AppTheme.surfaceGlass,
+  Widget _filterBar() => Container(
+        height: 64,
+        decoration: const BoxDecoration(
+          color: AppTheme.background,
+          border: Border(bottom: BorderSide(color: AppTheme.borderFaint)),
+        ),
+        child: ListView.separated(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          scrollDirection: Axis.horizontal,
+          itemCount: _filters.length,
+          separatorBuilder: (_, _) => const SizedBox(width: 8),
+          itemBuilder: (_, index) {
+            final label = _filters[index];
+            final selected = label == _selectedFilter;
+            return _Pressable(
+              onTap: () => setState(() => _selectedFilter = label),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 150),
+                padding: const EdgeInsets.symmetric(horizontal: 15),
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: selected ? AppTheme.primary : AppTheme.surface,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: selected ? AppTheme.primary : AppTheme.borderSubtle),
+                  boxShadow: selected ? const [BoxShadow(color: AppTheme.primaryDark, offset: Offset(0, 3))] : null,
+                ),
+                child: Text(
+                  label.toUpperCase(),
+                  style: TextStyle(
+                    color: selected ? Colors.black : AppTheme.textSecondary,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: .7,
+                  ),
                 ),
               ),
-              child: Text(
-                filter,
-                style: TextStyle(
-                  color: isActive ? Colors.white : AppTheme.textSecondary,
-                  fontSize: 13,
-                  fontWeight: isActive ? FontWeight.w600 : FontWeight.w400,
-                ),
-              ),
-            ),
-          );
-        },
-      ),
-    );
-  }
+            );
+          },
+        ),
+      );
 
-  Widget _buildEmptyState() {
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Text('🕉️', style: const TextStyle(fontSize: 48)),
-        const SizedBox(height: 16),
-        Text(
-          'No $_selectedFilter events found',
-          style: TextStyle(color: AppTheme.textMuted, fontSize: 16),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          'in the next 3 months',
-          style: TextStyle(color: AppTheme.textMuted, fontSize: 13),
-        ),
-      ],
-    );
-  }
+  Widget _emptyState() => const Center(
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          Icon(Icons.calendar_today_outlined, color: AppTheme.textMuted, size: 36),
+          SizedBox(height: 12),
+          Text('NO EVENTS IN THIS VIEW', style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w800, letterSpacing: .8)),
+          SizedBox(height: 5),
+          Text('Try another observance filter.', style: TextStyle(color: AppTheme.textMuted, fontSize: 13)),
+        ]),
+      );
+
+  Widget _errorState() => const Center(
+        child: Text('PANCHANG DATA COULD NOT BE LOADED', style: TextStyle(color: AppTheme.error, fontWeight: FontWeight.w700)),
+      );
 }
 
-class _VertDivider extends StatelessWidget {
+class _PanchangHero extends StatelessWidget {
+  const _PanchangHero({required this.info});
+  final Map<String, String> info;
+
   @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 1,
-      height: 28,
-      margin: const EdgeInsets.symmetric(horizontal: 8),
-      color: AppTheme.surfaceGlass,
-    );
-  }
+  Widget build(BuildContext context) => SafeArea(
+        bottom: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 72, 20, 20),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            const Text('DAILY RHYTHM', style: TextStyle(color: AppTheme.primary, fontWeight: FontWeight.w800, letterSpacing: 1.4, fontSize: 11)),
+            const SizedBox(height: 6),
+            Text('TELUGU\nPANCHANG', style: Theme.of(context).textTheme.displayLarge?.copyWith(fontSize: 42, height: .84, letterSpacing: .5)),
+            const SizedBox(height: 10),
+            Text('HYDERABAD · TELANGANA · IST', style: Theme.of(context).textTheme.labelSmall?.copyWith(color: AppTheme.textMuted, letterSpacing: .8)),
+            const Spacer(),
+            Container(
+              decoration: BoxDecoration(
+                color: AppTheme.surface,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: AppTheme.borderSubtle),
+                boxShadow: const [BoxShadow(color: Colors.black38, offset: Offset(0, 4))],
+              ),
+              child: Row(children: [
+                _PanchangMetric(label: 'TITHI', value: info['tithi'] ?? '—', icon: Icons.brightness_2_outlined),
+                _metricDivider(),
+                _PanchangMetric(label: 'MONTH', value: info['month'] ?? '—', icon: Icons.calendar_month_outlined),
+                _metricDivider(),
+                _PanchangMetric(label: 'SUNRISE', value: info['sunrise'] ?? '—', icon: Icons.wb_sunny_outlined),
+              ]),
+            ),
+          ]),
+        ),
+      );
+
+  Widget _metricDivider() => const SizedBox(height: 48, child: VerticalDivider(width: 1, color: AppTheme.borderSubtle));
 }
 
-class _TodayInfoChip extends StatelessWidget {
-  final String icon;
+class _PanchangMetric extends StatelessWidget {
+  const _PanchangMetric({required this.label, required this.value, required this.icon});
   final String label;
   final String value;
-
-  const _TodayInfoChip({
-    required this.icon,
-    required this.label,
-    required this.value,
-  });
+  final IconData icon;
 
   @override
-  Widget build(BuildContext context) {
-    return Expanded(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Text(icon, style: const TextStyle(fontSize: 14)),
-          const SizedBox(height: 2),
-          Text(
-            label,
-            style: TextStyle(
-              color: AppTheme.textMuted,
-              fontSize: 10,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          Text(
-            value,
-            style: TextStyle(
-              color: AppTheme.textPrimary,
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
-            ),
-            textAlign: TextAlign.center,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-          ),
-        ],
-      ),
-    );
-  }
+  Widget build(BuildContext context) => Expanded(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 10),
+          child: Column(children: [
+            Icon(icon, color: AppTheme.primary, size: 15),
+            const SizedBox(height: 4),
+            Text(label, style: const TextStyle(color: AppTheme.textMuted, fontSize: 8, fontWeight: FontWeight.w800, letterSpacing: .8)),
+            const SizedBox(height: 2),
+            Text(value, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: AppTheme.textPrimary, fontSize: 11, fontWeight: FontWeight.w700)),
+          ]),
+        ),
+      );
 }
 
 class _PanchangEventCard extends StatelessWidget {
+  const _PanchangEventCard({required this.event, required this.index});
   final PanchangEvent event;
   final int index;
 
-  const _PanchangEventCard({required this.event, required this.index});
+  Color get _color => switch (event.eventName) {
+        'Ekadashi' => AppTheme.primary,
+        'Purnima' => AppTheme.accent,
+        'Amavasya' => AppTheme.accentPurple,
+        'Shivaratri' => AppTheme.success,
+        _ => AppTheme.secondary,
+      };
 
-  Color _getEventColor() {
-    switch (event.eventName) {
-      case 'Ekadashi':
-        return const Color(0xFF7C65F4); // Indigo
-      case 'Purnima':
-        return const Color(0xFFF59E0B); // Golden
-      case 'Amavasya':
-        return const Color(0xFF6366F1); // Deep purple
-      case 'Shivaratri':
-        return const Color(0xFF10B981); // Emerald
-      default:
-        return AppTheme.accent;
-    }
-  }
-
-  String _getDaysLabel() {
-    final days = event.daysFromNow;
-    if (days == 0) return 'Today 🎉';
-    if (days == 1) return 'Tomorrow';
-    return 'In $days days';
-  }
+  String get _relativeDay => event.daysFromNow == 0 ? 'TODAY' : event.daysFromNow == 1 ? 'TOMORROW' : 'IN ${event.daysFromNow} DAYS';
 
   @override
-  Widget build(BuildContext context) {
-    final color = _getEventColor();
-    final days = event.daysFromNow;
-    final isUrgent = days <= 3;
-    final isToday = days == 0;
-
-    return Container(
-      margin: const EdgeInsets.fromLTRB(16, 6, 16, 6),
-      decoration: BoxDecoration(
-        color: AppTheme.surfaceElevated,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: isToday
-              ? color.withAlpha(120)
-              : isUrgent
-                  ? color.withAlpha(60)
-                  : color.withAlpha(25),
-          width: isToday ? 1.5 : 1,
-        ),
-        boxShadow: isToday
-            ? [
-                BoxShadow(
-                  color: color.withAlpha(40),
-                  blurRadius: 16,
-                  spreadRadius: -4,
-                )
-              ]
-            : null,
-      ),
-      child: IntrinsicHeight(
-        child: Row(
-          children: [
-            // Left accent bar + emoji
+  Widget build(BuildContext context) => _Pressable(
+        onTap: () {},
+        child: Container(
+          decoration: BoxDecoration(
+            color: AppTheme.surface,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: event.daysFromNow <= 3 ? _color.withValues(alpha: .65) : AppTheme.borderSubtle),
+            boxShadow: const [BoxShadow(color: Colors.black38, offset: Offset(0, 3))],
+          ),
+          child: Row(children: [
             Container(
-              width: 60,
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [color.withAlpha(40), color.withAlpha(15)],
-                ),
-                borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(15),
-                  bottomLeft: Radius.circular(15),
-                ),
-              ),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(event.emoji, style: const TextStyle(fontSize: 24)),
-                  const SizedBox(height: 4),
-                  Text(
-                    DateFormat('d').format(event.eventDate),
-                    style: TextStyle(
-                      color: color,
-                      fontSize: 18,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                  Text(
-                    DateFormat('MMM').format(event.eventDate).toUpperCase(),
-                    style: TextStyle(
-                      color: color.withAlpha(180),
-                      fontSize: 10,
-                      fontWeight: FontWeight.w600,
-                      letterSpacing: 1,
-                    ),
-                  ),
-                ],
-              ),
+              width: 74,
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              decoration: BoxDecoration(color: _color, borderRadius: const BorderRadius.horizontal(left: Radius.circular(13))),
+              child: Column(children: [
+                Text(DateFormat('d').format(event.eventDate), style: const TextStyle(color: Colors.black, fontSize: 28, fontWeight: FontWeight.w900, height: 1)),
+                const SizedBox(height: 3),
+                Text(DateFormat('MMM').format(event.eventDate).toUpperCase(), style: const TextStyle(color: Colors.black, fontSize: 10, fontWeight: FontWeight.w800, letterSpacing: 1)),
+              ]),
             ),
-
-            // Content
             Expanded(
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(14, 14, 12, 14),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            event.displayName,
-                            style: TextStyle(
-                              color: AppTheme.textPrimary,
-                              fontSize: 15,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ),
-                        _DaysChip(label: _getDaysLabel(), color: color, isUrgent: isUrgent || isToday),
-                      ],
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      event.lunarMonth,
-                      style: TextStyle(
-                        color: color.withAlpha(200),
-                        fontSize: 12,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      event.description,
-                      style: TextStyle(
-                        color: AppTheme.textMuted,
-                        fontSize: 12,
-                        height: 1.4,
-                      ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 8),
-                    // Day of week chip
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                      decoration: BoxDecoration(
-                        color: color.withAlpha(20),
-                        borderRadius: BorderRadius.circular(6),
-                        border: Border.all(color: color.withAlpha(40)),
-                      ),
-                      child: Text(
-                        DateFormat('EEEE, MMM d, yyyy').format(event.eventDate),
-                        style: TextStyle(
-                          color: color.withAlpha(220),
-                          fontSize: 11,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
+                padding: const EdgeInsets.fromLTRB(14, 13, 12, 13),
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Row(children: [
+                    Expanded(child: Text(event.displayName.toUpperCase(), maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: AppTheme.textPrimary, fontSize: 15, fontWeight: FontWeight.w800, letterSpacing: .2))),
+                    Container(padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4), decoration: BoxDecoration(color: _color.withValues(alpha: .15), borderRadius: BorderRadius.circular(5)), child: Text(_relativeDay, style: TextStyle(color: _color, fontSize: 9, fontWeight: FontWeight.w900, letterSpacing: .5))),
+                  ]),
+                  const SizedBox(height: 4),
+                  Text(event.lunarMonth.toUpperCase(), style: TextStyle(color: _color, fontSize: 10, fontWeight: FontWeight.w700, letterSpacing: .5)),
+                  const SizedBox(height: 7),
+                  Text(event.description, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12, height: 1.35)),
+                ]),
               ),
             ),
-          ],
+          ]),
         ),
-      ),
-    )
-        .animate()
-        .fadeIn(delay: Duration(milliseconds: 50 * index), duration: 400.ms)
-        .slideX(begin: 0.05, duration: 350.ms);
-  }
+      ).animate().fadeIn(delay: Duration(milliseconds: 45 * index), duration: 260.ms).slideY(begin: .04, end: 0);
 }
 
-class _DaysChip extends StatelessWidget {
-  final String label;
-  final Color color;
-  final bool isUrgent;
-
-  const _DaysChip({
-    required this.label,
-    required this.color,
-    required this.isUrgent,
-  });
+class _Pressable extends StatefulWidget {
+  const _Pressable({required this.child, required this.onTap});
+  final Widget child;
+  final VoidCallback onTap;
 
   @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: isUrgent ? color.withAlpha(30) : AppTheme.surfaceGlass,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: isUrgent ? color.withAlpha(80) : Colors.transparent,
-        ),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(
-          color: isUrgent ? color : AppTheme.textMuted,
-          fontSize: 11,
-          fontWeight: FontWeight.w600,
-        ),
-      ),
-    );
-  }
+  State<_Pressable> createState() => _PressableState();
+}
+
+class _PressableState extends State<_Pressable> {
+  bool _pressed = false;
+  @override
+  Widget build(BuildContext context) => GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: widget.onTap,
+        onTapDown: (_) => setState(() => _pressed = true),
+        onTapCancel: () => setState(() => _pressed = false),
+        onTapUp: (_) => setState(() => _pressed = false),
+        child: AnimatedScale(duration: const Duration(milliseconds: 100), scale: _pressed ? .985 : 1, child: widget.child),
+      );
 }

@@ -4,6 +4,10 @@
 
 You have successfully implemented the entire **AI Life Scheduler** engine – Gmail sync, Calendar sync, Gemini context extraction, full SQLite schema, and the beautiful detail screen with "Apply Now" and "Mark as Applied" buttons. The hard part (the code) is **DONE**.
 
+> **Current AI setup:** Gemini credentials belong only on the FastAPI server.
+> See [`server/README.md`](server/README.md); the older client-side Gemini-key
+> instructions below are retained only as historical setup notes and must not be used.
+
 Now, let's follow this setup guide to connect your credentials and run the app.
 
 ---

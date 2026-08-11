@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -16,6 +17,7 @@ import '../widgets/premium/premium_timeline_item.dart';
 import '../widgets/premium/premium_bottom_nav.dart';
 import '../widgets/design_system/astra_insight_card.dart';
 import '../providers/message_provider.dart';
+import '../providers/assistant_provider.dart';
 import 'tasks_screen.dart';
 import 'focus_screen.dart';
 import 'panchang_screen.dart';
@@ -300,7 +302,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
         ),
         const SizedBox(width: 12),
         // Avatar Ring
-        Container(
+        InkWell(
+          onTap: () => _showProfileSheet(context),
+          borderRadius: BorderRadius.circular(28),
+          child: Container(
           padding: const EdgeInsets.all(2.5),
           decoration: BoxDecoration(
             shape: BoxShape.circle,
@@ -329,8 +334,42 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
               child: Icon(Icons.person_outline, size: 22, color: AppTheme.primary),
             ),
           ),
+          ),
         ).animate().scale(duration: 600.ms, curve: Curves.elasticOut),
       ],
+    );
+  }
+
+  void _showProfileSheet(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppTheme.surface,
+      showDragHandle: true,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(22))),
+      builder: (sheetContext) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            const CircleAvatar(radius: 26, backgroundColor: AppTheme.surfaceGlass, child: Icon(Icons.person_outline, color: AppTheme.primary)),
+            const SizedBox(height: 10),
+            Text('MANOJ', style: Theme.of(context).textTheme.displaySmall?.copyWith(fontSize: 25)),
+            const SizedBox(height: 4),
+            const Text('Manage your ASTRA account', style: TextStyle(color: AppTheme.textMuted, fontSize: 13)),
+            const SizedBox(height: 16),
+            ListTile(
+              leading: const Icon(Icons.logout, color: AppTheme.error),
+              title: const Text('Sign out', style: TextStyle(color: AppTheme.error, fontWeight: FontWeight.w700)),
+              onTap: () async {
+                Navigator.pop(sheetContext);
+                await ref.read(assistantStateProvider.notifier).handleSignOut();
+                final prefs = await SharedPreferences.getInstance();
+                await prefs.remove('hasSeenAuth');
+                if (mounted) Navigator.of(context).pushReplacementNamed('/auth');
+              },
+            ),
+          ]),
+        ),
+      ),
     );
   }
 
