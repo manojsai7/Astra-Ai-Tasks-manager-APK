@@ -12,8 +12,8 @@ from pydantic import BaseModel, Field
 
 app = FastAPI(title="ASTRA AI Gateway", version="1.0.0")
 
-_raw_model = os.getenv("GEMINI_MODEL", "gemini-flash-latest")
-GEMINI_MODEL = "gemini-flash-latest" if ("2.5" in _raw_model or "1.5" in _raw_model) else _raw_model
+_raw_model = os.getenv("GEMINI_MODEL", "gemini-2.0-flash")
+GEMINI_MODEL = "gemini-2.0-flash" if "flash-latest" in _raw_model else _raw_model
 
 
 class ChatRequest(BaseModel):
@@ -30,27 +30,33 @@ async def completion(system_instruction: str, prompt: str, *, json_mode: bool = 
     if not api_key:
         raise HTTPException(503, "AI service is not configured.")
 
-    try:
-        client = genai.Client(api_key=api_key)
-        config = types.GenerateContentConfig(
-            system_instruction=system_instruction,
-            max_output_tokens=700,
-            response_mime_type="application/json" if json_mode else "text/plain",
-        )
-        response = await asyncio.to_thread(
-            client.models.generate_content,
-            model=GEMINI_MODEL,
-            contents=prompt,
-            config=config,
-        )
-        content = (response.text or "").strip()
-        if not content:
-            raise ValueError("Empty provider response")
-        return content
-    except HTTPException:
-        raise
-    except Exception as exc:
-        raise HTTPException(502, "Gemini service temporarily unavailable.") from exc
+    models_to_try = [GEMINI_MODEL]
+    for fallback in ["gemini-2.0-flash", "gemini-1.5-flash"]:
+        if fallback not in models_to_try:
+            models_to_try.append(fallback)
+
+    last_exc = None
+    for model_name in models_to_try:
+        try:
+            client = genai.Client(api_key=api_key)
+            config = types.GenerateContentConfig(
+                system_instruction=system_instruction,
+                max_output_tokens=700,
+                response_mime_type="application/json" if json_mode else "text/plain",
+            )
+            response = await asyncio.to_thread(
+                client.models.generate_content,
+                model=model_name,
+                contents=prompt,
+                config=config,
+            )
+            content = (response.text or "").strip()
+            if content:
+                return content
+        except Exception as exc:
+            last_exc = exc
+
+    raise HTTPException(502, f"Gemini service temporarily unavailable: {last_exc}")
 
 
 @app.get("/health")
