@@ -2,6 +2,7 @@ services:
   - type: web
     name: astra-ai-gateway
     runtime: python
+    plan: free
     rootDir: server
     buildCommand: pip install -r requirements.txt
     startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
