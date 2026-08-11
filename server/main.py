@@ -56,6 +56,16 @@ async def health() -> dict[str, str]:
     return {"status": "ok", "provider": "gemini", "model": GEMINI_MODEL}
 
 
+@app.get("/models")
+async def list_models() -> dict[str, Any]:
+    api_key = os.getenv("GEMINI_API_KEY")
+    if not api_key:
+        raise HTTPException(503, "AI service is not configured.")
+    client = genai.Client(api_key=api_key)
+    models = await asyncio.to_thread(lambda: [m.name for m in client.models.list()])
+    return {"models": models}
+
+
 @app.post("/v1/assistant/chat")
 async def chat(request: ChatRequest) -> dict[str, str]:
     reply = await completion(
