@@ -49,7 +49,7 @@ async def completion(system_instruction: str, prompt: str, *, json_mode: bool = 
     except HTTPException:
         raise
     except Exception as exc:
-        raise HTTPException(502, "Gemini is temporarily unavailable. Please try again.") from exc
+        raise HTTPException(500, f"Gemini provider error ({type(exc).__name__}): {exc}") from exc
 
 
 @app.get("/health")
