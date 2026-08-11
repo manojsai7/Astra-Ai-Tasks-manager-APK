@@ -13,17 +13,17 @@ class AppTheme {
   static const Color primaryLight = Color(0xFFD7FF62);
   static const Color primaryDark = Color(0xFF8EB800);
 
-  static const Color secondary = Color(0xFF06B6D4);
-  static const Color secondaryLight = Color(0xFF22D3EE);
+  static const Color secondary = Color(0xFF38C7E8);
+  static const Color secondaryLight = Color(0xFF76DCF1);
 
-  static const Color accent = Color(0xFFFFC857);
-  static const Color accentGreen = Color(0xFFC6FF3D);
-  static const Color accentOrange = Color(0xFFF97316);
-  static const Color accentPurple = Color(0xFF9B8AFB);
+  static const Color accent = Color(0xFFC9A560);
+  static const Color accentGreen = Color(0xFFB8FF00);
+  static const Color accentOrange = Color(0xFFC9874F);
+  static const Color accentPurple = Color(0xFF77718C);
 
-  static const Color success = Color(0xFF10B981);
-  static const Color warning = Color(0xFFF59E0B);
-  static const Color error = Color(0xFFEF4444);
+  static const Color success = Color(0xFF6EAE87);
+  static const Color warning = Color(0xFFC9A560);
+  static const Color error = Color(0xFFD96767);
 
   static const Color textPrimary = Color(0xFFF9F9F4);
   static const Color textSecondary = Color(0xFFB8B8B0);

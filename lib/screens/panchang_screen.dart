@@ -191,10 +191,10 @@ class _PanchangEventCard extends StatelessWidget {
   final int index;
 
   Color get _color => switch (event.eventName) {
-        'Ekadashi' => AppTheme.primary,
-        'Purnima' => AppTheme.accent,
-        'Amavasya' => AppTheme.accentPurple,
-        'Shivaratri' => AppTheme.success,
+        'Ekadashi' => const Color(0xFFB9B59F),
+        'Purnima' => const Color(0xFFC9A560),
+        'Amavasya' => const Color(0xFF77718C),
+        'Shivaratri' => const Color(0xFF668C79),
         _ => AppTheme.secondary,
       };
 
@@ -214,11 +214,11 @@ class _PanchangEventCard extends StatelessWidget {
             Container(
               width: 74,
               padding: const EdgeInsets.symmetric(vertical: 16),
-              decoration: BoxDecoration(color: _color, borderRadius: const BorderRadius.horizontal(left: Radius.circular(13))),
+              decoration: BoxDecoration(color: _color.withValues(alpha: .88), borderRadius: const BorderRadius.horizontal(left: Radius.circular(13))),
               child: Column(children: [
-                Text(DateFormat('d').format(event.eventDate), style: const TextStyle(color: Colors.black, fontSize: 28, fontWeight: FontWeight.w900, height: 1)),
+                Text(DateFormat('d').format(event.eventDate), style: const TextStyle(color: AppTheme.background, fontSize: 28, fontWeight: FontWeight.w900, height: 1)),
                 const SizedBox(height: 3),
-                Text(DateFormat('MMM').format(event.eventDate).toUpperCase(), style: const TextStyle(color: Colors.black, fontSize: 10, fontWeight: FontWeight.w800, letterSpacing: 1)),
+                Text(DateFormat('MMM').format(event.eventDate).toUpperCase(), style: const TextStyle(color: AppTheme.background, fontSize: 10, fontWeight: FontWeight.w800, letterSpacing: 1)),
               ]),
             ),
             Expanded(

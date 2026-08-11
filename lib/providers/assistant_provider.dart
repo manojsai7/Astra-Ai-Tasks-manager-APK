@@ -88,13 +88,14 @@ class AssistantState {
     bool? isLoading,
     bool? isAuthenticated,
     String? userEmail,
+    bool clearUserEmail = false,
     String? error,
   }) {
     return AssistantState(
       messages: messages ?? this.messages,
       isLoading: isLoading ?? this.isLoading,
       isAuthenticated: isAuthenticated ?? this.isAuthenticated,
-      userEmail: userEmail ?? this.userEmail,
+      userEmail: clearUserEmail ? null : (userEmail ?? this.userEmail),
       error: error ?? this.error,
     );
   }
@@ -260,7 +261,7 @@ class AssistantNotifier extends StateNotifier<AssistantState> {
   Future<void> handleSignOut() async {
     final auth = ref.read(googleAuthServiceProvider);
     await auth.signOut();
-    state = state.copyWith(isAuthenticated: false, userEmail: null);
+    state = state.copyWith(isAuthenticated: false, clearUserEmail: true);
     addMessage(
       'Signed out of Google account. Local tasks remain saved.',
       type: AssistantMessageType.info,

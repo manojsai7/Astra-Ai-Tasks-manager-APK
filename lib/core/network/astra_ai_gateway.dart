@@ -13,9 +13,10 @@ class AstraAiGateway {
   /// The Android-emulator address makes routine local runs work without flags.
   /// Replace this default with the deployed HTTPS URL before publishing, or
   /// override it per build with --dart-define=ASTRA_API_BASE_URL=... .
+  /// http://10.0.2.2:8000
   static const _baseUrl = String.fromEnvironment(
     'ASTRA_API_BASE_URL',
-    defaultValue: 'http://10.0.2.2:8000',
+    defaultValue: 'https://astra-ai-gateway-s4q0.onrender.com',
   );
   final http.Client _client;
 

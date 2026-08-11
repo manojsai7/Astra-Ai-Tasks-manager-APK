@@ -360,11 +360,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
               leading: const Icon(Icons.logout, color: AppTheme.error),
               title: const Text('Sign out', style: TextStyle(color: AppTheme.error, fontWeight: FontWeight.w700)),
               onTap: () async {
+                final navigator = Navigator.of(context);
                 Navigator.pop(sheetContext);
                 await ref.read(assistantStateProvider.notifier).handleSignOut();
                 final prefs = await SharedPreferences.getInstance();
                 await prefs.remove('hasSeenAuth');
-                if (mounted) Navigator.of(context).pushReplacementNamed('/auth');
+                if (mounted) navigator.pushReplacementNamed('/auth');
               },
             ),
           ]),

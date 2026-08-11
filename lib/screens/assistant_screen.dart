@@ -10,6 +10,7 @@ import '../providers/chat_session_provider.dart';
 import '../features/scheduler/data/services/gmail_sync_service.dart';
 import '../features/scheduler/data/services/calendar_sync_service.dart';
 import '../core/motion.dart';
+import '../widgets/design_system/astra_3d_button.dart';
 
 class AssistantScreen extends ConsumerStatefulWidget {
   const AssistantScreen({super.key});
@@ -174,29 +175,16 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen>
                       ),
                     ),
                   const SizedBox(height: AppTheme.s12),
-                  SizedBox(
-                    width: double.infinity,
-                    height: 48,
-                    child: ElevatedButton.icon(
-                      onPressed: () async {
+                  Astra3DButton(
+                    expand: true,
+                    icon: Icons.add,
+                    label: 'New chat session',
+                    onPressed: () async {
                         final id = await ref.read(chatSessionProvider.notifier).createSession();
                         ref.read(currentSessionIdProvider.notifier).state = id;
                         ref.read(assistantStateProvider.notifier).clearMessages();
                         if (ctx.mounted) Navigator.pop(ctx);
                       },
-                      icon: const Icon(Icons.add, color: Colors.white),
-                      label: const Text(
-                        'New Chat Session',
-                        style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-                      ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppTheme.primary,
-                        foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(AppTheme.r12),
-                        ),
-                      ),
-                    ),
                   ),
                 ],
               ),
@@ -514,7 +502,7 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen>
                       softWrap: true,
                       overflow: TextOverflow.visible,
                       style: TextStyle(
-                        color: isUser ? Colors.white : AppTheme.textPrimary,
+                        color: isUser ? Colors.black : AppTheme.textPrimary,
                         fontSize: 13,
                         height: 1.5,
                       ),
@@ -773,7 +761,7 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen>
                   ),
                 ],
               ),
-              child: const Icon(LucideIcons.send, size: 18, color: Colors.white),
+              child: const Icon(LucideIcons.send, size: 18, color: Colors.black),
             ),
           ),
         ],

@@ -1,10 +1,12 @@
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:extension_google_sign_in_as_googleapis_auth/extension_google_sign_in_as_googleapis_auth.dart';
 import 'package:googleapis_auth/googleapis_auth.dart' as auth;
+import 'package:shared_preferences/shared_preferences.dart';
 
 /// Handles Google Authentication and supplies authenticated HTTP clients
 /// for Gmail and Calendar APIs.
 class GoogleAuthService {
+  static const _explicitSignOutKey = 'google_explicitly_signed_out';
   static final GoogleAuthService instance = GoogleAuthService._internal();
   GoogleAuthService._internal() {
     _googleSignIn = GoogleSignIn(
@@ -47,10 +49,17 @@ class GoogleAuthService {
 
   /// Silently attempts to sign in a previously authenticated user.
   Future<GoogleSignInAccount?> signInSilently() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (prefs.getBool(_explicitSignOutKey) ?? false) {
+      _currentUser = null;
+      _authClient = null;
+      return null;
+    }
     try {
       _currentUser = await _googleSignIn.signInSilently();
       if (_currentUser != null) {
         _authClient = await _googleSignIn.authenticatedClient();
+        await prefs.remove(_explicitSignOutKey);
       }
       return _currentUser;
     } catch (e) {
@@ -64,6 +73,8 @@ class GoogleAuthService {
       _currentUser = await _googleSignIn.signIn();
       if (_currentUser != null) {
         _authClient = await _googleSignIn.authenticatedClient();
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.remove(_explicitSignOutKey);
       }
       return _currentUser;
     } catch (e) {
@@ -83,6 +94,8 @@ class GoogleAuthService {
 
   /// Signs out the user.
   Future<void> signOut() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_explicitSignOutKey, true);
     await _googleSignIn.signOut();
     _currentUser = null;
     _authClient = null;
