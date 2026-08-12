@@ -859,8 +859,8 @@ class _TaskCard extends StatelessWidget {
           borderColor: task.isCompleted
               ? AstraColors.borderSoft
               : isOverdue
-                  ? AstraColors.red.withValues(alpha: .5)
-                  : color.withValues(alpha: .3),
+                  ? AstraDepthColors.redBorder
+                  : AstraColors.edgeSoft,
           child: Row(
         children: [
           // Priority strip
@@ -869,9 +869,9 @@ class _TaskCard extends StatelessWidget {
             height: 72,
             decoration: BoxDecoration(
               color: task.isCompleted
-                  ? AppTheme.accentGreen.withAlpha(60)
+                  ? AstraColors.softGreen.withAlpha(50)
                   : isOverdue
-                      ? AppTheme.error
+                      ? AstraColors.red
                       : color,
               borderRadius: const BorderRadius.only(
                 topLeft: Radius.circular(16),
@@ -891,19 +891,11 @@ class _TaskCard extends StatelessWidget {
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 border: Border.all(
-                  color: task.isCompleted ? AppTheme.accentGreen : color,
+                  color: task.isCompleted ? AstraColors.softGreen : color,
                   width: 2,
                 ),
-                color: task.isCompleted ? AppTheme.accentGreen : Colors.transparent,
-                boxShadow: task.isCompleted
-                    ? [
-                        BoxShadow(
-                          color: AppTheme.accentGreen.withAlpha(60),
-                          blurRadius: 8,
-                          spreadRadius: -2,
-                        )
-                      ]
-                    : null,
+                color: task.isCompleted ? AstraColors.softGreen : Colors.transparent,
+                // No glow shadow — physical depth does the work
               ),
               child: task.isCompleted
                   ? const Icon(LucideIcons.check, size: 13, color: Colors.black)
@@ -925,11 +917,12 @@ class _TaskCard extends StatelessWidget {
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
                       color: task.isCompleted
-                          ? AppTheme.textMuted
-                          : AppTheme.textPrimary,
+                          ? AstraColors.textMuted
+                          : AstraColors.text,
                       decoration: task.isCompleted
                           ? TextDecoration.lineThrough
                           : null,
+                      decorationColor: AstraColors.textMuted,
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -940,7 +933,7 @@ class _TaskCard extends StatelessWidget {
                     Text(
                       task.description!,
                       style: TextStyle(
-                          fontSize: 11, color: AppTheme.textMuted),
+                          fontSize: 11, color: AstraColors.textMuted),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -953,8 +946,8 @@ class _TaskCard extends StatelessWidget {
                           LucideIcons.clock,
                           size: 11,
                           color: isOverdue
-                              ? AppTheme.error
-                              : AppTheme.textMuted,
+                              ? AstraColors.red
+                              : AstraColors.textMuted,
                         ),
                         const SizedBox(width: 4),
                         Text(
@@ -963,8 +956,8 @@ class _TaskCard extends StatelessWidget {
                             fontSize: 10,
                             fontWeight: FontWeight.w500,
                             color: isOverdue
-                                ? AppTheme.error
-                                : AppTheme.textMuted,
+                                ? AstraColors.red
+                                : AstraColors.textMuted,
                           ),
                         ),
                       ],
@@ -983,15 +976,17 @@ class _TaskCard extends StatelessWidget {
                 padding:
                     const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
-                  color: color.withAlpha(20),
+                  // Neutral charcoal badge — priority lives in the left strip + color
+                  color: AstraColors.surface2,
                   borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AstraColors.edgeSoft, width: 1),
                 ),
                 child: Text(
                   task.priority.toUpperCase(),
                   style: TextStyle(
                       fontSize: 9,
                       fontWeight: FontWeight.w700,
-                      color: task.isCompleted ? AppTheme.textMuted : color),
+                      color: task.isCompleted ? AstraColors.textMuted : color),
                 ),
               ),
               IconButton(

@@ -373,14 +373,11 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen>
             'TODAY\'S TASKS',
             'TOMORROW PANCHANG',
           ].map((cmd) {
-            // Neutral grey 3D — true opaque depth, no transparency
+            // Neutral grey 3D — reference back-button style
             return Astra3DButton(
               height: 44,
               depth: AstraDepth.small,
-              color: AstraDepthColors.neutralFace,
-              depthColor: AstraDepthColors.neutralDepth,
-              borderColor: AstraDepthColors.neutralBorder,
-              textColor: AstraColors.textPrimary,
+              palette: AstraMaterials.neutral,
               onTap: () {
                 _controller.text = cmd;
                 _sendInput();
@@ -885,7 +882,7 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen>
 enum _ChatAction { history, newChat, logout }
 
 class _ChatMenuItem extends StatelessWidget {
-  const _ChatMenuItem({required this.icon, required this.label, this.color = AppTheme.textPrimary});
+  const _ChatMenuItem({required this.icon, required this.label, this.color = AstraColors.textPrimary});
   final IconData icon;
   final String label;
   final Color color;
@@ -916,10 +913,11 @@ class _ThinkingDots extends StatelessWidget {
             final value = ((controller.value + delay) % 1.0);
             return Container(
               margin: const EdgeInsets.symmetric(horizontal: 2),
-              width: 6,
-              height: 6,
+              width: 5,
+              height: 5,
               decoration: BoxDecoration(
-                color: AppTheme.secondary.withValues(alpha: value * 0.8 + 0.2),
+                // Muted cyan dots — no glow, just pulse via opacity
+                color: AstraColors.cyan.withValues(alpha: value * 0.7 + 0.3),
                 shape: BoxShape.circle,
               ),
             );

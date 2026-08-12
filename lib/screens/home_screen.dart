@@ -162,13 +162,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           CircularProgressIndicator(
-            color: AppTheme.primary,
+            color: AstraColors.lime,
             strokeWidth: 2,
           ),
           SizedBox(height: 16),
           Text(
             'Loading your plan...',
-            style: TextStyle(color: AppTheme.textMuted, fontSize: 13),
+            style: TextStyle(color: AstraColors.textMuted, fontSize: 13),
           ),
         ],
       ),
@@ -179,7 +179,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
     return Center(
       child: Text(
         'Error: $err',
-        style: const TextStyle(color: AppTheme.error, fontSize: 13),
+        style: const TextStyle(color: AstraColors.red, fontSize: 13),
       ),
     );
   }
@@ -196,8 +196,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
       ..sort((a, b) => a.dueDate!.compareTo(b.dueDate!));
 
     return RefreshIndicator(
-      color: AppTheme.primary,
-      backgroundColor: AppTheme.surfaceElevated,
+      color: AstraColors.lime,
+      backgroundColor: AstraColors.surface2,
       onRefresh: () async {
         ref.read(taskNotifierProvider.notifier).loadTasks();
       },
@@ -364,13 +364,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
             width: 58,
             height: 58,
             decoration: BoxDecoration(
-              color: const Color(0xFF35461B),
+              // Orange background for the fire icon — streak = celebration
+              color: AstraDepthColors.orangeDepth,
               borderRadius: BorderRadius.circular(16),
             ),
             child: const Icon(
               Icons.local_fire_department_rounded,
               size: 34,
-              color: AstraColors.lime,
+              color: AstraColors.orange,
             ),
           ),
           const SizedBox(width: 14),
@@ -619,8 +620,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
                 height: 62,
                 expand: true,
                 depth: AstraDepth.medium,
-                color: AstraColors.surface2,
-                textColor: AstraColors.textPrimary,
+                palette: AstraMaterials.neutral,
                 onTap: () => setState(() => _currentIndex = 1),
                 child: FittedBox(
                   fit: BoxFit.scaleDown,
@@ -641,8 +641,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
                 height: 62,
                 expand: true,
                 depth: AstraDepth.medium,
-                color: AstraColors.surface2,
-                textColor: AstraColors.textPrimary,
+                palette: AstraMaterials.neutral,
                 onTap: () => setState(() => _currentIndex = 4),
                 child: FittedBox(
                   fit: BoxFit.scaleDown,
@@ -663,8 +662,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
                 height: 62,
                 expand: true,
                 depth: AstraDepth.medium,
-                color: AstraColors.surface2,
-                textColor: AstraColors.textPrimary,
+                palette: AstraMaterials.neutral,
                 onTap: () => setState(() => _currentIndex = 2),
                 child: FittedBox(
                   fit: BoxFit.scaleDown,
@@ -685,8 +683,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
                 height: 62,
                 expand: true,
                 depth: AstraDepth.medium,
-                color: AstraColors.surface2,
-                textColor: AstraColors.textPrimary,
+                palette: AstraMaterials.neutral,
                 onTap: () => setState(() => _currentIndex = 4),
                 child: FittedBox(
                   fit: BoxFit.scaleDown,

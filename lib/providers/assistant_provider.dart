@@ -242,7 +242,18 @@ class AssistantNotifier extends StateNotifier<AssistantState> {
 
       // ── GEMINI CONVERSATIONAL CHAT (fallback) ──────────────────────────────
       final chatService = ref.read(geminiChatServiceProvider);
-      final response = await chatService.chat(trimmed);
+      final tasks = ref.read(taskNotifierProvider);
+      final history = state.messages.take(12).map((m) => {
+        'role': m.isUser ? 'user' : 'model',
+        'text': m.text,
+      }).toList();
+
+      final response = await chatService.chat(
+        userMessage: trimmed,
+        history: history,
+        pendingTasks: tasks.where((t) => !t.isCompleted).toList(),
+        userEmail: state.userEmail,
+      );
       addMessage(response, type: AssistantMessageType.text);
     } catch (e) {
       state = state.copyWith(isLoading: false, error: e.toString());

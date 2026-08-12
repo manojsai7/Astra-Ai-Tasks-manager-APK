@@ -8,6 +8,7 @@ import '../providers/focus_provider.dart';
 import '../theme/app_theme.dart';
 import '../widgets/design_system/astra_card.dart';
 import '../widgets/design_system/astra_3d_button.dart';
+import '../widgets/design_system/astra_3d_surface.dart';
 
 class FocusScreen extends ConsumerStatefulWidget {
   const FocusScreen({super.key});
@@ -90,14 +91,18 @@ class _FocusScreenState extends ConsumerState<FocusScreen>
       context: context,
       barrierDismissible: false,
       builder: (ctx) => AlertDialog(
-        backgroundColor: AppTheme.surfaceElevated,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        backgroundColor: AstraColors.surface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: const BorderSide(color: AstraColors.edgeSoft),
+        ),
         title: Row(
           children: [
-            Icon(LucideIcons.trophy, color: AppTheme.warning, size: 24),
+            // Trophy icon — amber (auspicious/achievement), not lime
+            const Icon(LucideIcons.trophy, color: AstraColors.amber, size: 24),
             const SizedBox(width: 10),
             const Text('Session Done!',
-                style: TextStyle(color: AppTheme.textPrimary)),
+                style: TextStyle(color: AstraColors.textPrimary)),
           ],
         ),
         content: Column(
@@ -106,12 +111,12 @@ class _FocusScreenState extends ConsumerState<FocusScreen>
           children: [
             Text(
               'You focused for $_selectedDuration minutes.',
-              style: const TextStyle(color: AppTheme.textSecondary),
+              style: const TextStyle(color: AstraColors.textSecondary),
             ),
             const SizedBox(height: 4),
             const Text(
               'I\'ve logged it to your stats.',
-              style: TextStyle(color: AppTheme.textMuted, fontSize: 12),
+              style: TextStyle(color: AstraColors.textMuted, fontSize: 12),
             ),
           ],
         ),
@@ -123,7 +128,7 @@ class _FocusScreenState extends ConsumerState<FocusScreen>
             },
             child: const Text('Keep going →',
                 style: TextStyle(
-                    color: AppTheme.primary, fontWeight: FontWeight.bold)),
+                    color: AstraColors.lime, fontWeight: FontWeight.bold)),
           ),
         ],
       ),
@@ -136,11 +141,12 @@ class _FocusScreenState extends ConsumerState<FocusScreen>
     return '${mins.toString().padLeft(2, '0')}:${secs.toString().padLeft(2, '0')}';
   }
 
+  // Timer color reflects urgency using semantic material colors
   Color get _timerColor {
-    if (_remainingSeconds < 60) return AppTheme.error;
-    if (_remainingSeconds < 300) return AppTheme.warning;
-    if (_isRunning) return AppTheme.accentGreen;
-    return AppTheme.primary;
+    if (_remainingSeconds < 60)  return AstraColors.red;       // critical
+    if (_remainingSeconds < 300) return AstraColors.amber;     // warning
+    if (_isRunning)              return AstraColors.softGreen;  // active/positive
+    return AstraColors.lime;                                    // ready
   }
 
   @override
@@ -188,31 +194,12 @@ class _FocusScreenState extends ConsumerState<FocusScreen>
                   final active = _selectedDuration == m;
                   return Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 6),
-                    child: GestureDetector(
+                    // AstraFilterPill: lime when active, neutral when inactive
+                    child: AstraFilterPill(
+                      label: '${m}m',
+                      active: active,
                       onTap: () => _selectDuration(m),
-                      child: Container(
-                        width: 74,
-                        height: 50,
-                        alignment: Alignment.center,
-                        decoration: BoxDecoration(
-                          color: AstraColors.surface,
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(
-                            color: active ? AstraColors.lime : AstraColors.borderSoft,
-                            width: active ? 2 : 1,
-                          ),
-                          boxShadow: const [
-                            BoxShadow(color: AstraColors.depth, offset: Offset(0, 4), blurRadius: 0),
-                          ],
-                        ),
-                        child: Text(
-                          '${m}m',
-                          style: AstraText.body(
-                            size: 15,
-                            color: active ? AstraColors.textPrimary : AstraColors.textMuted,
-                          ),
-                        ),
-                      ),
+                      depth: AstraDepth.small,
                     ),
                   );
                 }).toList(),
@@ -281,30 +268,32 @@ class _FocusScreenState extends ConsumerState<FocusScreen>
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                GestureDetector(
+                // Reset — dark physical (grey underside) — no lime on utility controls
+                Astra3DSurface(
+                  faceColor: AstraDepthColors.darkFace,
+                  depthColor: AstraDepthColors.darkDepth,
+                  borderColor: AstraDepthColors.darkBorder,
+                  depthOffset: AstraDepth.small,
+                  borderRadius: AstraRadii.md,
                   onTap: _resetTimer,
-                  child: Container(
+                  child: const SizedBox(
                     width: 60,
                     height: 60,
-                    decoration: BoxDecoration(
-                      color: AstraColors.surface,
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: AstraColors.borderSoft),
-                      boxShadow: const [
-                        BoxShadow(color: AstraColors.depth, offset: Offset(0, 4), blurRadius: 0),
-                      ],
+                    child: Center(
+                      child: Icon(Icons.replay_rounded, color: AstraColors.textSecondary, size: 26),
                     ),
-                    child: const Icon(Icons.replay_rounded, color: AstraColors.textMuted, size: 28),
                   ),
                 ),
+
                 const SizedBox(width: 28),
+
+                // Play/Pause — physical lime (ready) or amber (pausing)
                 SizedBox(
                   width: 90,
                   child: Astra3DButton(
                     height: 80,
                     depth: AstraDepth.large,
-                    color: _isRunning ? AstraColors.amber : AstraColors.lime,
-                    textColor: Colors.black,
+                    palette: _isRunning ? AstraMaterials.amber : AstraMaterials.lime,
                     onTap: _isRunning ? _pauseTimer : _startTimer,
                     child: Icon(
                       _isRunning ? Icons.pause_rounded : Icons.play_arrow_rounded,
@@ -313,19 +302,24 @@ class _FocusScreenState extends ConsumerState<FocusScreen>
                     ),
                   ),
                 ),
+
                 const SizedBox(width: 28),
-                Container(
-                  width: 60,
-                  height: 60,
-                  decoration: BoxDecoration(
-                    color: AstraColors.surface,
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: AstraColors.borderSoft),
-                    boxShadow: const [
-                      BoxShadow(color: AstraColors.depth, offset: Offset(0, 4), blurRadius: 0),
-                    ],
+
+                // Skip — dark physical (grey underside)
+                Astra3DSurface(
+                  faceColor: AstraDepthColors.darkFace,
+                  depthColor: AstraDepthColors.darkDepth,
+                  borderColor: AstraDepthColors.darkBorder,
+                  depthOffset: AstraDepth.small,
+                  borderRadius: AstraRadii.md,
+                  onTap: () => _resetTimer(),
+                  child: const SizedBox(
+                    width: 60,
+                    height: 60,
+                    child: Center(
+                      child: Icon(Icons.skip_next_rounded, color: AstraColors.textSecondary, size: 26),
+                    ),
                   ),
-                  child: const Icon(Icons.skip_next_rounded, color: AstraColors.textMuted, size: 28),
                 ),
               ],
             ).animate().fadeIn(duration: 400.ms, delay: 250.ms),

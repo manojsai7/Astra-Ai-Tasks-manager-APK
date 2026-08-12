@@ -213,12 +213,12 @@ class _Panchang3DEventCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final accent = _accentColor;
     final depthCol = switch (_visualType) {
-      PanchangVisualType.lunar     => AstraDepthColors.violetDepth,
-      PanchangVisualType.solar     => AstraDepthColors.amberDepth,
-      PanchangVisualType.festival  => AstraDepthColors.cyanDepth,
-      PanchangVisualType.fasting   => AstraDepthColors.limeDepth,
-      PanchangVisualType.auspicious=> AstraDepthColors.limeDepth,
-      PanchangVisualType.warning   => AstraDepthColors.redDepth,
+      PanchangVisualType.lunar      => AstraDepthColors.violetDepth,
+      PanchangVisualType.solar      => AstraDepthColors.amberDepth,
+      PanchangVisualType.festival   => AstraDepthColors.orangeDepth,   // orange strip
+      PanchangVisualType.fasting    => AstraDepthColors.redDepth,      // red strip
+      PanchangVisualType.auspicious => AstraDepthColors.softGreenDepth,// soft-green strip
+      PanchangVisualType.warning    => AstraDepthColors.redDepth,
     };
 
     return Container(

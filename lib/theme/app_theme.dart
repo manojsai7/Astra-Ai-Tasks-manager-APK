@@ -29,11 +29,14 @@ abstract final class AstraColors {
   static const textDisabled = Color(0xFF5F5F5F);
   static const textDim = Color(0xFF666666);
 
-  static const lime = Color(0xFFB6FF00);
-  static const cyan = Color(0xFF20B7D8);
-  static const amber = Color(0xFFFFC64D);
-  static const red = Color(0xFFF04A4A);
-  static const violet = Color(0xFF8F7BFF);
+  // ── Accent palette ─────────────────────────────────────────
+  static const lime      = Color(0xFFB6FF00); // ASTRA brand / primary action
+  static const softGreen = Color(0xFFB0FB62); // streak / invites / secondary positive
+  static const cyan      = Color(0xFF20B7D8); // AI system / info
+  static const amber     = Color(0xFFFFC64D); // sunrise / solar / soft warning
+  static const violet    = Color(0xFF8F7BFF); // Panchang lunar / special
+  static const orange    = Color(0xFFFF661B); // promotion / streak / celebration
+  static const red       = Color(0xFFF04A4A); // error / destructive
 }
 
 abstract final class AstraAccent {
@@ -85,6 +88,22 @@ abstract final class AstraDepthColors {
   static const ghostFace   = Color(0xFF1B1B1B);
   static const ghostDepth  = Color(0xFF0D0D0D);
   static const ghostBorder = Color(0xFF3A3A3A);
+
+  // ── Orange (promotion / streak / celebration) ─────────────────────
+  static const orangeFace   = AstraColors.orange;      // #FF661B
+  static const orangeDepth  = Color(0xFFA73D10);       // dark burnt orange extrusion
+  static const orangeBorder = Color(0xFF5E4638);       // muted orange-grey edge
+
+  // ── Soft Green (streak / invites / secondary positive) ───────────
+  static const softGreenFace   = AstraColors.softGreen; // #B0FB62
+  static const softGreenDepth  = Color(0xFF648F3A);     // forest green extrusion
+  static const softGreenBorder = Color(0xFF526B46);     // muted green-grey edge
+
+  // ── Dark (back-button reference style — grey underside) ──────────
+  // face near-black, depth intentionally grey — not black, not lime
+  static const darkFace   = Color(0xFF171717);
+  static const darkDepth  = Color(0xFF777777); // the grey physical underside
+  static const darkBorder = Color(0xFF777777);
 }
 
 abstract final class AstraDepth {
@@ -92,6 +111,102 @@ abstract final class AstraDepth {
   static const medium = 6.0;
   static const large = 8.0;
 }
+
+/// The canonical material specification for a physical 3D surface.
+/// Every component that renders face+depth+border should receive one of these.
+///
+/// Rule: No screen or widget may create ad-hoc face/depth/border color triplets.
+/// Always use a token from [AstraMaterials].
+class AstraMaterialPalette {
+  final Color face;
+  final Color depth;
+  final Color border;
+  // Text/icon color that reads clearly against [face]
+  final Color content;
+
+  const AstraMaterialPalette({
+    required this.face,
+    required this.depth,
+    required this.border,
+    required this.content,
+  });
+}
+
+/// Canonical material presets. Use these everywhere instead of raw Color literals.
+abstract final class AstraMaterials {
+  /// Charcoal secondary surface — back, secondary buttons, utility controls.
+  static const neutral = AstraMaterialPalette(
+    face:    AstraDepthColors.neutralFace,
+    depth:   AstraDepthColors.neutralDepth,
+    border:  AstraDepthColors.neutralBorder,
+    content: AstraColors.textPrimary,
+  );
+
+  /// Near-black face with intentional grey underside — reference back-button style.
+  static const dark = AstraMaterialPalette(
+    face:    AstraDepthColors.darkFace,
+    depth:   AstraDepthColors.darkDepth,
+    border:  AstraDepthColors.darkBorder,
+    content: AstraColors.textPrimary,
+  );
+
+  /// Brand primary action (ASTRA lime).
+  static const lime = AstraMaterialPalette(
+    face:    AstraDepthColors.limeFace,
+    depth:   AstraDepthColors.limeDepth,
+    border:  AstraDepthColors.limeBorder,
+    content: Color(0xFF151515),
+  );
+
+  /// Positive secondary / streak / invites.
+  static const softGreen = AstraMaterialPalette(
+    face:    AstraDepthColors.softGreenFace,
+    depth:   AstraDepthColors.softGreenDepth,
+    border:  AstraDepthColors.softGreenBorder,
+    content: Color(0xFF151515),
+  );
+
+  /// AI system / informational.
+  static const cyan = AstraMaterialPalette(
+    face:    AstraDepthColors.cyanFace,
+    depth:   AstraDepthColors.cyanDepth,
+    border:  AstraDepthColors.cyanBorder,
+    content: Color(0xFF151515),
+  );
+
+  /// Panchang lunar / special contextual.
+  static const violet = AstraMaterialPalette(
+    face:    AstraDepthColors.violetFace,
+    depth:   AstraDepthColors.violetDepth,
+    border:  AstraDepthColors.violetBorder,
+    content: Color(0xFF151515),
+  );
+
+  /// Sunrise / auspicious / soft warning.
+  static const amber = AstraMaterialPalette(
+    face:    AstraDepthColors.amberFace,
+    depth:   AstraDepthColors.amberDepth,
+    border:  AstraDepthColors.amberBorder,
+    content: Color(0xFF151515),
+  );
+
+  /// Promotion / streak / celebration / high-energy non-danger.
+  static const orange = AstraMaterialPalette(
+    face:    AstraDepthColors.orangeFace,
+    depth:   AstraDepthColors.orangeDepth,
+    border:  AstraDepthColors.orangeBorder,
+    content: Color(0xFFFFFFFF),
+  );
+
+  /// Destructive / error.
+  static const red = AstraMaterialPalette(
+    face:    AstraDepthColors.redFace,
+    depth:   AstraDepthColors.redDepth,
+    border:  AstraDepthColors.redBorder,
+    content: Color(0xFFFFFFFF),
+  );
+}
+
 
 abstract final class AstraSpacing {
   static const xs = 6.0;
@@ -126,12 +241,12 @@ enum PanchangVisualType { lunar, solar, festival, fasting, auspicious, warning }
 
 abstract final class PanchangTheme {
   static Color colorFor(PanchangVisualType type) => switch (type) {
-        PanchangVisualType.lunar => AstraColors.violet,
-        PanchangVisualType.solar => AstraColors.amber,
-        PanchangVisualType.festival => AstraColors.cyan,
-        PanchangVisualType.fasting => AstraColors.lime,
-        PanchangVisualType.auspicious => AstraColors.lime,
-        PanchangVisualType.warning => AstraColors.red,
+        PanchangVisualType.lunar     => AstraColors.violet,     // lunar / moon phase
+        PanchangVisualType.solar     => AstraColors.amber,      // sunrise / solar events
+        PanchangVisualType.festival  => AstraColors.orange,     // celebration / high-energy
+        PanchangVisualType.fasting   => AstraColors.red,        // Ekadashi / fasting (urgency)
+        PanchangVisualType.auspicious=> AstraColors.softGreen,  // positive, but not brand lime
+        PanchangVisualType.warning   => AstraColors.red,        // warnings
       };
 }
 

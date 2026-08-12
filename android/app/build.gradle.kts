@@ -30,10 +30,6 @@ android {
             isMinifyEnabled = false
             isShrinkResources = false
         }
-        debug {
-            applicationIdSuffix = ".debug"
-            versionNameSuffix = "-debug"
-        }
     }
 }
 

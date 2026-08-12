@@ -5,10 +5,9 @@ import 'astra_3d_surface.dart';
 /// Primary interactive button for ASTRA.
 /// Composes [Astra3DSurface] — all press / haptic / depth logic lives there.
 ///
-/// Color presets:
-///   Primary lime:   color: AstraColors.lime  (default depth auto-selected)
-///   Neutral grey:   color: AstraDepthColors.neutralFace
-///   Ghost:          color: AstraDepthColors.ghostFace
+/// Preferred usage: pass a [palette] from [AstraMaterials] (e.g. AstraMaterials.dark,
+/// AstraMaterials.lime, AstraMaterials.orange) to guarantee design-system conformance.
+/// Individual color overrides are still supported for fine-grained control.
 class Astra3DButton extends StatelessWidget {
   const Astra3DButton({
     super.key,
@@ -22,12 +21,12 @@ class Astra3DButton extends StatelessWidget {
     this.height = 56,
     this.depth = AstraDepth.medium,
     this.color = AstraColors.lime,
-    // Explicit depth color — must be an opaque AstraDepthColors token.
-    // Never pass a transparent/alpha-blended value here.
     this.depthColor,
     this.borderColor,
     this.textColor,
     this.borderRadius = AstraRadii.md,
+    // Pass a palette to override all four color slots at once
+    this.palette,
   });
 
   final String? label;
@@ -42,55 +41,77 @@ class Astra3DButton extends StatelessWidget {
 
   /// Face color. For accent buttons pass AstraColors.lime / .violet / .amber / .cyan.
   /// For neutral buttons pass AstraDepthColors.neutralFace.
+  /// Ignored when [palette] is provided.
   final Color color;
 
   /// Opaque extrusion color. If null, auto-selected from AstraDepthColors map.
+  /// Ignored when [palette] is provided.
   final Color? depthColor;
 
   /// Neutral edge color. If null, auto-selected from AstraDepthColors map.
+  /// Ignored when [palette] is provided.
   final Color? borderColor;
 
+  /// Content color. If null, auto-selected. Ignored when [palette] is provided.
   final Color? textColor;
   final double borderRadius;
 
+  /// When provided, [color], [depthColor], [borderColor], [textColor] are
+  /// all overridden by the palette. Prefer this for design-system conformance.
+  final AstraMaterialPalette? palette;
+
   // ── depth lookup: face → canonical opaque depth ───────────────────────────
   static Color _depthFor(Color face) {
-    if (face == AstraColors.lime)   return AstraDepthColors.limeDepth;
-    if (face == AstraColors.violet) return AstraDepthColors.violetDepth;
-    if (face == AstraColors.amber)  return AstraDepthColors.amberDepth;
-    if (face == AstraColors.cyan)   return AstraDepthColors.cyanDepth;
-    if (face == AstraColors.red)    return AstraDepthColors.redDepth;
-    // Neutral & ghost shades
+    if (face == AstraColors.lime)       return AstraDepthColors.limeDepth;
+    if (face == AstraColors.softGreen)  return AstraDepthColors.softGreenDepth;
+    if (face == AstraColors.violet)     return AstraDepthColors.violetDepth;
+    if (face == AstraColors.amber)      return AstraDepthColors.amberDepth;
+    if (face == AstraColors.cyan)       return AstraDepthColors.cyanDepth;
+    if (face == AstraColors.orange)     return AstraDepthColors.orangeDepth;
+    if (face == AstraColors.red)        return AstraDepthColors.redDepth;
     if (face == AstraDepthColors.neutralFace) return AstraDepthColors.neutralDepth;
+    if (face == AstraDepthColors.darkFace)    return AstraDepthColors.darkDepth;
     if (face == AstraDepthColors.ghostFace)   return AstraDepthColors.ghostDepth;
-    // Fallback: safe near-black extrusion
     return AstraDepthColors.neutralDepth;
   }
 
   static Color _borderFor(Color face) {
-    if (face == AstraColors.lime)   return AstraDepthColors.limeBorder;
-    if (face == AstraColors.violet) return AstraDepthColors.violetBorder;
-    if (face == AstraColors.amber)  return AstraDepthColors.amberBorder;
-    if (face == AstraColors.cyan)   return AstraDepthColors.cyanBorder;
-    if (face == AstraColors.red)    return AstraDepthColors.redBorder;
+    if (face == AstraColors.lime)       return AstraDepthColors.limeBorder;
+    if (face == AstraColors.softGreen)  return AstraDepthColors.softGreenBorder;
+    if (face == AstraColors.violet)     return AstraDepthColors.violetBorder;
+    if (face == AstraColors.amber)      return AstraDepthColors.amberBorder;
+    if (face == AstraColors.cyan)       return AstraDepthColors.cyanBorder;
+    if (face == AstraColors.orange)     return AstraDepthColors.orangeBorder;
+    if (face == AstraColors.red)        return AstraDepthColors.redBorder;
     if (face == AstraDepthColors.neutralFace) return AstraDepthColors.neutralBorder;
+    if (face == AstraDepthColors.darkFace)    return AstraDepthColors.darkBorder;
     if (face == AstraDepthColors.ghostFace)   return AstraDepthColors.ghostBorder;
     return AstraDepthColors.neutralBorder;
   }
 
   static Color _fgFor(Color face) {
-    // Light accent faces need dark text; charcoal faces need light text
-    return (face == AstraColors.lime || face == AstraColors.amber)
-        ? Colors.black
-        : AstraColors.textPrimary;
+    // Light accent faces need dark text
+    if (face == AstraColors.lime || face == AstraColors.softGreen ||
+        face == AstraColors.amber) {
+      return const Color(0xFF151515);
+    }
+    // White text on saturated dark-ish accents
+    if (face == AstraColors.orange || face == AstraColors.red) {
+      return Colors.white;
+    }
+    // Default: light text on dark/charcoal
+    return AstraColors.textPrimary;
   }
 
   @override
   Widget build(BuildContext context) {
     final action = onPressed ?? onTap;
-    final fgColor = textColor ?? _fgFor(color);
-    final effectiveDepth = depthColor ?? _depthFor(color);
-    final effectiveBorder = borderColor ?? _borderFor(color);
+
+    // Palette overrides individual color params
+    final faceColor   = palette?.face   ?? color;
+    final depthCol    = palette?.depth  ?? depthColor ?? _depthFor(faceColor);
+    final borderCol   = palette?.border ?? borderColor ?? _borderFor(faceColor);
+    final fgColor     = palette?.content ?? textColor ?? _fgFor(faceColor);
 
     final content = child ??
         Row(
@@ -112,9 +133,9 @@ class Astra3DButton extends StatelessWidget {
     return SizedBox(
       width: expand ? double.infinity : width,
       child: Astra3DSurface(
-        faceColor: color,
-        depthColor: effectiveDepth,
-        borderColor: effectiveBorder,
+        faceColor: faceColor,
+        depthColor: depthCol,
+        borderColor: borderCol,
         depthOffset: depth,
         borderRadius: borderRadius,
         onTap: action,
@@ -183,7 +204,7 @@ class Astra3DIconButton extends StatelessWidget {
 }
 
 /// Selectable filter chip built on Astra3DSurface.
-/// Active: lime face / depth. Inactive: neutral face / depth.
+/// Active: lime face / depth. Inactive: neutral (dark) face / depth.
 class AstraFilterPill extends StatelessWidget {
   const AstraFilterPill({
     super.key,
@@ -191,19 +212,23 @@ class AstraFilterPill extends StatelessWidget {
     required this.active,
     required this.onTap,
     this.depth = AstraDepth.small,
+    // Allow callers to override the active palette (e.g. violet for Panchang filters)
+    this.activePalette,
   });
 
   final String label;
   final bool active;
   final VoidCallback onTap;
   final double depth;
+  final AstraMaterialPalette? activePalette;
 
   @override
   Widget build(BuildContext context) {
+    final ap = activePalette ?? AstraMaterials.lime;
     return Astra3DSurface(
-      faceColor: active ? AstraDepthColors.limeFace : AstraDepthColors.neutralFace,
-      depthColor: active ? AstraDepthColors.limeDepth : AstraDepthColors.neutralDepth,
-      borderColor: active ? AstraDepthColors.limeBorder : AstraDepthColors.neutralBorder,
+      faceColor:   active ? ap.face   : AstraDepthColors.neutralFace,
+      depthColor:  active ? ap.depth  : AstraDepthColors.neutralDepth,
+      borderColor: active ? ap.border : AstraDepthColors.neutralBorder,
       depthOffset: depth,
       borderRadius: AstraRadii.md,
       onTap: onTap,
@@ -213,7 +238,7 @@ class AstraFilterPill extends StatelessWidget {
           label,
           style: AstraText.label(
             size: 12,
-            color: active ? Colors.black : AstraColors.textMuted,
+            color: active ? ap.content : AstraColors.textMuted,
           ),
         ),
       ),
