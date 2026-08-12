@@ -15,7 +15,7 @@ Get the latest pre-compiled ASTRA release APK directly on your Android phone:
 
 | Architecture | Recommended For | Download |
 |---|---|---|
-| **ARM64 (64-bit)** | **All modern phones (Recommended)** | [⬇️ `app-arm64-v8a-release.apk`](https://github.com/manojsai7/Ai-Tasks-manager/releases/latest/download/app-arm64-v8a-release.apk) |
+| **ARM64 (64-bit)** | **All modern phones (Recommended)** | [⬇️ `app-arm64-v8a-release.apk`](https://github.com/manojsai7/Ai-Tasks-manager/releases/latest/) |
 | ARMv7 (32-bit) | Older Android devices | [⬇️ `app-armeabi-v7a-release.apk`](https://github.com/manojsai7/Ai-Tasks-manager/releases/latest/download/app-armeabi-v7a-release.apk) |
 
 ### 📥 How to Install on Your Android Phone
