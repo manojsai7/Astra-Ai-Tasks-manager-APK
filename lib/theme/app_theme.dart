@@ -38,10 +38,53 @@ abstract final class AstraColors {
 
 abstract final class AstraAccent {
   static const primary = AstraColors.lime;
+  // Slightly muted lime for secondary emphasis (tasks, chips, completed badges).
+  // Keeps brand lime #B6FF00 canonical while reducing visual noise.
+  static const primaryMuted = Color(0xFF9ED600);
   static const panchangLunar = AstraColors.violet;
   static const sunrise = AstraColors.amber;
   static const urgent = AstraColors.red;
   static const info = AstraColors.cyan;
+}
+
+/// Pre-computed opaque depth/border values for the face→depth→border system.
+/// Rule: no component may derive depth via withOpacity, withValues(alpha:),
+/// blending, or transparent overlays. Use these tokens directly.
+abstract final class AstraDepthColors {
+  // ── Lime (primary brand) ──────────────────────────────────────────
+  static const limeFace   = AstraColors.lime;          // #B6FF00
+  static const limeDepth  = Color(0xFF637F00);         // dark olive extrusion
+  static const limeBorder = Color(0xFF4C4C42);         // neutral grey-lime edge
+
+  // ── Violet (Panchang lunar / Tithi) ──────────────────────────────
+  static const violetFace   = AstraColors.violet;      // #8F7BFF
+  static const violetDepth  = Color(0xFF4A3E9F);       // deep violet extrusion
+  static const violetBorder = Color(0xFF3E3C50);       // muted violet-grey edge
+
+  // ── Amber (sunrise / solar) ───────────────────────────────────────
+  static const amberFace   = AstraColors.amber;        // #FFC64D
+  static const amberDepth  = Color(0xFF8A6300);        // dark amber extrusion
+  static const amberBorder = Color(0xFF504430);        // muted amber-grey edge
+
+  // ── Cyan (info / system) ─────────────────────────────────────────
+  static const cyanFace   = AstraColors.cyan;          // #20B7D8
+  static const cyanDepth  = Color(0xFF0E6478);         // deep teal extrusion
+  static const cyanBorder = Color(0xFF2B4048);         // muted teal-grey edge
+
+  // ── Red (error / warning) ────────────────────────────────────────
+  static const redFace   = AstraColors.red;            // #F04A4A
+  static const redDepth  = Color(0xFF7A1E1E);          // dark red extrusion
+  static const redBorder = Color(0xFF4A2A2A);          // muted red-grey edge
+
+  // ── Neutral (grey/black buttons — secondary actions) ─────────────
+  static const neutralFace   = Color(0xFF242424);      // charcoal face
+  static const neutralDepth  = Color(0xFF111111);      // near-black extrusion
+  static const neutralBorder = Color(0xFF4A4A4A);      // grey edge
+
+  // ── Neutral dark (ghost / tertiary) ──────────────────────────────
+  static const ghostFace   = Color(0xFF1B1B1B);
+  static const ghostDepth  = Color(0xFF0D0D0D);
+  static const ghostBorder = Color(0xFF3A3A3A);
 }
 
 abstract final class AstraDepth {
@@ -236,14 +279,16 @@ class AppTheme {
     color: surface,
     borderRadius: BorderRadius.circular(r20),
     border: Border.all(
-      color: primary.withValues(alpha: 0.3),
+      // Reduced alpha: accent communicates state, not the whole card
+      color: primary.withValues(alpha: 0.15),
       width: 1,
     ),
-    boxShadow: [
+    boxShadow: const [
+      // Opaque depth shadow — no glow, just grounding
       BoxShadow(
-        color: primary.withValues(alpha: 0.12),
+        color: Color(0xFF0C0C0C),
         blurRadius: 0,
-        offset: const Offset(0, 4),
+        offset: Offset(0, 5),
       ),
     ],
   );

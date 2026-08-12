@@ -530,6 +530,8 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
                             height: 52,
                             depth: AstraDepth.medium,
                             color: AstraColors.lime,
+                            depthColor: AstraDepthColors.limeDepth,
+                            borderColor: AstraDepthColors.limeBorder,
                             onTap: _showAddTaskDialog,
                             child: const Icon(Icons.add_rounded, size: 30, color: Colors.black),
                           ),
@@ -639,19 +641,20 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
                         AstraSectionHeader(
                           title: 'Completed',
                           showAccentBar: true,
-                          accentColor: AppTheme.accentGreen,
+                          // primaryMuted keeps brand lime but reduces visual noise
+                          accentColor: AstraAccent.primaryMuted,
                           trailing: Container(
                             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                             decoration: BoxDecoration(
-                              color: AppTheme.accentGreen.withAlpha(20),
+                              color: AstraAccent.primaryMuted.withAlpha(20),
                               borderRadius: BorderRadius.circular(20),
-                              border: Border.all(color: AppTheme.accentGreen.withAlpha(50)),
+                              border: Border.all(color: AstraAccent.primaryMuted.withAlpha(50)),
                             ),
                             child: Text(
                               '${completed.length} done',
                               style: TextStyle(
                                   fontSize: 10,
-                                  color: AppTheme.accentGreen,
+                                  color: AstraAccent.primaryMuted,
                                   fontWeight: FontWeight.w700),
                             ),
                           ),

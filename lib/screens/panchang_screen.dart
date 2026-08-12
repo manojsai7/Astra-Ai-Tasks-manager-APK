@@ -7,6 +7,7 @@ import '../providers/panchang_provider.dart';
 import '../services/panchang_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/design_system/astra_card.dart';
+import '../widgets/design_system/astra_3d_button.dart';
 
 class PanchangScreen extends ConsumerStatefulWidget {
   const PanchangScreen({super.key});
@@ -84,7 +85,7 @@ class _PanchangScreenState extends ConsumerState<PanchangScreen> {
             ),
             const SizedBox(height: 24),
 
-            // Observance Filter Bar
+            // Observance Filter Bar — physical 3D chips
             SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               physics: const BouncingScrollPhysics(),
@@ -93,7 +94,7 @@ class _PanchangScreenState extends ConsumerState<PanchangScreen> {
                   final active = filter == _selectedFilter;
                   return Padding(
                     padding: const EdgeInsets.only(right: 10),
-                    child: _FilterPill(
+                    child: AstraFilterPill(
                       label: filter,
                       active: active,
                       onTap: () => setState(() => _selectedFilter = filter),
@@ -184,38 +185,8 @@ class _VerticalDivider extends StatelessWidget {
   }
 }
 
-class _FilterPill extends StatelessWidget {
-  const _FilterPill({required this.label, required this.active, required this.onTap});
-  final String label;
-  final bool active;
-  final VoidCallback onTap;
 
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: AstraMotion.standard,
-        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-        decoration: BoxDecoration(
-          color: active ? AstraColors.lime : AstraColors.surface,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: active ? AstraColors.lime : AstraColors.edgeSoft),
-          boxShadow: const [
-            BoxShadow(color: AstraColors.depth, offset: Offset(0, 4), blurRadius: 0),
-          ],
-        ),
-        child: Text(
-          label,
-          style: AstraTheme.label(
-            size: 12,
-            color: active ? Colors.black : AstraColors.textMuted,
-          ),
-        ),
-      ),
-    );
-  }
-}
+
 
 class _Panchang3DEventCard extends StatelessWidget {
   const _Panchang3DEventCard({required this.event, required this.index});
@@ -240,78 +211,117 @@ class _Panchang3DEventCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AstraCard(
-      padding: const EdgeInsets.all(16),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 64,
-            padding: const EdgeInsets.symmetric(vertical: 12),
-            decoration: BoxDecoration(
-              color: _accentColor.withValues(alpha: .15),
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: _accentColor.withValues(alpha: .4)),
-            ),
-            child: Column(
-              children: [
-                Text(
-                  DateFormat('d').format(event.eventDate),
-                  style: AstraTheme.display(size: 32, color: _accentColor),
+    final accent = _accentColor;
+    final depthCol = switch (_visualType) {
+      PanchangVisualType.lunar     => AstraDepthColors.violetDepth,
+      PanchangVisualType.solar     => AstraDepthColors.amberDepth,
+      PanchangVisualType.festival  => AstraDepthColors.cyanDepth,
+      PanchangVisualType.fasting   => AstraDepthColors.limeDepth,
+      PanchangVisualType.auspicious=> AstraDepthColors.limeDepth,
+      PanchangVisualType.warning   => AstraDepthColors.redDepth,
+    };
+
+    return Container(
+      decoration: BoxDecoration(
+        // Card surface: always charcoal — accent lives on icon + text only
+        color: AstraColors.surface,
+        borderRadius: BorderRadius.circular(AstraRadii.lg),
+        // Neutral grey border: no colored outline wrapping the whole card
+        border: Border.all(color: AstraColors.edgeSoft, width: 1),
+        boxShadow: const [
+          BoxShadow(color: AstraColors.depth, offset: Offset(0, 5), blurRadius: 0),
+          BoxShadow(color: Color(0x33000000), offset: Offset(0, 10), blurRadius: 20),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(AstraRadii.lg - 1),
+        child: IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Semantic accent strip (left 3px rail — color communicates meaning)
+              Container(
+                width: 3,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [accent, depthCol],
+                    stops: const [0.5, 1.0],
+                  ),
                 ),
-                Text(
-                  DateFormat('MMM').format(event.eventDate).toUpperCase(),
-                  style: AstraTheme.label(size: 11, color: _accentColor),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
+              ),
+              // Date column: charcoal bg, accent on day number + month text
+              Container(
+                width: 64,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                color: AstraColors.surface0,
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Expanded(
-                      child: Text(
-                        event.displayName.toUpperCase(),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: AstraTheme.label(size: 15, color: AstraColors.text),
-                      ),
+                    Text(
+                      DateFormat('d').format(event.eventDate),
+                      style: AstraTheme.display(size: 30, color: accent),
                     ),
-                    const SizedBox(width: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: _accentColor.withValues(alpha: .2),
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: _accentColor.withValues(alpha: .5)),
-                      ),
-                      child: Text(
-                        _relativeDay,
-                        style: AstraTheme.label(size: 10, color: _accentColor),
-                      ),
+                    Text(
+                      DateFormat('MMM').format(event.eventDate).toUpperCase(),
+                      style: AstraTheme.label(size: 10, color: accent),
                     ),
                   ],
                 ),
-                const SizedBox(height: 6),
-                Text(
-                  event.lunarMonth.toUpperCase(),
-                  style: AstraTheme.label(size: 11, color: AstraColors.textMuted),
+              ),
+              // Content area
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              event.displayName.toUpperCase(),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: AstraTheme.label(size: 14, color: AstraColors.text),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          // Relative day badge: charcoal bg + accent text only
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: AstraColors.surface2,
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: AstraColors.edgeSoft, width: 1),
+                            ),
+                            child: Text(
+                              _relativeDay,
+                              style: AstraTheme.label(size: 9, color: accent),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 5),
+                      Text(
+                        event.lunarMonth.toUpperCase(),
+                        style: AstraTheme.label(size: 10, color: AstraColors.textMuted),
+                      ),
+                      const SizedBox(height: 5),
+                      Text(
+                        event.description,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: AstraTheme.body(size: 13, color: AstraColors.textDim),
+                      ),
+                    ],
+                  ),
                 ),
-                const SizedBox(height: 6),
-                Text(
-                  event.description,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: AstraTheme.body(size: 13, color: AstraColors.textDim),
-                ),
-              ],
-            ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     ).animate().fadeIn(delay: Duration(milliseconds: 50 * index), duration: 250.ms).slideY(begin: .04, end: 0);
   }

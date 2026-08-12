@@ -13,6 +13,7 @@ import '../features/scheduler/data/services/gmail_sync_service.dart';
 import '../features/scheduler/data/services/calendar_sync_service.dart';
 import '../core/motion.dart';
 import '../widgets/design_system/astra_3d_button.dart';
+import '../widgets/design_system/astra_3d_surface.dart';
 
 class AssistantScreen extends ConsumerStatefulWidget {
   const AssistantScreen({super.key});
@@ -237,19 +238,25 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen>
       padding: const EdgeInsets.fromLTRB(20, 14, 20, 14),
       decoration: const BoxDecoration(
         color: AstraColors.background,
-        border: Border(bottom: BorderSide(color: AstraColors.borderSoft)),
+        border: Border(bottom: BorderSide(color: AstraColors.borderSoft, width: 1)),
       ),
       child: Row(
         children: [
+          // Avatar: charcoal surface + neutral border — no cyan ring
           Container(
             width: 52,
             height: 52,
             decoration: BoxDecoration(
               color: AstraColors.surface,
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AstraColors.cyan, width: 1),
+              border: Border.all(color: AstraColors.edgeSoft, width: 1),
             ),
-            child: const Icon(Icons.auto_awesome, color: AstraColors.cyan, size: 26),
+            child: Icon(
+              Icons.auto_awesome,
+              // Muted cyan — accent communicates system, not branding
+              color: AstraColors.cyan.withValues(alpha: 0.7),
+              size: 24,
+            ),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -258,28 +265,40 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen>
               children: [
                 Text('ASTRA', style: AstraText.displayM(size: 28)),
                 const SizedBox(height: 2),
-                Text(
-                  state.isLoading
-                      ? 'Thinking...'
-                      : state.isAuthenticated
-                          ? 'Ready · Connected (${state.userEmail})'
-                          : 'Ready · Tap Sign In to connect Google',
-                  style: AstraText.body(
-                    size: 13,
-                    color: state.isLoading
-                        ? AstraColors.cyan
-                        : state.isAuthenticated
-                            ? AstraColors.lime
-                            : AstraColors.textMuted,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+                Row(
+                  children: [
+                    // State dot indicator
+                    Container(
+                      width: 6,
+                      height: 6,
+                      margin: const EdgeInsets.only(right: 6),
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: state.isLoading
+                            ? AstraColors.amber
+                            : state.isAuthenticated
+                                ? AstraColors.lime
+                                : AstraColors.textMuted,
+                      ),
+                    ),
+                    Expanded(
+                      child: Text(
+                        state.isLoading
+                            ? 'Preparing response…'
+                            : state.isAuthenticated
+                                ? 'Connected · ${state.userEmail}'
+                                : 'Tap Sign In to connect Google',
+                        style: AstraText.body(size: 13, color: AstraColors.textMuted),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
           ),
 
-          // ─── Actions: History Drawer, New Chat, Logout ─────────────
           PopupMenuButton<_ChatAction>(
             tooltip: 'Chat options',
             icon: const Icon(Icons.more_horiz, color: AstraColors.textPrimary),
@@ -354,10 +373,13 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen>
             'TODAY\'S TASKS',
             'TOMORROW PANCHANG',
           ].map((cmd) {
+            // Neutral grey 3D — true opaque depth, no transparency
             return Astra3DButton(
-              height: 46,
+              height: 44,
               depth: AstraDepth.small,
-              color: AstraColors.surface2,
+              color: AstraDepthColors.neutralFace,
+              depthColor: AstraDepthColors.neutralDepth,
+              borderColor: AstraDepthColors.neutralBorder,
               textColor: AstraColors.textPrimary,
               onTap: () {
                 _controller.text = cmd;
@@ -406,99 +428,183 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen>
     );
   }
 
+  // Returns the semantic accent color for ASTRA response types
+  Color _accentFor(AssistantMessageType type) => switch (type) {
+        AssistantMessageType.success     => AstraColors.lime,
+        AssistantMessageType.error       => AstraColors.red,
+        AssistantMessageType.syncResult  => AstraColors.lime,
+        AssistantMessageType.emailSummary    => AstraColors.cyan,
+        AssistantMessageType.calendarSummary => AstraColors.violet,
+        _                               => AstraColors.cyan,
+      };
+
   Widget _buildMessageBubble(BuildContext context, AssistantMessage msg) {
     final isUser = msg.isUser;
+    final maxW = MediaQuery.sizeOf(context).width * 0.78;
+
+    if (isUser) {
+      return Align(
+        alignment: Alignment.centerRight,
+        child: Container(
+          margin: const EdgeInsets.only(bottom: 14),
+          constraints: BoxConstraints(maxWidth: maxW),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              // ── Physical lime user bubble ──────────────────────────
+              Astra3DSurface(
+                faceColor: AstraDepthColors.limeFace,
+                depthColor: AstraDepthColors.limeDepth,
+                borderColor: AstraDepthColors.limeBorder,
+                depthOffset: AstraDepth.small,
+                borderRadius: 16,
+                enabled: false, // display only — no interaction
+                hapticOnPress: false,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  child: SelectionArea(
+                    child: Text(
+                      msg.text,
+                      softWrap: true,
+                      overflow: TextOverflow.visible,
+                      style: const TextStyle(
+                        color: Colors.black,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                        height: 1.5,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                DateFormat('h:mm a').format(msg.timestamp),
+                style: const TextStyle(fontSize: 9, color: AstraColors.textMuted),
+              ),
+            ],
+          ),
+        ),
+      ).withPremiumEntry(delayMs: 0);
+    }
+
+    // ── ASTRA response card — charcoal surface + left accent strip ──
+    final accent = _accentFor(msg.messageType);
+    final accentDepth = switch (msg.messageType) {
+      AssistantMessageType.success  => AstraDepthColors.limeDepth,
+      AssistantMessageType.syncResult => AstraDepthColors.limeDepth,
+      AssistantMessageType.error    => AstraDepthColors.redDepth,
+      AssistantMessageType.calendarSummary => AstraDepthColors.violetDepth,
+      _                            => AstraDepthColors.cyanDepth,
+    };
 
     return Align(
-      alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
+      alignment: Alignment.centerLeft,
       child: Container(
-        margin: const EdgeInsets.only(bottom: 12),
-        constraints: BoxConstraints(maxWidth: MediaQuery.sizeOf(context).width * 0.78),
+        margin: const EdgeInsets.only(bottom: 14),
+        constraints: BoxConstraints(maxWidth: maxW),
         child: Column(
-          crossAxisAlignment: isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Card: charcoal body, neutral border, semantic left strip
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
               decoration: BoxDecoration(
-                color: isUser
-                    ? AppTheme.primary
-                    : msg.messageType == AssistantMessageType.error
-                        ? AppTheme.error.withValues(alpha: 0.2)
-                        : msg.messageType == AssistantMessageType.success
-                            ? AppTheme.accentGreen.withValues(alpha: 0.15)
-                            : AppTheme.surfaceElevated,
+                color: AstraColors.surface,
                 borderRadius: BorderRadius.circular(16).copyWith(
-                  bottomRight: isUser ? const Radius.circular(4) : const Radius.circular(16),
-                  bottomLeft: isUser ? const Radius.circular(16) : const Radius.circular(4),
+                  bottomLeft: const Radius.circular(4),
                 ),
-                border: isUser
-                    ? null
-                    : Border.all(
-                        color: msg.messageType == AssistantMessageType.error
-                            ? AppTheme.error.withValues(alpha: 0.4)
-                            : msg.messageType == AssistantMessageType.success
-                                ? AppTheme.accentGreen.withValues(alpha: 0.3)
-                                : AppTheme.secondary.withValues(alpha: 0.2),
-                        width: 1,
-                      ),
+                border: Border.all(color: AstraColors.edgeSoft, width: 1),
+                boxShadow: const [
+                  BoxShadow(color: AstraColors.depth, offset: Offset(0, 4), blurRadius: 0),
+                ],
               ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (!isUser) ...[
-                    Icon(
-                      msg.messageType == AssistantMessageType.error
-                          ? LucideIcons.alertTriangle
-                          : msg.messageType == AssistantMessageType.success
-                              ? LucideIcons.checkCircle
-                              : Icons.auto_awesome,
-                      size: 13,
-                      color: msg.messageType == AssistantMessageType.error
-                          ? AppTheme.error
-                          : msg.messageType == AssistantMessageType.success
-                              ? AppTheme.accentGreen
-                              : AppTheme.secondary,
-                    ),
-                    const SizedBox(width: 7),
-                  ],
-                  Flexible(
-                    child: SelectionArea(
-                      child: Text(
-                        msg.text,
-                        softWrap: true,
-                        overflow: TextOverflow.visible,
-                        style: TextStyle(
-                          color: isUser ? Colors.black : AppTheme.textPrimary,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
-                          height: 1.5,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(15).copyWith(
+                  bottomLeft: const Radius.circular(3),
+                ),
+                child: IntrinsicHeight(
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      // Semantic accent strip (3px left rail)
+                      Container(
+                        width: 3,
+                        decoration: BoxDecoration(
+                          color: accent,
+                          // Extrusion: accent strip has its own depth-colored bottom edge
+                          gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [accent, accentDepth],
+                            stops: const [0.6, 1.0],
+                          ),
                         ),
                       ),
-                    ),
+                      Expanded(
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(12, 11, 12, 11),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Icon(
+                                msg.messageType == AssistantMessageType.error
+                                    ? LucideIcons.alertTriangle
+                                    : msg.messageType == AssistantMessageType.success
+                                        ? LucideIcons.checkCircle
+                                        : Icons.auto_awesome,
+                                size: 13,
+                                color: accent,
+                              ),
+                              const SizedBox(width: 8),
+                              Flexible(
+                                child: SelectionArea(
+                                  child: Text(
+                                    msg.text,
+                                    softWrap: true,
+                                    overflow: TextOverflow.visible,
+                                    style: const TextStyle(
+                                      color: AstraColors.text,
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w400,
+                                      height: 1.55,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.only(left: 4, top: 4),
+              child: Row(
+                children: [
+                  IconButton(
+                    onPressed: () => _copyMessage(msg.text),
+                    tooltip: 'Copy response',
+                    visualDensity: VisualDensity.compact,
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                    icon: const Icon(LucideIcons.copy, size: 13, color: AstraColors.textMuted),
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    DateFormat('h:mm a').format(msg.timestamp),
+                    style: const TextStyle(fontSize: 9, color: AstraColors.textMuted),
                   ),
                 ],
               ),
             ),
-            if (!isUser)
-              Align(
-                alignment: Alignment.centerLeft,
-                child: IconButton(
-                  onPressed: () => _copyMessage(msg.text),
-                  tooltip: 'Copy response',
-                  visualDensity: VisualDensity.compact,
-                  icon: const Icon(LucideIcons.copy, size: 14, color: AppTheme.textMuted),
-                ),
-              ),
             if (msg.emails != null && msg.emails!.isNotEmpty)
               _buildEmailSummaryCard(msg.emails!),
             if (msg.calendarEvents != null && msg.calendarEvents!.isNotEmpty)
               _buildCalendarSummaryCard(msg.calendarEvents!),
-            const SizedBox(height: 2),
-            Text(
-              DateFormat('h:mm a').format(msg.timestamp),
-              style: const TextStyle(fontSize: 9, color: AppTheme.textMuted),
-            ),
           ],
         ),
       ),
@@ -661,26 +767,59 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen>
   // ─── Thinking Indicator ────────────────────────────────────────────────────
 
   Widget _buildThinkingIndicator() {
+    // Charcoal card + left cyan accent strip — consistent with ASTRA response card design
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 6),
       child: Align(
         alignment: Alignment.centerLeft,
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
           decoration: BoxDecoration(
-            color: AppTheme.surfaceElevated,
+            color: AstraColors.surface,
             borderRadius: BorderRadius.circular(14).copyWith(
               bottomLeft: const Radius.circular(4),
             ),
-            border: Border.all(color: AppTheme.secondary.withValues(alpha: 0.25)),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(Icons.auto_awesome, size: 12, color: AppTheme.secondary),
-              const SizedBox(width: 7),
-              _ThinkingDots(controller: _dotCtrl),
+            border: Border.all(color: AstraColors.edgeSoft, width: 1),
+            boxShadow: const [
+              BoxShadow(color: AstraColors.depth, offset: Offset(0, 3), blurRadius: 0),
             ],
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(13).copyWith(
+              bottomLeft: const Radius.circular(3),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Cyan accent strip
+                Container(
+                  width: 3,
+                  height: 36,
+                  decoration: const BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [AstraColors.cyan, AstraDepthColors.cyanDepth],
+                      stops: [0.6, 1.0],
+                    ),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.auto_awesome,
+                        size: 12,
+                        color: AstraColors.cyan.withValues(alpha: 0.7),
+                      ),
+                      const SizedBox(width: 8),
+                      _ThinkingDots(controller: _dotCtrl),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -691,57 +830,49 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen>
 
   Widget _buildInputBar(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+      padding: const EdgeInsets.fromLTRB(12, 10, 12, 14),
       decoration: const BoxDecoration(
-        color: AppTheme.surface,
-        border: Border(top: BorderSide(color: AppTheme.borderFaint)),
+        color: AstraColors.surface,
+        border: Border(top: BorderSide(color: AstraColors.edgeSoft, width: 1)),
       ),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.end,
         children: [
           Expanded(
             child: Container(
               decoration: BoxDecoration(
-                color: AppTheme.surfaceElevated,
-                borderRadius: BorderRadius.circular(24),
-                border: Border.all(color: AppTheme.borderSubtle),
+                color: AstraColors.surface2,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: AstraColors.edgeSoft, width: 1),
               ),
               child: TextField(
                 controller: _controller,
-                style: const TextStyle(color: AppTheme.textPrimary, fontSize: 14),
+                style: const TextStyle(color: AstraColors.text, fontSize: 14),
                 decoration: const InputDecoration(
-                  hintText: 'Ask ASTRA or type command...',
-                  hintStyle: TextStyle(color: AppTheme.textMuted, fontSize: 13),
+                  hintText: 'Ask ASTRA or type a command…',
+                  hintStyle: TextStyle(color: AstraColors.textMuted, fontSize: 13),
                   border: InputBorder.none,
-                  contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 11),
+                  contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 ),
                 onSubmitted: (_) => _sendInput(),
                 textCapitalization: TextCapitalization.sentences,
+                maxLines: null,
               ),
             ),
           ),
           const SizedBox(width: 10),
-          AstraPressScale(
+          // Send: lime face + olive depth + neutral border — NO gradient, NO glow
+          Astra3DIconButton(
+            icon: LucideIcons.send,
+            iconSize: 18,
+            size: 46,
+            depth: AstraDepth.small,
+            faceColor: AstraDepthColors.limeFace,
+            depthColor: AstraDepthColors.limeDepth,
+            borderColor: AstraDepthColors.limeBorder,
+            iconColor: Colors.black,
+            borderRadius: AstraRadii.md,
             onTap: _sendInput,
-            child: Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [AppTheme.primary, AppTheme.accentPurple],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: BorderRadius.circular(14),
-                boxShadow: [
-                  BoxShadow(
-                    color: AppTheme.primary.withValues(alpha: 0.3),
-                    blurRadius: 12,
-                    spreadRadius: -4,
-                  ),
-                ],
-              ),
-              child: const Icon(LucideIcons.send, size: 18, color: Colors.black),
-            ),
           ),
         ],
       ),
