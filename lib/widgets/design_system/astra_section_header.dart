@@ -1,31 +1,34 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import '../../theme/app_theme.dart';
 
-/// Premium section header with optional accent bar and trailing widget.
+/// Section header with vertical lime indicator pill and display header text.
 class AstraSectionHeader extends StatelessWidget {
   final String title;
+  final String? action;
   final Widget? trailing;
   final bool showAccentBar;
   final Color? accentColor;
+  final VoidCallback? onActionTap;
 
   const AstraSectionHeader({
     super.key,
     required this.title,
+    this.action,
     this.trailing,
-    this.showAccentBar = false,
+    this.showAccentBar = true,
     this.accentColor,
+    this.onActionTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    final color = accentColor ?? AppTheme.primary;
+    final color = accentColor ?? AstraColors.lime;
     return Row(
       children: [
         if (showAccentBar) ...[
           Container(
-            width: 3,
-            height: 16,
+            width: 4,
+            height: 28,
             decoration: BoxDecoration(
               color: color,
               borderRadius: BorderRadius.circular(2),
@@ -36,17 +39,20 @@ class AstraSectionHeader extends StatelessWidget {
         Expanded(
           child: Text(
             title.toUpperCase(),
-            style: GoogleFonts.montserrat(
-              fontSize: 11,
-              fontWeight: FontWeight.w700,
-              color: AppTheme.textMuted,
-              letterSpacing: 1.2,
-            ),
+            style: AstraText.displayM(color: AstraColors.textPrimary),
           ),
         ),
+        if (action != null)
+          GestureDetector(
+            onTap: onActionTap,
+            child: Text(
+              action!,
+              style: AstraText.label(color: AstraColors.cyan, size: 13),
+            ),
+          ),
         ?trailing,
-
       ],
     );
   }
 }
+

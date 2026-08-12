@@ -85,7 +85,7 @@ class GoogleAuthService {
   /// Obtains an authenticated HTTP client for googleapis calls.
   Future<auth.AuthClient?> getAuthenticatedClient() async {
     if (_authClient != null) return _authClient;
-    _currentUser ??= await _googleSignIn.signInSilently();
+    _currentUser ??= await signInSilently();
     if (_currentUser != null) {
       _authClient = await _googleSignIn.authenticatedClient();
     }

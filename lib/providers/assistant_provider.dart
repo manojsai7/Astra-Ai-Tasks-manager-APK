@@ -7,6 +7,7 @@ import '../features/scheduler/domain/services/ai_life_scheduler_service.dart';
 import '../models/task.dart';
 import 'ritual_provider.dart';
 import 'task_provider.dart';
+import '../services/panchang_service.dart';
 
 import '../features/scheduler/data/services/gemini_chat_service.dart';
 import '../features/scheduler/data/services/gemini_context_extractor.dart';
@@ -178,8 +179,28 @@ class AssistantNotifier extends StateNotifier<AssistantState> {
         return;
       }
 
+      if (lower.contains('last mail') || lower.contains('last email') || lower.contains('latest mail') || lower.contains('latest email') || lower.contains('newest email')) {
+        await handleLatestInboxEmail();
+        return;
+      }
+
+      if (lower.contains('important mail') || lower.contains('important email') || lower.contains('important inbox')) {
+        await handleSyncEmails();
+        return;
+      }
+
       if (lower.contains('sync calendar') || lower.contains('check calendar') || lower.contains('fetch calendar')) {
         await handleSyncCalendar();
+        return;
+      }
+
+      if (lower.contains('today meeting') || lower.contains('today calendar') || lower.contains('what is on my calendar') || lower.contains('next meeting')) {
+        await handleTodayCalendar();
+        return;
+      }
+
+      if (lower.contains('panchang') || lower.contains('ekadashi') || lower.contains('amavasya') || lower.contains('purnima') || lower.contains('chaturdashi') || lower.contains('shivaratri')) {
+        handlePanchangQuery();
         return;
       }
 
@@ -298,6 +319,26 @@ class AssistantNotifier extends StateNotifier<AssistantState> {
     );
   }
 
+  Future<void> handleLatestInboxEmail() async {
+    final auth = ref.read(googleAuthServiceProvider);
+    final client = await auth.getAuthenticatedClient();
+    if (client == null) {
+      addMessage('Please sign in with Google first so I can read your inbox.', type: AssistantMessageType.auth);
+      return;
+    }
+
+    final email = await ref.read(gmailSyncServiceProvider).fetchLatestInboxEmail(client);
+    if (email == null) {
+      addMessage('Your inbox does not have a readable recent message.', type: AssistantMessageType.info);
+      return;
+    }
+    addMessage(
+      'Latest inbox email\n\nFrom: ${email.sender}\nSubject: ${email.subject}\nReceived: ${DateFormat('MMM d, h:mm a').format(email.date)}\n\n${email.snippet.isEmpty ? email.bodyText : email.snippet}',
+      type: AssistantMessageType.emailSummary,
+      emails: [email],
+    );
+  }
+
   Future<void> handleSyncCalendar() async {
     final auth = ref.read(googleAuthServiceProvider);
     final client = await auth.getAuthenticatedClient();
@@ -326,6 +367,31 @@ class AssistantNotifier extends StateNotifier<AssistantState> {
       type: AssistantMessageType.calendarSummary,
       calendarEvents: events,
     );
+  }
+
+  Future<void> handleTodayCalendar() async {
+    final auth = ref.read(googleAuthServiceProvider);
+    final client = await auth.getAuthenticatedClient();
+    if (client == null) {
+      addMessage('Please sign in with Google first so I can check your calendar.', type: AssistantMessageType.auth);
+      return;
+    }
+    final events = await ref.read(calendarSyncServiceProvider).fetchUpcomingEvents(client, daysAhead: 1);
+    if (events.isEmpty) {
+      addMessage('Your calendar is clear for the next day.', type: AssistantMessageType.info);
+      return;
+    }
+    addMessage('Here is what is coming up next:', type: AssistantMessageType.calendarSummary, calendarEvents: events);
+  }
+
+  void handlePanchangQuery() {
+    final events = PanchangService.getUpcomingEvents(months: 3);
+    if (events.isEmpty) {
+      addMessage('Panchang events are unavailable right now.', type: AssistantMessageType.info);
+      return;
+    }
+    final lines = events.take(6).map((event) => '${event.displayName} — ${DateFormat('EEE, d MMM').format(event.eventDate)}\n${event.description}').join('\n\n');
+    addMessage('Upcoming Panchang\n\n$lines', type: AssistantMessageType.info);
   }
 
   Future<void> handleFullSync() async {

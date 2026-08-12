@@ -13,18 +13,7 @@ class AuthScreen extends ConsumerWidget {
     final notifier = ref.read(authProvider.notifier);
 
     return Scaffold(
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              AppTheme.background,
-              AppTheme.surface,
-            ],
-          ),
-        ),
-        child: SafeArea(
+      body: SafeArea(
           child: Padding(
             padding: const EdgeInsets.all(AppTheme.s24),
             child: Column(
@@ -38,21 +27,19 @@ class AuthScreen extends ConsumerWidget {
                   height: 100,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    gradient: const LinearGradient(
-                      colors: [AppTheme.primary, AppTheme.secondary],
-                    ),
+                    color: AppTheme.surfaceRaised,
                     boxShadow: [
                       BoxShadow(
-                        color: AppTheme.primary.withValues(alpha: 0.4),
-                        blurRadius: 30,
-                        spreadRadius: -5,
+                        color: Colors.black.withValues(alpha: 0.7),
+                        blurRadius: 0,
+                        offset: const Offset(0, 6),
                       ),
                     ],
                   ),
                   child: const Icon(
                     Icons.auto_awesome,
                     size: 50,
-                    color: Colors.white,
+                    color: AppTheme.primary,
                   ),
                 ),
                 const SizedBox(height: AppTheme.s32),
@@ -91,11 +78,11 @@ class AuthScreen extends ConsumerWidget {
                             width: 24,
                             height: 24,
                             child: CircularProgressIndicator(
-                              color: Colors.white,
+                              color: AppTheme.primary,
                               strokeWidth: 2,
                             ),
                           )
-                        : const Icon(Icons.g_mobiledata, color: Colors.white, size: 28),
+                        : const Icon(Icons.g_mobiledata, color: AppTheme.textPrimary, size: 28),
                     label: Text(
                       authState.isLoading ? 'Signing in...' : 'Sign in with Google',
                       style: const TextStyle(
@@ -104,12 +91,14 @@ class AuthScreen extends ConsumerWidget {
                       ),
                     ),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: AppTheme.primary,
-                      foregroundColor: Colors.white,
+                      backgroundColor: AppTheme.surfaceRaised,
+                      foregroundColor: AppTheme.textPrimary,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(AppTheme.r16),
                       ),
-                      elevation: 0,
+                      elevation: 5,
+                      shadowColor: Colors.black,
+                      side: const BorderSide(color: AppTheme.borderSubtle),
                     ),
                   ),
                 ),
@@ -167,7 +156,6 @@ class AuthScreen extends ConsumerWidget {
             ),
           ),
         ),
-      ),
     );
   }
 }

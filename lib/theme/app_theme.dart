@@ -1,36 +1,167 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+abstract final class AstraColors {
+  static const background = Color(0xFF151515);
+
+  static const surface0 = Color(0xFF1B1B1B);
+  static const surface1 = Color(0xFF242424);
+  static const surface = Color(0xFF242424);
+  static const surface2 = Color(0xFF2B2B2B);
+  static const surfaceElevated = Color(0xFF2B2B2B);
+  static const surface3 = Color(0xFF303030);
+  static const surfaceGlass = Color(0xFF303030);
+  static const surfaceRaised = Color(0xFF363636);
+
+  static const border = Color(0xFF464646);
+  static const borderSubtle = Color(0xFF4A4A4A);
+  static const edge = Color(0xFF4A4A4A);
+  static const borderSoft = Color(0xFF363636);
+  static const borderFaint = Color(0xFF383838);
+  static const edgeSoft = Color(0xFF383838);
+
+  static const depth = Color(0xFF0C0C0C);
+
+  static const textPrimary = Color(0xFFF2F2EE);
+  static const text = Color(0xFFF2F2EE);
+  static const textSecondary = Color(0xFF969696);
+  static const textMuted = Color(0xFF8C8C8C);
+  static const textDisabled = Color(0xFF5F5F5F);
+  static const textDim = Color(0xFF666666);
+
+  static const lime = Color(0xFFB6FF00);
+  static const cyan = Color(0xFF20B7D8);
+  static const amber = Color(0xFFFFC64D);
+  static const red = Color(0xFFF04A4A);
+  static const violet = Color(0xFF8F7BFF);
+}
+
+abstract final class AstraAccent {
+  static const primary = AstraColors.lime;
+  static const panchangLunar = AstraColors.violet;
+  static const sunrise = AstraColors.amber;
+  static const urgent = AstraColors.red;
+  static const info = AstraColors.cyan;
+}
+
+abstract final class AstraDepth {
+  static const small = 3.0;
+  static const medium = 6.0;
+  static const large = 8.0;
+}
+
+abstract final class AstraSpacing {
+  static const xs = 6.0;
+  static const sm = 10.0;
+  static const md = 16.0;
+  static const lg = 22.0;
+  static const xl = 30.0;
+  static const xxl = 42.0;
+}
+
+abstract final class AstraRadii {
+  static const sm = 10.0;
+  static const md = 16.0;
+  static const lg = 20.0;
+  static const pill = 999.0;
+}
+
+abstract final class AstraMotion {
+  static const fast = Duration(milliseconds: 110);
+  static const press = Duration(milliseconds: 110);
+  static const normal = Duration(milliseconds: 220);
+  static const standard = Duration(milliseconds: 220);
+  static const page = Duration(milliseconds: 300);
+  static const slow = Duration(milliseconds: 420);
+
+  static const pressCurve = Curves.easeOut;
+  static const standardCurve = Curves.easeOutCubic;
+  static const curve = Curves.easeOutCubic;
+}
+
+enum PanchangVisualType { lunar, solar, festival, fasting, auspicious, warning }
+
+abstract final class PanchangTheme {
+  static Color colorFor(PanchangVisualType type) => switch (type) {
+        PanchangVisualType.lunar => AstraColors.violet,
+        PanchangVisualType.solar => AstraColors.amber,
+        PanchangVisualType.festival => AstraColors.cyan,
+        PanchangVisualType.fasting => AstraColors.lime,
+        PanchangVisualType.auspicious => AstraColors.lime,
+        PanchangVisualType.warning => AstraColors.red,
+      };
+}
+
+abstract final class AstraText {
+  static TextStyle displayXL({Color color = AstraColors.textPrimary, double size = 56}) =>
+      GoogleFonts.bebasNeue(fontSize: size, height: .92, letterSpacing: .5, color: color);
+
+  static TextStyle displayL({Color color = AstraColors.textPrimary, double size = 42}) =>
+      GoogleFonts.bebasNeue(fontSize: size, height: .92, letterSpacing: .5, color: color);
+
+  static TextStyle displayM({Color color = AstraColors.textPrimary, double size = 30}) =>
+      GoogleFonts.bebasNeue(fontSize: size, height: .95, letterSpacing: .5, color: color);
+
+  static TextStyle section({Color color = AstraColors.textPrimary, double size = 24}) =>
+      GoogleFonts.bebasNeue(fontSize: size, height: 1.0, letterSpacing: .5, color: color);
+
+  static TextStyle body({Color color = AstraColors.textPrimary, double size = 16}) =>
+      GoogleFonts.inter(fontSize: size, height: 1.25, color: color);
+
+  static TextStyle label({Color color = AstraColors.textSecondary, double size = 14}) =>
+      GoogleFonts.inter(fontSize: size, fontWeight: FontWeight.w600, letterSpacing: 1.1, color: color);
+
+  static TextStyle caption({Color color = AstraColors.textDisabled, double size = 12}) =>
+      GoogleFonts.inter(fontSize: size, fontWeight: FontWeight.w500, color: color);
+
+  static TextStyle metric({Color color = AstraColors.textPrimary, double size = 15}) =>
+      GoogleFonts.inter(fontSize: size, fontWeight: FontWeight.w700, color: color);
+}
+
+class AstraTheme {
+  static ThemeData dark() => AppTheme.darkTheme;
+
+  static TextStyle display({double size = 42, Color color = AstraColors.textPrimary}) =>
+      GoogleFonts.bebasNeue(fontSize: size, height: .92, letterSpacing: .5, color: color);
+
+  static TextStyle label({double size = 14, Color color = AstraColors.textMuted}) =>
+      GoogleFonts.inter(fontSize: size, fontWeight: FontWeight.w600, letterSpacing: 1.1, color: color);
+
+  static TextStyle body({double size = 16, Color color = AstraColors.textPrimary}) =>
+      GoogleFonts.inter(fontSize: size, height: 1.25, color: color);
+}
+
 class AppTheme {
   // ─── Colors (Matiks-inspired) ──────────────────────────
-  static const Color background = Color(0xFF171717);
+  static const Color background = Color(0xFF151515);
   static const Color surface = Color(0xFF242424);
   static const Color surfaceElevated = Color(0xFF2B2B2B);
-  static const Color surfaceGlass = Color(0xFF343434);
-  static const Color surfaceRaised = Color(0xFF3D3D3D);
+  static const Color surfaceGlass = Color(0xFF303030);
+  static const Color surfaceRaised = Color(0xFF363636);
 
-  static const Color primary = Color(0xFFC0FF03);
-  static const Color primaryLight = Color(0xFFD7FF62);
-  static const Color primaryDark = Color(0xFF8EB800);
+  // Solidified Lime (tactile & balanced, not blinding neon)
+  static const Color primary = Color(0xFFAEDB00);
+  static const Color primaryLight = Color(0xFFC6ED52);
+  static const Color primaryDark = Color(0xFF6D8900);
 
-  static const Color secondary = Color(0xFF38C7E8);
+  static const Color secondary = Color(0xFF20B7D8);
   static const Color secondaryLight = Color(0xFF76DCF1);
 
-  static const Color accent = Color(0xFFC9A560);
-  static const Color accentGreen = Color(0xFFB8FF00);
+  static const Color accent = Color(0xFFFFC64D);
+  static const Color accentGreen = Color(0xFFAEDB00);
   static const Color accentOrange = Color(0xFFC9874F);
-  static const Color accentPurple = Color(0xFF77718C);
+  static const Color accentPurple = Color(0xFF8F7BFF);
 
   static const Color success = Color(0xFF6EAE87);
-  static const Color warning = Color(0xFFC9A560);
-  static const Color error = Color(0xFFD96767);
+  static const Color warning = Color(0xFFFFC64D);
+  static const Color error = Color(0xFFF04A4A);
 
   static const Color textPrimary = Color(0xFFF9F9F4);
   static const Color textSecondary = Color(0xFFB8B8B0);
-  static const Color textMuted = Color(0xFF7F7F79);
+  static const Color textMuted = Color(0xFF8C8C8C);
 
-  static const Color borderSubtle = Color(0xFF444440);
-  static const Color borderFaint = Color(0xFF30302D);
+  static const Color borderSubtle = Color(0xFF4A4A4A);
+  static const Color borderFaint = Color(0xFF383838);
 
   // ─── Typography ──────────────────────────────────────────
   static const String displayFont = 'BebasNeue';

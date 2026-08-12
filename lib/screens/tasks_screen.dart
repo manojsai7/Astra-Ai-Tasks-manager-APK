@@ -10,6 +10,8 @@ import '../theme/app_theme.dart';
 import '../core/motion.dart';
 import '../services/notification_service.dart';
 import '../widgets/design_system/astra_section_header.dart';
+import '../widgets/design_system/astra_3d_button.dart';
+import '../widgets/design_system/astra_card.dart';
 
 class TasksScreen extends ConsumerStatefulWidget {
   const TasksScreen({super.key});
@@ -350,49 +352,35 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
                 child: SafeArea(
                   bottom: false,
                   child: Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
+                    padding: const EdgeInsets.fromLTRB(20, 18, 20, 0),
                     child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.end,
+                      crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'TASKS',
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .displaySmall
-                                  ?.copyWith(
-                                    letterSpacing: 2,
-                                    color: AppTheme.textPrimary,
-                                  ),
-                            ),
-                            Text(
-                              '${tasks.where((t) => !t.isCompleted).length} remaining · ${tasks.length} total',
-                              style: TextStyle(
-                                  fontSize: 12, color: AppTheme.textMuted),
-                            ),
-                          ],
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'TASKS',
+                                style: AstraText.displayL(size: 34),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                '${tasks.where((t) => !t.isCompleted).length} remaining · ${tasks.length} total',
+                                style: AstraText.body(size: 15, color: AstraColors.textMuted),
+                              ),
+                            ],
+                          ),
                         ),
-                        const Spacer(),
-                        GestureDetector(
-                          onTap: _showAddTaskDialog,
-                          child: Container(
-                            width: 42,
-                            height: 42,
-                            decoration: BoxDecoration(
-                              color: AppTheme.primary,
-                              borderRadius: BorderRadius.circular(12),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: AppTheme.primary.withAlpha(60),
-                                  blurRadius: 12,
-                                  spreadRadius: -4,
-                                ),
-                              ],
-                            ),
-                            child: const Icon(LucideIcons.plus,
-                                size: 20, color: Colors.white),
+                        SizedBox(
+                          width: 58,
+                          height: 58,
+                          child: Astra3DButton(
+                            height: 52,
+                            depth: AstraDepth.medium,
+                            color: AstraColors.lime,
+                            onTap: _showAddTaskDialog,
+                            child: const Icon(Icons.add_rounded, size: 30, color: Colors.black),
                           ),
                         ),
                       ],
@@ -401,7 +389,7 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
                 ).animate().fadeIn(duration: 400.ms),
               ),
 
-              SliverToBoxAdapter(child: const SizedBox(height: 20)),
+              SliverToBoxAdapter(child: const SizedBox(height: 24)),
 
               // Task sections
               if (tasks.isEmpty)
@@ -572,64 +560,51 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Container(
-            width: 80,
-            height: 80,
+            width: 96,
+            height: 96,
             decoration: BoxDecoration(
-              color: AppTheme.primary.withAlpha(15),
-              shape: BoxShape.circle,
-              border: Border.all(color: AppTheme.primary.withAlpha(40), width: 1),
+              color: AstraColors.surface,
+              borderRadius: BorderRadius.circular(30),
+              border: Border.all(color: AstraColors.edgeSoft),
+              boxShadow: const [
+                BoxShadow(color: AstraColors.depth, offset: Offset(0, 6), blurRadius: 0),
+              ],
             ),
-            child: const Icon(LucideIcons.checkSquare,
-                size: 36, color: AppTheme.primary),
+            child: const Icon(Icons.task_alt_rounded, color: AstraColors.lime, size: 52),
           ),
-          const SizedBox(height: 20),
-          const Text(
-            'No tasks yet',
-            style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.w600,
-                color: AppTheme.textPrimary),
+          const SizedBox(height: 22),
+          Text(
+            'NO TASKS YET',
+            style: AstraText.displayM(size: 28),
           ),
           const SizedBox(height: 8),
-          const Text(
+          Text(
             'Your plan is empty.\nTap + to add your first task.',
-            style: TextStyle(
-                fontSize: 13, color: AppTheme.textMuted, height: 1.6),
             textAlign: TextAlign.center,
+            style: AstraText.body(size: 15, color: AstraColors.textMuted),
           ),
           const SizedBox(height: 24),
-          GestureDetector(
-            onTap: _showAddTaskDialog,
-            child: Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-              decoration: BoxDecoration(
-                color: AppTheme.primary,
-                borderRadius: BorderRadius.circular(12),
-                boxShadow: [
-                  BoxShadow(
-                      color: AppTheme.primary.withAlpha(60),
-                      blurRadius: 16,
-                      spreadRadius: -4),
-                ],
-              ),
-              child: const Row(
-                mainAxisSize: MainAxisSize.min,
+          SizedBox(
+            width: 220,
+            child: Astra3DButton(
+              height: 54,
+              depth: AstraDepth.medium,
+              color: AstraColors.lime,
+              textColor: Colors.black,
+              onTap: _showAddTaskDialog,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(LucideIcons.plus, size: 18, color: Colors.white),
-                  SizedBox(width: 8),
-                  Text('Add First Task',
-                      style: TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w600,
-                          fontSize: 14)),
+                  const Icon(Icons.add_rounded, color: Colors.black, size: 22),
+                  const SizedBox(width: 8),
+                  Text('ADD FIRST TASK', style: AstraText.label(size: 12, color: Colors.black)),
                 ],
               ),
             ),
           ),
         ],
       ),
-    ).withPremiumEntry();
+    ).animate().fadeIn(duration: 500.ms);
   }
 }
 
@@ -715,21 +690,16 @@ class _TaskCard extends StatelessWidget {
         task.dueDate != null &&
         task.dueDate!.isBefore(DateTime.now());
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      decoration: BoxDecoration(
-        color: AppTheme.surfaceElevated,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: task.isCompleted
-              ? AppTheme.borderFaint
-              : isOverdue
-                  ? AppTheme.error.withAlpha(50)
-                  : color.withAlpha(30),
-          width: 1,
-        ),
-      ),
-      child: Row(
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: AstraCard(
+        padding: EdgeInsets.zero,
+        borderColor: task.isCompleted
+            ? AstraColors.borderSoft
+            : isOverdue
+                ? AstraColors.red.withValues(alpha: .5)
+                : color.withValues(alpha: .3),
+        child: Row(
         children: [
           // Priority strip
           Container(
@@ -874,6 +844,7 @@ class _TaskCard extends StatelessWidget {
           const SizedBox(width: 8),
         ],
       ),
-    );
-  }
+    ),
+  );
+}
 }

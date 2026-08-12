@@ -60,6 +60,23 @@ class GmailSyncService {
     return result;
   }
 
+  /// Fetches the newest inbox message directly. This is intentionally separate
+  /// from task extraction so questions such as "what is my latest mail?" never
+  /// need to fall back to an LLM that cannot see the mailbox.
+  Future<GmailMessageData?> fetchLatestInboxEmail(auth.AuthClient client) async {
+    final gmailApi = gmail.GmailApi(client);
+    final response = await gmailApi.users.messages.list(
+      'me',
+      q: 'in:inbox',
+      maxResults: 1,
+    );
+    final messages = response.messages ?? [];
+    final id = messages.isEmpty ? null : messages.first.id;
+    if (id == null) return null;
+    final message = await gmailApi.users.messages.get('me', id, format: 'full');
+    return _parseMessage(message);
+  }
+
   /// Parses a Gmail [Message] into structured data.
   GmailMessageData? _parseMessage(gmail.Message message) {
     final payload = message.payload;

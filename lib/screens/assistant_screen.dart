@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../theme/app_theme.dart';
+import '../widgets/design_system/astra_card.dart';
 import '../providers/assistant_provider.dart';
 import '../providers/chat_session_provider.dart';
 import '../features/scheduler/data/services/gmail_sync_service.dart';
@@ -52,6 +54,14 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen>
         );
       }
     });
+  }
+
+  Future<void> _copyMessage(String text) async {
+    await Clipboard.setData(ClipboardData(text: text));
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Response copied'), duration: Duration(seconds: 2)),
+    );
   }
 
   Future<void> _sendInput() async {
@@ -220,58 +230,47 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen>
 
   // ─── Header Component ──────────────────────────────────────────────────────
 
+  // ─── Header Component ──────────────────────────────────────────────────────
+
   Widget _buildHeader(BuildContext context, AssistantState state) {
     return Container(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+      padding: const EdgeInsets.fromLTRB(20, 14, 20, 14),
       decoration: const BoxDecoration(
-        border: Border(bottom: BorderSide(color: AppTheme.borderFaint)),
+        color: AstraColors.background,
+        border: Border(bottom: BorderSide(color: AstraColors.borderSoft)),
       ),
       child: Row(
         children: [
           Container(
-            width: 38,
-            height: 38,
+            width: 52,
+            height: 52,
             decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  AppTheme.secondary.withValues(alpha: 0.3),
-                  AppTheme.accentPurple.withValues(alpha: 0.2),
-                ],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: AppTheme.secondary.withValues(alpha: 0.5)),
+              color: AstraColors.surface,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: AstraColors.cyan, width: 1),
             ),
-            child: const Icon(Icons.auto_awesome, size: 18, color: AppTheme.secondary),
+            child: const Icon(Icons.auto_awesome, color: AstraColors.cyan, size: 26),
           ),
-          const SizedBox(width: 10),
+          const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  'ASTRA',
-                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                        letterSpacing: 1.5,
-                        color: AppTheme.textPrimary,
-                        fontSize: 20,
-                      ),
-                ),
+                Text('ASTRA', style: AstraText.displayM(size: 28)),
+                const SizedBox(height: 2),
                 Text(
                   state.isLoading
-                      ? 'thinking...'
+                      ? 'Thinking...'
                       : state.isAuthenticated
-                          ? '● ${state.userEmail ?? "Connected"}'
-                          : 'ready · Tap Sign In to connect Google',
-                  style: TextStyle(
-                    fontSize: 10,
+                          ? 'Ready · Connected (${state.userEmail})'
+                          : 'Ready · Tap Sign In to connect Google',
+                  style: AstraText.body(
+                    size: 13,
                     color: state.isLoading
-                        ? AppTheme.secondary
+                        ? AstraColors.cyan
                         : state.isAuthenticated
-                            ? AppTheme.accentGreen
-                            : AppTheme.textMuted,
-                    fontWeight: FontWeight.w500,
+                            ? AstraColors.lime
+                            : AstraColors.textMuted,
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -283,8 +282,8 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen>
           // ─── Actions: History Drawer, New Chat, Logout ─────────────
           PopupMenuButton<_ChatAction>(
             tooltip: 'Chat options',
-            icon: const Icon(Icons.more_horiz, color: AppTheme.textPrimary),
-            color: AppTheme.surfaceElevated,
+            icon: const Icon(Icons.more_horiz, color: AstraColors.textPrimary),
+            color: AstraColors.surface2,
             onSelected: (action) async {
               switch (action) {
                 case _ChatAction.history:
@@ -307,7 +306,7 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen>
               PopupMenuItem(value: _ChatAction.history, child: _ChatMenuItem(icon: LucideIcons.history, label: 'Chat history')),
               PopupMenuItem(value: _ChatAction.newChat, child: _ChatMenuItem(icon: LucideIcons.plusCircle, label: 'New chat')),
               PopupMenuDivider(),
-              PopupMenuItem(value: _ChatAction.logout, child: _ChatMenuItem(icon: LucideIcons.logOut, label: 'Sign out', color: AppTheme.error)),
+              PopupMenuItem(value: _ChatAction.logout, child: _ChatMenuItem(icon: LucideIcons.logOut, label: 'Sign out', color: AstraColors.red)),
             ],
           ),
         ],
@@ -318,111 +317,78 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen>
   // ─── Empty State Component ─────────────────────────────────────────────────
 
   Widget _buildEmptyState(BuildContext context, AssistantState state) {
-    final suggestions = [
-      if (!state.isAuthenticated) 'Sign in with Google',
-      'Sync all',
-      'Sync my emails',
-      'Sync calendar',
-      'List my tasks',
-      'Remind me to apply for Google Internship',
-    ];
-
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(24),
-      child: Column(
-        children: [
-          const SizedBox(height: 20),
-          Container(
-            width: 68,
-            height: 68,
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  AppTheme.secondary.withValues(alpha: 0.25),
-                  AppTheme.accentPurple.withValues(alpha: 0.2),
-                ],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(20, 18, 20, 18),
+      physics: const BouncingScrollPhysics(),
+      children: [
+        // Ready Card
+        AstraCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Icon(Icons.auto_awesome, color: AstraColors.cyan, size: 28),
+              const SizedBox(height: 14),
+              Text('Your assistant is ready.', style: AstraText.body(size: 20)),
+              const SizedBox(height: 8),
+              Text(
+                state.isAuthenticated
+                    ? 'Connected as ${state.userEmail}.\nAsk about tasks, calendar, mail, focus sessions or Panchang.'
+                    : 'Ask about tasks, calendar, mail, focus sessions or Panchang.',
+                style: AstraText.body(size: 15, color: AstraColors.textMuted),
               ),
-              shape: BoxShape.circle,
-              border: Border.all(color: AppTheme.secondary.withValues(alpha: 0.5)),
-            ),
-            child: const Icon(Icons.auto_awesome, size: 30, color: AppTheme.secondary),
-          ).animate().scale(duration: 600.ms, curve: Curves.elasticOut),
-          const SizedBox(height: 14),
-          Text(
-            'AI Life Scheduler',
-            style: Theme.of(context)
-                .textTheme
-                .titleLarge
-                ?.copyWith(color: AppTheme.textPrimary, fontWeight: FontWeight.bold),
+            ],
           ),
-          const SizedBox(height: 6),
-          Text(
-            state.isAuthenticated
-                ? 'Connected as ${state.userEmail}\nAsk me anything or let me organize your day.'
-                : 'Sign in with Google to automatically pull tasks from your emails and calendar.',
-            style: const TextStyle(fontSize: 12, color: AppTheme.textMuted, height: 1.5),
-            textAlign: TextAlign.center,
+        ),
+        const SizedBox(height: 24),
+
+        // Quick Commands Header & 3D Buttons
+        Text('QUICK COMMANDS', style: AstraText.displayM(size: 28)),
+        const SizedBox(height: 14),
+        Wrap(
+          spacing: 10,
+          runSpacing: 10,
+          children: [
+            if (!state.isAuthenticated) 'SIGN IN WITH GOOGLE',
+            'SYNC ALL',
+            'LAST MAIL',
+            'TODAY\'S TASKS',
+            'TOMORROW PANCHANG',
+          ].map((cmd) {
+            return Astra3DButton(
+              height: 46,
+              depth: AstraDepth.small,
+              color: AstraColors.surface2,
+              textColor: AstraColors.textPrimary,
+              onTap: () {
+                _controller.text = cmd;
+                _sendInput();
+              },
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 14),
+                child: Text(cmd, style: AstraText.label(size: 11, color: AstraColors.textPrimary)),
+              ),
+            );
+          }).toList(),
+        ),
+
+        const SizedBox(height: 30),
+
+        // System Status Card
+        AstraCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('SYSTEM STATUS', style: AstraText.displayM(size: 24)),
+              const SizedBox(height: 14),
+              _SystemRow('Intent engine', 'Ready', AstraColors.lime),
+              _SystemRow('Tool routing', 'Ready', AstraColors.lime),
+              _SystemRow('Panchang brain', 'Ready', AstraColors.lime),
+              _SystemRow('Fallback model', 'Standby', AstraColors.amber),
+            ],
           ),
-          const SizedBox(height: 24),
-          const Text(
-            'SUGGESTED COMMANDS',
-            style: TextStyle(
-              fontSize: 9,
-              fontWeight: FontWeight.w700,
-              color: AppTheme.textMuted,
-              letterSpacing: 1.4,
-            ),
-          ),
-          const SizedBox(height: 12),
-          ...suggestions.map((s) => GestureDetector(
-                onTap: () {
-                  _controller.text = s;
-                  _sendInput();
-                },
-                child: Container(
-                  width: double.infinity,
-                  margin: const EdgeInsets.only(bottom: 8),
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                  decoration: BoxDecoration(
-                    color: AppTheme.surfaceElevated,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: AppTheme.borderSubtle),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(
-                        s.contains('Sign in')
-                            ? LucideIcons.logIn
-                            : s.contains('Sync all')
-                                ? LucideIcons.refreshCw
-                                : s.contains('email')
-                                    ? LucideIcons.mail
-                                    : s.contains('calendar')
-                                        ? LucideIcons.calendar
-                                        : LucideIcons.arrowRight,
-                        size: 14,
-                        color: s.contains('Sign in') || s.contains('Sync all')
-                            ? AppTheme.accentGreen
-                            : AppTheme.textMuted,
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Text(
-                          s,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(fontSize: 13, color: AppTheme.textSecondary),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              )),
-        ],
-      ),
-    ).withPremiumEntry();
+        ),
+      ],
+    ).animate().fadeIn(duration: 500.ms);
   }
 
   // ─── Message List Component ────────────────────────────────────────────────
@@ -497,20 +463,33 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen>
                     const SizedBox(width: 7),
                   ],
                   Flexible(
-                    child: Text(
-                      msg.text,
-                      softWrap: true,
-                      overflow: TextOverflow.visible,
-                      style: TextStyle(
-                        color: isUser ? Colors.black : AppTheme.textPrimary,
-                        fontSize: 13,
-                        height: 1.5,
+                    child: SelectionArea(
+                      child: Text(
+                        msg.text,
+                        softWrap: true,
+                        overflow: TextOverflow.visible,
+                        style: TextStyle(
+                          color: isUser ? Colors.black : AppTheme.textPrimary,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                          height: 1.5,
+                        ),
                       ),
                     ),
                   ),
                 ],
               ),
             ),
+            if (!isUser)
+              Align(
+                alignment: Alignment.centerLeft,
+                child: IconButton(
+                  onPressed: () => _copyMessage(msg.text),
+                  tooltip: 'Copy response',
+                  visualDensity: VisualDensity.compact,
+                  icon: const Icon(LucideIcons.copy, size: 14, color: AppTheme.textMuted),
+                ),
+              ),
             if (msg.emails != null && msg.emails!.isNotEmpty)
               _buildEmailSummaryCard(msg.emails!),
             if (msg.calendarEvents != null && msg.calendarEvents!.isNotEmpty)
@@ -819,3 +798,24 @@ class _ThinkingDots extends StatelessWidget {
     );
   }
 }
+
+class _SystemRow extends StatelessWidget {
+  const _SystemRow(this.title, this.status, this.color);
+  final String title;
+  final String status;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        children: [
+          Expanded(child: Text(title, style: AstraText.body(size: 15))),
+          Text(status, style: AstraText.label(size: 11, color: color)),
+        ],
+      ),
+    );
+  }
+}
+

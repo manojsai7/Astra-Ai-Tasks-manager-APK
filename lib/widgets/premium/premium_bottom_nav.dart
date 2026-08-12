@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../../theme/app_theme.dart';
 
 class PremiumBottomNav extends StatelessWidget {
@@ -7,78 +8,77 @@ class PremiumBottomNav extends StatelessWidget {
 
   const PremiumBottomNav({super.key, required this.currentIndex, required this.onTap});
 
+  static const items = [
+    (Icons.home_rounded, 'HOME'),
+    (Icons.checklist_rounded, 'TASKS'),
+    (Icons.timer_outlined, 'FOCUS'),
+    (Icons.calendar_month_outlined, 'PANCHANG'),
+    (Icons.auto_awesome, 'ASTRA'),
+  ];
+
   @override
   Widget build(BuildContext context) {
-    const labels = ['Home', 'Tasks', 'Focus', 'Panchang', 'ASTRA'];
-    const icons = [
-      Icons.home_outlined,
-      Icons.checklist_outlined,
-      Icons.timer_outlined,
-      Icons.calendar_month_outlined,
-      Icons.auto_awesome_outlined
-    ];
-    const activeIcons = [
-      Icons.home,
-      Icons.checklist,
-      Icons.timer,
-      Icons.calendar_month,
-      Icons.auto_awesome
-    ];
+    final availableWidth = MediaQuery.of(context).size.width;
+    final navHeight = (availableWidth * 0.19).clamp(76.0, 86.0);
 
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: AppTheme.s16, vertical: AppTheme.s8),
-      decoration: BoxDecoration(
-        color: AppTheme.surface,
-        borderRadius: BorderRadius.circular(AppTheme.r24),
-        border: Border.all(color: AppTheme.borderSubtle, width: 1),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.4),
-            blurRadius: 20,
-            spreadRadius: -5,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(AppTheme.r24),
-        child: BottomNavigationBar(
-          currentIndex: currentIndex,
-          onTap: onTap,
-          backgroundColor: Colors.transparent,
-          selectedItemColor: AppTheme.primary,
-          unselectedItemColor: AppTheme.textMuted,
-          selectedLabelStyle: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600, letterSpacing: 0.2),
-          unselectedLabelStyle: const TextStyle(fontSize: 10),
-          type: BottomNavigationBarType.fixed,
-          elevation: 0,
-          items: List.generate(5, (i) {
-            final isSelected = currentIndex == i;
-            return BottomNavigationBarItem(
-              icon: Stack(
-                alignment: Alignment.center,
-                children: [
-                  Icon(isSelected ? activeIcons[i] : icons[i], size: 24),
-                  if (isSelected)
-                    Container(
-                      width: 4,
-                      height: 4,
-                      margin: const EdgeInsets.only(top: 32),
-                      decoration: BoxDecoration(
-                        color: AppTheme.primary,
-                        borderRadius: BorderRadius.circular(2),
-                        boxShadow: [
-                          BoxShadow(
-                            color: AppTheme.primary.withValues(alpha: 0.4),
-                            blurRadius: 8,
-                            spreadRadius: -2,
+    return SafeArea(
+      minimum: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+      child: Container(
+        height: navHeight,
+        decoration: BoxDecoration(
+          color: AstraColors.surface,
+          borderRadius: BorderRadius.circular(28),
+          border: Border.all(color: AstraColors.edge, width: 1),
+          boxShadow: const [
+            BoxShadow(color: AstraColors.depth, offset: Offset(0, 5), blurRadius: 0),
+          ],
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 10),
+        child: Row(
+          children: List.generate(items.length, (i) {
+            final active = i == currentIndex;
+            final item = items[i];
+            return Expanded(
+              child: InkWell(
+                borderRadius: BorderRadius.circular(20),
+                onTap: () {
+                  HapticFeedback.selectionClick();
+                  onTap(i);
+                },
+                child: AnimatedContainer(
+                  duration: AstraMotion.standard,
+                  curve: AstraMotion.curve,
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(item.$1, size: 26, color: active ? AstraColors.lime : AstraColors.textMuted),
+                      const SizedBox(height: 4),
+                      FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Text(
+                          item.$2,
+                          maxLines: 1,
+                          style: AstraText.label(
+                            size: 11,
+                            color: active ? AstraColors.lime : AstraColors.textMuted,
                           ),
-                        ],
+                        ),
                       ),
-                    ),
-                ],
+                      const SizedBox(height: 5),
+                      AnimatedContainer(
+                        duration: AstraMotion.standard,
+                        width: active ? 28 : 0,
+                        height: 3,
+                        decoration: BoxDecoration(
+                          color: AstraColors.lime,
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ),
-              label: labels[i],
             );
           }),
         ),
@@ -86,3 +86,6 @@ class PremiumBottomNav extends StatelessWidget {
     );
   }
 }
+
+typedef AstraBottomNav = PremiumBottomNav;
+

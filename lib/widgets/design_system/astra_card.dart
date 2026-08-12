@@ -10,6 +10,8 @@ class AstraCard extends StatelessWidget {
   final AstraCardVariant variant;
   final VoidCallback? onTap;
   final double? borderRadius;
+  final double radius;
+  final Color borderColor;
 
   const AstraCard({
     super.key,
@@ -18,30 +20,36 @@ class AstraCard extends StatelessWidget {
     this.variant = AstraCardVariant.normal,
     this.onTap,
     this.borderRadius,
+    this.radius = AstraRadii.lg,
+    this.borderColor = AstraColors.edgeSoft,
   });
 
   @override
   Widget build(BuildContext context) {
-    final radius = borderRadius ?? 20.0;
+    final effectiveRadius = borderRadius ?? radius;
     final decoration = switch (variant) {
       AstraCardVariant.normal => BoxDecoration(
-          color: AppTheme.surfaceElevated,
-          borderRadius: BorderRadius.circular(radius),
-          border: Border.all(color: AppTheme.borderSubtle, width: 1),
+          color: AstraColors.surface,
+          borderRadius: BorderRadius.circular(effectiveRadius),
+          border: Border.all(color: borderColor, width: 1),
+          boxShadow: const [
+            BoxShadow(color: AstraColors.depth, offset: Offset(0, 5), blurRadius: 0),
+            BoxShadow(color: Color(0x44000000), offset: Offset(0, 8), blurRadius: 18),
+          ],
         ),
       AstraCardVariant.glass => AppTheme.glassCard.copyWith(
-          borderRadius: BorderRadius.circular(radius),
+          borderRadius: BorderRadius.circular(effectiveRadius),
         ),
       AstraCardVariant.glow => AppTheme.primaryGlowCard.copyWith(
-          borderRadius: BorderRadius.circular(radius),
+          borderRadius: BorderRadius.circular(effectiveRadius),
         ),
       AstraCardVariant.ai => AppTheme.aiCard.copyWith(
-          borderRadius: BorderRadius.circular(radius),
+          borderRadius: BorderRadius.circular(effectiveRadius),
         ),
     };
 
     final inner = Container(
-      padding: padding ?? const EdgeInsets.all(16),
+      padding: padding ?? const EdgeInsets.all(AstraSpacing.lg),
       decoration: decoration,
       child: child,
     );

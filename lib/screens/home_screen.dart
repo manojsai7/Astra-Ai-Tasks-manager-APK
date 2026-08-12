@@ -8,13 +8,11 @@ import '../theme/app_theme.dart';
 import '../providers/task_provider.dart';
 import '../providers/focus_provider.dart';
 import '../models/task.dart';
-import '../widgets/premium/premium_card.dart';
-import '../widgets/premium/premium_stat_pill.dart';
-import '../widgets/premium/premium_progress_bar.dart';
-import '../widgets/premium/premium_section_header.dart';
-import '../widgets/premium/premium_quick_action.dart';
+import '../widgets/design_system/astra_card.dart';
 import '../widgets/premium/premium_timeline_item.dart';
 import '../widgets/premium/premium_bottom_nav.dart';
+import '../widgets/design_system/astra_3d_button.dart';
+import '../widgets/design_system/astra_section_header.dart';
 import '../widgets/design_system/astra_insight_card.dart';
 import '../providers/message_provider.dart';
 import '../providers/assistant_provider.dart';
@@ -206,11 +204,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
               delegate: SliverChildListDelegate([
                 // ─── Header ──────────────────────────────────
                 _buildHeader(context, pending, high),
-                const SizedBox(height: AppTheme.s16),
+                const SizedBox(height: 24),
 
-                // ─── Streak Banner ───────────────────────────
+                // ─── Progress Card ───────────────────────────
                 _buildStreakBanner(completed, total),
-                const SizedBox(height: AppTheme.s16),
+                const SizedBox(height: 24),
 
                 // ─── Today Hero Card ─────────────────────────
                 _buildTodayCard(
@@ -222,15 +220,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
                   focusMins: focusMins,
                   high: high,
                 ),
-                const SizedBox(height: AppTheme.s16),
+                const SizedBox(height: 26),
 
                 // ─── Quick Actions ───────────────────────────
                 _buildQuickActions(context),
-                const SizedBox(height: AppTheme.s20),
+                const SizedBox(height: 30),
 
                 // ─── Schedule Timeline ───────────────────────
                 _buildTimelineSection(context, todayTasks),
-                const SizedBox(height: AppTheme.s16),
+                const SizedBox(height: 26),
 
                 // ─── AI Insight Card ─────────────────────────
                 AstraInsightCard(
@@ -240,7 +238,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
                   onSecondary: () => setState(
                       () => _quoteIndex = (_quoteIndex + 1) % _insights.length),
                 ).animate().fadeIn(duration: 500.ms, delay: 250.ms),
-                const SizedBox(height: AppTheme.s24),
+                const SizedBox(height: 30),
               ]),
             ),
           ),
@@ -260,82 +258,47 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                _getGreeting(),
-                style: const TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w500,
-                  color: AppTheme.textMuted,
-                  letterSpacing: 0.8,
-                ),
+                _getGreeting().toUpperCase(),
+                style: AstraText.label(size: 15, color: AstraColors.textMuted),
               ),
-              const SizedBox(height: 2),
-              ShaderMask(
-                shaderCallback: (bounds) => const LinearGradient(
-                  colors: [AppTheme.textPrimary, AppTheme.primaryLight],
-                  begin: Alignment.centerLeft,
-                  end: Alignment.centerRight,
-                ).createShader(bounds),
-                child: Text(
-                  'MANOJ',
-                  style: Theme.of(context).textTheme.displaySmall?.copyWith(
-                        fontSize: 28,
-                        color: Colors.white,
-                        letterSpacing: 1.5,
-                      ),
-                ),
+              const SizedBox(height: 4),
+              Text(
+                'MANOJ',
+                style: AstraText.displayL(size: 46, color: AstraColors.textPrimary),
               ).animate().fadeIn(duration: 500.ms).slideX(begin: -0.03, end: 0),
-              const SizedBox(height: 2),
+              const SizedBox(height: 6),
               Text(
                 high > 0
                     ? '$high urgent task${high > 1 ? 's' : ''} need attention'
                     : pending == 0
                         ? '🎯 All tasks completed!'
                         : '$pending task${pending > 1 ? 's' : ''} remaining today',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: high > 0 ? AppTheme.error : AppTheme.textMuted,
-                  fontWeight: FontWeight.w400,
+                style: AstraText.body(
+                  size: 15,
+                  color: high > 0 ? AstraColors.red : AstraColors.textMuted,
                 ),
               ),
             ],
           ),
         ),
-        const SizedBox(width: 12),
-        // Avatar Ring
-        InkWell(
+        const SizedBox(width: 14),
+        // Tactile Profile Icon Button
+        GestureDetector(
           onTap: () => _showProfileSheet(context),
-          borderRadius: BorderRadius.circular(28),
           child: Container(
-          padding: const EdgeInsets.all(2.5),
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            gradient: const LinearGradient(
-              colors: [AppTheme.primary, AppTheme.secondary, AppTheme.accentGreen],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
+            width: 70,
+            height: 70,
+            decoration: BoxDecoration(
+              color: AstraColors.surface,
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(color: AstraColors.edge, width: 1),
+              boxShadow: const [
+                BoxShadow(color: AstraColors.depth, offset: Offset(0, 4), blurRadius: 0),
+              ],
             ),
-            boxShadow: [
-              BoxShadow(
-                color: AppTheme.primary.withValues(alpha: 0.4),
-                blurRadius: 16,
-                spreadRadius: -2,
-              ),
-            ],
+            child: const Icon(Icons.person_outline_rounded, color: AstraColors.lime, size: 34),
           ),
-          child: Container(
-            padding: const EdgeInsets.all(2),
-            decoration: const BoxDecoration(
-              shape: BoxShape.circle,
-              color: AppTheme.background,
-            ),
-            child: const CircleAvatar(
-              radius: 20,
-              backgroundColor: AppTheme.surfaceElevated,
-              child: Icon(Icons.person_outline, size: 22, color: AppTheme.primary),
-            ),
-          ),
-          ),
-        ).animate().scale(duration: 600.ms, curve: Curves.elasticOut),
+        ).animate().scale(duration: 500.ms, curve: Curves.easeOutBack),
       ],
     );
   }
@@ -343,115 +306,111 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
   void _showProfileSheet(BuildContext context) {
     showModalBottomSheet(
       context: context,
-      backgroundColor: AppTheme.surface,
+      backgroundColor: AstraColors.surface,
       showDragHandle: true,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(22))),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
       builder: (sheetContext) => SafeArea(
         child: Padding(
           padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
-          child: Column(mainAxisSize: MainAxisSize.min, children: [
-            const CircleAvatar(radius: 26, backgroundColor: AppTheme.surfaceGlass, child: Icon(Icons.person_outline, color: AppTheme.primary)),
-            const SizedBox(height: 10),
-            Text('MANOJ', style: Theme.of(context).textTheme.displaySmall?.copyWith(fontSize: 25)),
-            const SizedBox(height: 4),
-            const Text('Manage your ASTRA account', style: TextStyle(color: AppTheme.textMuted, fontSize: 13)),
-            const SizedBox(height: 16),
-            ListTile(
-              leading: const Icon(Icons.logout, color: AppTheme.error),
-              title: const Text('Sign out', style: TextStyle(color: AppTheme.error, fontWeight: FontWeight.w700)),
-              onTap: () async {
-                final navigator = Navigator.of(context);
-                Navigator.pop(sheetContext);
-                await ref.read(assistantStateProvider.notifier).handleSignOut();
-                final prefs = await SharedPreferences.getInstance();
-                await prefs.remove('hasSeenAuth');
-                if (mounted) navigator.pushReplacementNamed('/auth');
-              },
-            ),
-          ]),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const CircleAvatar(radius: 28, backgroundColor: AstraColors.surface2, child: Icon(Icons.person_outline_rounded, color: AstraColors.lime, size: 30)),
+              const SizedBox(height: 12),
+              Text('MANOJ', style: AstraText.displayM(size: 28)),
+              const SizedBox(height: 4),
+              Text('Manage your ASTRA account', style: AstraText.body(size: 13, color: AstraColors.textMuted)),
+              const SizedBox(height: 20),
+              ListTile(
+                leading: const Icon(Icons.logout, color: AstraColors.red),
+                title: Text('Sign out', style: AstraText.metric(color: AstraColors.red, size: 15)),
+                onTap: () async {
+                  final navigator = Navigator.of(context);
+                  Navigator.pop(sheetContext);
+                  await ref.read(assistantStateProvider.notifier).handleSignOut();
+                  final prefs = await SharedPreferences.getInstance();
+                  await prefs.remove('hasSeenAuth');
+                  if (mounted) navigator.pushReplacementNamed('/auth');
+                },
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  // ─── Streak Banner Component ───────────────────────────────
+  // ─── Streak Progress Card Component ───────────────────────
   Widget _buildStreakBanner(int completed, int total) {
     final pct = total > 0 ? ((completed / total) * 100).toInt() : 0;
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: AppTheme.s16, vertical: AppTheme.s12),
-      decoration: AppTheme.accentGreenCard,
+    return AstraCard(
+      padding: const EdgeInsets.all(18),
       child: Row(
         children: [
           Container(
-            width: 40,
-            height: 40,
+            width: 58,
+            height: 58,
             decoration: BoxDecoration(
-              color: AppTheme.accentGreen.withValues(alpha: 0.2),
-              borderRadius: BorderRadius.circular(AppTheme.r12),
+              color: const Color(0xFF35461B),
+              borderRadius: BorderRadius.circular(16),
             ),
             child: const Icon(
-              Icons.local_fire_department,
-              size: 24,
-              color: AppTheme.accentGreen,
+              Icons.local_fire_department_rounded,
+              size: 34,
+              color: AstraColors.lime,
             ),
           ),
-          const SizedBox(width: AppTheme.s12),
+          const SizedBox(width: 14),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  children: [
-                    Text(
-                      '$completed',
-                      style: const TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.w800,
-                        color: AppTheme.accentGreen,
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text(
+                        '$completed',
+                        style: AstraText.displayL(size: 42, color: AstraColors.lime),
                       ),
-                    ),
-                    const SizedBox(width: AppTheme.s6),
-                    Text(
-                      'task${completed != 1 ? 's' : ''} done',
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: AppTheme.accentGreen.withValues(alpha: 0.8),
-                        fontWeight: FontWeight.w500,
+                      const SizedBox(width: 10),
+                      Text(
+                        'TASKS DONE',
+                        style: AstraText.label(size: 13, color: AstraColors.textPrimary),
                       ),
-                    ),
-                  ],
-                ),
-                Text(
-                  total > 0 ? '$pct% plan completed' : 'Add tasks to start your daily plan',
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: AppTheme.accentGreen.withValues(alpha: 0.6),
+                    ],
                   ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  '$pct% PLAN COMPLETED',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AstraText.label(size: 12, color: AstraColors.textMuted),
                 ),
               ],
             ),
           ),
+          const SizedBox(width: 10),
           SizedBox(
-            width: 42,
-            height: 42,
+            width: 58,
+            height: 58,
             child: Stack(
               alignment: Alignment.center,
               children: [
                 CircularProgressIndicator(
                   value: total > 0 ? completed / total : 0.0,
-                  strokeWidth: 3.5,
-                  backgroundColor: AppTheme.borderFaint,
-                  valueColor: const AlwaysStoppedAnimation<Color>(AppTheme.accentGreen),
+                  strokeWidth: 7,
+                  backgroundColor: AstraColors.surface3,
+                  valueColor: const AlwaysStoppedAnimation(AstraColors.lime),
                   strokeCap: StrokeCap.round,
                 ),
                 Text(
                   '$pct%',
-                  style: const TextStyle(
-                    fontSize: 9,
-                    fontWeight: FontWeight.w700,
-                    color: AppTheme.accentGreen,
-                  ),
+                  style: AstraText.label(size: 11, color: AstraColors.lime),
                 ),
               ],
             ),
@@ -471,132 +430,102 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
     required int focusMins,
     required int high,
   }) {
-    final progressColor = progress >= 0.8
-        ? AppTheme.success
-        : progress >= 0.5
-            ? AppTheme.warning
-            : AppTheme.primary;
-
-    return PremiumCard(
-      padding: const EdgeInsets.all(AppTheme.s16),
+    return AstraCard(
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              const PremiumSectionHeader(
-                title: 'Today',
-                showAccentBar: true,
-                accentColor: AppTheme.primary,
-              ),
+              Container(width: 4, height: 31, color: AstraColors.lime),
+              const SizedBox(width: 10),
+              Text('TODAY', style: AstraText.displayM(size: 30)),
               const Spacer(),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
                 decoration: BoxDecoration(
-                  color: AppTheme.surfaceGlass,
-                  borderRadius: BorderRadius.circular(AppTheme.r16),
+                  color: AstraColors.surface2,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: AstraColors.edgeSoft),
                 ),
                 child: Text(
-                  DateFormat('EEE, MMM d').format(DateTime.now()),
-                  style: const TextStyle(fontSize: 11, color: AppTheme.textMuted),
+                  DateFormat('EEE, MMM d').format(DateTime.now()).toUpperCase(),
+                  style: AstraText.label(size: 11, color: AstraColors.textSecondary),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: AppTheme.s16),
-
+          const SizedBox(height: 26),
           Row(
-            crossAxisAlignment: CrossAxisAlignment.end,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    '$total',
-                    style: Theme.of(context).textTheme.displayMedium?.copyWith(
-                          color: AppTheme.textPrimary,
-                          fontSize: 36,
-                          height: 1,
-                        ),
-                  ),
-                  const Text(
-                    'total tasks',
-                    style: TextStyle(fontSize: 12, color: AppTheme.textMuted),
-                  ),
+                  Text('$total', style: AstraText.displayXL(size: 58)),
+                  Text('TOTAL TASKS', style: AstraText.label(size: 12)),
                 ],
               ),
-              const SizedBox(width: AppTheme.s16),
+              const SizedBox(width: 12),
               Expanded(
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
+                    // Pills row — Wrap prevents right-edge overflow
                     Wrap(
-                      spacing: AppTheme.s6,
-                      runSpacing: AppTheme.s6,
+                      alignment: WrapAlignment.end,
+                      spacing: 8,
+                      runSpacing: 6,
                       children: [
-                        PremiumStatPill(
-                          icon: Icons.check_circle_outline,
-                          value: '$completed',
-                          label: 'done',
-                          iconColor: AppTheme.accentGreen,
-                        ),
-                        PremiumStatPill(
-                          icon: Icons.radio_button_unchecked,
-                          value: '$pending',
-                          label: 'left',
-                          iconColor: AppTheme.textMuted,
-                        ),
-                        if (high > 0)
-                          PremiumStatPill(
-                            icon: Icons.warning_amber_rounded,
-                            value: '$high',
-                            label: 'urgent',
-                            iconColor: AppTheme.error,
-                          ),
+                        _miniPill(Icons.check_circle_outline, '$completed DONE', AstraColors.lime),
+                        _miniPill(Icons.radio_button_unchecked, '$pending LEFT', AstraColors.textMuted),
                       ],
                     ),
-                    const SizedBox(height: AppTheme.s12),
-                    PremiumProgressBar(
-                      value: progress,
-                      height: 6,
-                      fillColor: progressColor,
+                    const SizedBox(height: 14),
+                    // Progress bar stretches full available width
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(4),
+                      child: LinearProgressIndicator(
+                        value: progress,
+                        minHeight: 8,
+                        backgroundColor: AstraColors.surface3,
+                        valueColor: const AlwaysStoppedAnimation(AstraColors.lime),
+                      ),
                     ),
-                    const SizedBox(height: AppTheme.s4),
-                    Text(
-                      '${(progress * 100).toInt()}% complete',
-                      style: const TextStyle(fontSize: 10, color: AppTheme.textMuted),
-                    ),
+                    // Removed redundant "% COMPLETE" label — already in streak banner & metrics tile
                   ],
                 ),
               ),
             ],
           ),
-          const SizedBox(height: AppTheme.s16),
-          const Divider(color: AppTheme.borderFaint, height: 1),
-          const SizedBox(height: AppTheme.s12),
-
-          // Mini Stats Row
+          const SizedBox(height: 18),
+          const Divider(color: AstraColors.edgeSoft),
+          const SizedBox(height: 14),
           Row(
             children: [
-              _miniStat(
-                icon: Icons.timer_outlined,
-                label: 'Focus',
-                value: '${focusMins ~/ 60}h ${(focusMins % 60).toString().padLeft(2, '0')}m',
-                color: AppTheme.secondary,
+              Expanded(
+                child: _metricTile(
+                  Icons.timer_outlined,
+                  'FOCUS',
+                  '${focusMins ~/ 60}h ${(focusMins % 60).toString().padLeft(2, '0')}m',
+                  AstraColors.cyan,
+                ),
               ),
               _divider(),
-              _miniStat(
-                icon: Icons.priority_high,
-                label: 'Urgent',
-                value: '$high tasks',
-                color: high > 0 ? AppTheme.error : AppTheme.textMuted,
+              Expanded(
+                child: _metricTile(
+                  Icons.priority_high_rounded,
+                  'URGENT',
+                  '$high TASKS',
+                  high > 0 ? AstraColors.red : AstraColors.textMuted,
+                ),
               ),
               _divider(),
-              _miniStat(
-                icon: Icons.trending_up,
-                label: 'Completion',
-                value: '${(progress * 100).toInt()}%',
-                color: progressColor,
+              Expanded(
+                child: _metricTile(
+                  Icons.trending_up_rounded,
+                  'COMPLETION',
+                  '${(progress * 100).toInt()}%',
+                  AstraColors.lime,
+                ),
               ),
             ],
           ),
@@ -605,48 +534,45 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
     ).animate().fadeIn(duration: 500.ms, delay: 100.ms).slideY(begin: 0.03, end: 0);
   }
 
-  Widget _divider() => Container(
-        width: 1,
-        height: 26,
-        margin: const EdgeInsets.symmetric(horizontal: AppTheme.s12),
-        color: AppTheme.borderFaint,
-      );
-
-  Widget _miniStat({
-    required IconData icon,
-    required String label,
-    required String value,
-    required Color color,
-  }) {
-    return Expanded(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+  Widget _miniPill(IconData icon, String text, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: AstraColors.surface2,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: AstraColors.edgeSoft),
+      ),
+      child: Row(
         children: [
-          Row(
-            children: [
-              Icon(icon, size: 12, color: color),
-              const SizedBox(width: 4),
-              Text(
-                label,
-                style: const TextStyle(
-                  fontSize: 10,
-                  color: AppTheme.textMuted,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 2),
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w700,
-              color: color,
-            ),
-          ),
+          Icon(icon, size: 16, color: color),
+          const SizedBox(width: 6),
+          Text(text, style: AstraText.label(size: 11, color: AstraColors.textPrimary)),
         ],
       ),
+    );
+  }
+
+  Widget _divider() => Container(
+        width: 1,
+        height: 42,
+        color: AstraColors.edgeSoft,
+        margin: const EdgeInsets.symmetric(horizontal: 8),
+      );
+
+  Widget _metricTile(IconData icon, String label, String value, Color color) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(icon, size: 16, color: color),
+            const SizedBox(width: 6),
+            Text(label, style: AstraText.label(size: 11)),
+          ],
+        ),
+        const SizedBox(height: 6),
+        Text(value, style: AstraText.body(size: 15, color: color)),
+      ],
     );
   }
 
@@ -655,44 +581,92 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const PremiumSectionHeader(title: 'Quick Actions'),
-        const SizedBox(height: AppTheme.s12),
+        const AstraSectionHeader(title: 'QUICK ACTIONS'),
+        const SizedBox(height: 14),
         Row(
           children: [
-            PremiumQuickAction(
-              icon: Icons.add,
-              label: 'Add Task',
-              color: AppTheme.primary,
-              onTap: () {
-                setState(() => _currentIndex = 1); // Jump to Tasks tab
-              },
+            Expanded(
+              child: Astra3DButton(
+                height: 62,
+                depth: AstraDepth.medium,
+                color: AstraColors.surface2,
+                textColor: AstraColors.textPrimary,
+                onTap: () => setState(() => _currentIndex = 1),
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.add_rounded, size: 24, color: AstraColors.lime),
+                      const SizedBox(height: 4),
+                      Text('ADD TASK', style: AstraText.label(size: 9, color: AstraColors.textPrimary)),
+                    ],
+                  ),
+                ),
+              ),
             ),
-            const SizedBox(width: AppTheme.s8),
-            PremiumQuickAction(
-              icon: Icons.auto_awesome,
-              label: 'Ask ASTRA',
-              color: AppTheme.accentPurple,
-              onTap: () {
-                setState(() => _currentIndex = 4); // Jump to Assistant tab
-              },
+            const SizedBox(width: 8),
+            Expanded(
+              child: Astra3DButton(
+                height: 62,
+                depth: AstraDepth.medium,
+                color: AstraColors.surface2,
+                textColor: AstraColors.textPrimary,
+                onTap: () => setState(() => _currentIndex = 4),
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.auto_awesome, size: 24, color: AstraColors.violet),
+                      const SizedBox(height: 4),
+                      Text('ASK ASTRA', style: AstraText.label(size: 9, color: AstraColors.textPrimary)),
+                    ],
+                  ),
+                ),
+              ),
             ),
-            const SizedBox(width: AppTheme.s8),
-            PremiumQuickAction(
-              icon: Icons.play_arrow_rounded,
-              label: 'Focus',
-              color: AppTheme.accentGreen,
-              onTap: () {
-                setState(() => _currentIndex = 2); // Jump to Focus tab
-              },
+            const SizedBox(width: 8),
+            Expanded(
+              child: Astra3DButton(
+                height: 62,
+                depth: AstraDepth.medium,
+                color: AstraColors.surface2,
+                textColor: AstraColors.textPrimary,
+                onTap: () => setState(() => _currentIndex = 2),
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.play_arrow_rounded, size: 24, color: AstraColors.lime),
+                      const SizedBox(height: 4),
+                      Text('FOCUS', style: AstraText.label(size: 9, color: AstraColors.textPrimary)),
+                    ],
+                  ),
+                ),
+              ),
             ),
-            const SizedBox(width: AppTheme.s8),
-            PremiumQuickAction(
-              icon: Icons.sync,
-              label: 'Sync',
-              color: AppTheme.secondary,
-              onTap: () {
-                setState(() => _currentIndex = 4); // Jump to Assistant tab for sync
-              },
+            const SizedBox(width: 8),
+            Expanded(
+              child: Astra3DButton(
+                height: 62,
+                depth: AstraDepth.medium,
+                color: AstraColors.surface2,
+                textColor: AstraColors.textPrimary,
+                onTap: () => setState(() => _currentIndex = 4),
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.sync_rounded, size: 24, color: AstraColors.cyan),
+                      const SizedBox(height: 4),
+                      Text('SYNC', style: AstraText.label(size: 9, color: AstraColors.textPrimary)),
+                    ],
+                  ),
+                ),
+              ),
             ),
           ],
         ),
@@ -705,27 +679,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        PremiumSectionHeader(
-          title: 'Schedule',
-          showAccentBar: true,
-          accentColor: AppTheme.secondary,
-          trailing: todayTasks.length > 4
-              ? TextButton(
-                  onPressed: () => setState(() => _currentIndex = 1),
-                  child: const Text(
-                    'See all →',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: AppTheme.secondary,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                )
-              : null,
+        AstraSectionHeader(
+          title: 'SCHEDULE',
+          action: todayTasks.length > 4 ? 'SEE ALL →' : null,
+          onActionTap: () => setState(() => _currentIndex = 1),
         ),
-        const SizedBox(height: AppTheme.s12),
-        PremiumCard(
-          padding: const EdgeInsets.all(AppTheme.s16),
+        const SizedBox(height: 14),
+        AstraCard(
+          padding: const EdgeInsets.all(16),
           child: todayTasks.isEmpty
               ? _buildEmptyTimeline()
               : Column(
@@ -752,30 +713,20 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
   }
 
   Widget _buildEmptyTimeline() {
-    return const Padding(
-      padding: EdgeInsets.symmetric(vertical: AppTheme.s20),
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 18),
       child: Center(
         child: Column(
           children: [
-            Icon(Icons.calendar_today_outlined, size: 32, color: AppTheme.textMuted),
-            SizedBox(height: AppTheme.s8),
-            Text(
-              'No scheduled tasks',
-              style: TextStyle(
-                fontSize: 13,
-                color: AppTheme.textMuted,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-            SizedBox(height: 4),
-            Text(
-              'Add tasks with due times to see your timeline here',
-              style: TextStyle(fontSize: 11, color: AppTheme.textMuted),
-              textAlign: TextAlign.center,
-            ),
+            const Icon(Icons.calendar_today_outlined, size: 32, color: AstraColors.textMuted),
+            const SizedBox(height: 8),
+            Text('No scheduled tasks', style: AstraText.body(size: 14, color: AstraColors.textMuted)),
+            const SizedBox(height: 4),
+            Text('Add tasks with due times to see your schedule timeline here', style: AstraText.caption(size: 11), textAlign: TextAlign.center),
           ],
         ),
       ),
     );
   }
 }
+
