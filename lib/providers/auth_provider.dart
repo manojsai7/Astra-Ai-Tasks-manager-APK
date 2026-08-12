@@ -53,6 +53,14 @@ class AuthNotifier extends StateNotifier<AuthState> {
     state = state.copyWith(isAuthenticated: true, isLoading: false);
   }
 
+  Future<void> signOut() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('hasSeenAuth');
+    final auth = ref.read(googleAuthServiceProvider);
+    await auth.signOut();
+    state = const AuthState();
+  }
+
   void reset() {
     state = const AuthState();
   }

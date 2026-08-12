@@ -17,10 +17,7 @@ android {
     }
 
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
         applicationId = "dev.codehunters.astra"
-        // You can update the following values to match your application needs.
-        // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
@@ -29,10 +26,13 @@ android {
 
     buildTypes {
         release {
-            // Signing with the debug keys for now, so `flutter run --release` works.
             signingConfig = signingConfigs.getByName("debug")
             isMinifyEnabled = false
             isShrinkResources = false
+        }
+        debug {
+            applicationIdSuffix = ".debug"
+            versionNameSuffix = "-debug"
         }
     }
 }
@@ -49,4 +49,42 @@ flutter {
 
 dependencies {
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
+}
+
+// ─── Auto-copy release arm64 APK to releases/arm64/ ─────────────────────────
+//
+// After running:
+//   flutter build apk --release --target-platform android-arm64
+//
+// The APK is automatically copied to:
+//   releases/arm64/astra-arm64-v<versionName>-<versionCode>.apk
+//
+afterEvaluate {
+    tasks.matching { it.name == "assembleRelease" }.configureEach {
+        doLast {
+            val versionName = android.defaultConfig.versionName ?: "unknown"
+            val versionCode = android.defaultConfig.versionCode ?: 0
+
+            val srcArm64 = file("${layout.buildDirectory.get()}/outputs/apk/release/app-arm64-v8a-release.apk")
+            val srcUniversal = file("${layout.buildDirectory.get()}/outputs/apk/release/app-release.apk")
+
+            // releases/arm64/ folder sits at workspace root level (sibling of android/)
+            val destDir = rootProject.rootDir.parentFile.resolve("releases/arm64")
+            destDir.mkdirs()
+
+            val src = when {
+                srcArm64.exists()    -> srcArm64
+                srcUniversal.exists() -> srcUniversal
+                else                 -> null
+            }
+
+            if (src != null) {
+                val destName = "astra-arm64-v${versionName}-${versionCode}.apk"
+                src.copyTo(destDir.resolve(destName), overwrite = true)
+                println("\n✅  APK copied  →  releases/arm64/$destName\n")
+            } else {
+                println("\n⚠️  Release APK not found — run with --target-platform android-arm64\n")
+            }
+        }
+    }
 }

@@ -50,3 +50,8 @@ app.*.map.json
 *.env
 assets/.env
 
+# Local Release APKs & Bundles (distribute via GitHub Releases, not git repo)
+releases/
+*.apk
+*.aab
+

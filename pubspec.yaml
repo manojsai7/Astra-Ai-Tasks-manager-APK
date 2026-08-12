@@ -60,6 +60,7 @@ dependencies:
   google_generative_ai: ^0.4.3
   url_launcher: ^6.3.1
   package_info_plus: ^10.2.1
+  open_file: ^3.5.1
 dev_dependencies:
   flutter_test:
     sdk: flutter

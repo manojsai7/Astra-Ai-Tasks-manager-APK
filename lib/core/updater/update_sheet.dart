@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'app_updater.dart';
+import 'update_downloader.dart';
+
 
 /// Shows a styled bottom-sheet when a new ASTRA version is available.
 ///
@@ -156,11 +158,48 @@ class UpdateSheet extends StatelessWidget {
   }
 
   Future<void> _download(BuildContext context) async {
+    final messenger = ScaffoldMessenger.of(context);
     Navigator.pop(context);
-    if (info.downloadUrl.isEmpty) return;
-    final uri = Uri.parse(info.downloadUrl);
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
+
+    final url = info.downloadUrl.isNotEmpty
+        ? info.downloadUrl
+        : 'https://github.com/manojsai7/Ai-Tasks-manager/releases/latest';
+
+    messenger.showSnackBar(
+      const SnackBar(
+        content: Row(
+          children: [
+            SizedBox(
+              width: 18,
+              height: 18,
+              child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFFC6FF3D)),
+            ),
+            SizedBox(width: 12),
+            Text('Downloading update APK...'),
+          ],
+        ),
+        duration: Duration(seconds: 15),
+      ),
+    );
+
+    final fileName = 'astra_v${info.latestVersion}.apk';
+    final success = await UpdateDownloader.downloadAndInstall(
+      url: url,
+      fileName: fileName,
+    );
+
+    messenger.hideCurrentSnackBar();
+
+    if (!success) {
+      // Fallback: Open browser download link
+      final uri = Uri.parse(url);
+      try {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      } catch (_) {
+        messenger.showSnackBar(
+          const SnackBar(content: Text('Could not open download link.')),
+        );
+      }
     }
   }
 }

@@ -12,6 +12,7 @@ import '../features/scheduler/data/services/gemini_chat_service.dart';
 import '../features/scheduler/data/services/gemini_context_extractor.dart';
 import '../core/parser/task_parser.dart';
 import '../services/notification_service.dart';
+import 'auth_provider.dart';
 
 // ─── Service Providers ───────────────────────────────────────────────────────
 
@@ -165,16 +166,31 @@ class AssistantNotifier extends StateNotifier<AssistantState> {
     final lower = trimmed.toLowerCase();
 
     try {
+      // ── 🥇 TASK CREATION — checked FIRST (highest priority) ───────────────
+      // Must be before all other checks so "remind me" never falls through.
+      if (lower.contains('remind me') ||
+          lower.contains('create task') ||
+          lower.contains('add task') ||
+          lower.contains('schedule') ||
+          lower.contains('set reminder') ||
+          lower.contains('new task') ||
+          lower.contains('remind')) {
+        await handleCreateTask(trimmed);
+        return;
+      }
+
+      // ── AUTH ───────────────────────────────────────────────────────────────
       if (lower.contains('sign in') || lower.contains('login') || lower.contains('connect google')) {
         await handleSignIn();
         return;
       }
 
-      if (lower.contains('sign out') || lower.contains('logout')) {
+      if (lower.contains('sign out') || lower.contains('logout') || lower.contains('log out')) {
         await handleSignOut();
         return;
       }
 
+      // ── EMAIL ──────────────────────────────────────────────────────────────
       if (lower.contains('sync email') || lower.contains('check email') || lower.contains('scan email') || lower.contains('sync gmail')) {
         await handleSyncEmails();
         return;
@@ -190,6 +206,7 @@ class AssistantNotifier extends StateNotifier<AssistantState> {
         return;
       }
 
+      // ── CALENDAR ───────────────────────────────────────────────────────────
       if (lower.contains('sync calendar') || lower.contains('check calendar') || lower.contains('fetch calendar')) {
         await handleSyncCalendar();
         return;
@@ -200,32 +217,30 @@ class AssistantNotifier extends StateNotifier<AssistantState> {
         return;
       }
 
+      // ── PANCHANG ───────────────────────────────────────────────────────────
       if (lower.contains('panchang') || lower.contains('ekadashi') || lower.contains('amavasya') || lower.contains('purnima') || lower.contains('chaturdashi') || lower.contains('shivaratri')) {
         handlePanchangQuery();
         return;
       }
 
+      // ── FULL SYNC ──────────────────────────────────────────────────────────
       if (lower.contains('sync all') || lower.contains('life sync') || lower.contains('full sync') || lower.contains('sync everything')) {
         await handleFullSync();
         return;
       }
 
-      if (lower.contains('remind me') || lower.contains('create task') || lower.contains('add task') || lower.contains('remind')) {
-        await handleCreateTask(trimmed);
-        return;
-      }
-
+      // ── TASK MANAGEMENT ────────────────────────────────────────────────────
       if (lower.contains('complete') || lower.contains('done') || lower.contains('finish')) {
         await handleCompleteTask(trimmed);
         return;
       }
 
-      if (lower.contains('list') || lower.contains('show') || lower.contains('my tasks') || lower.contains('what\'s next') || lower.contains('coming up')) {
+      if (lower.contains('list') || lower.contains('my tasks') || lower.contains('what\'s next') || lower.contains('coming up')) {
         await handleListTasks();
         return;
       }
 
-      // ─── Gemini Conversational Chat ───────────────────────────────────────
+      // ── GEMINI CONVERSATIONAL CHAT (fallback) ──────────────────────────────
       final chatService = ref.read(geminiChatServiceProvider);
       final response = await chatService.chat(trimmed);
       addMessage(response, type: AssistantMessageType.text);
@@ -283,6 +298,7 @@ class AssistantNotifier extends StateNotifier<AssistantState> {
   Future<void> handleSignOut() async {
     final auth = ref.read(googleAuthServiceProvider);
     await auth.signOut();
+    await ref.read(authProvider.notifier).signOut();
     state = state.copyWith(isAuthenticated: false, clearUserEmail: true);
     addMessage(
       'Signed out of Google account. Local tasks remain saved.',
