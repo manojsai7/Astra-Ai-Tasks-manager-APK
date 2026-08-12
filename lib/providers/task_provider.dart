@@ -52,6 +52,11 @@ class TaskNotifier extends StateNotifier<List<Task>> {
     await _saveTasks();
   }
 
+  Future<void> updateTask(Task updated) async {
+    state = state.map((t) => t.id == updated.id ? updated : t).toList();
+    await _saveTasks();
+  }
+
   Future<void> _saveTasks() async {
     final prefs = await SharedPreferences.getInstance();
     final tasksJson = state.map((task) => jsonEncode(task.toJson())).toList();

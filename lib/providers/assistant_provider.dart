@@ -11,6 +11,7 @@ import '../services/panchang_service.dart';
 import '../features/scheduler/data/services/gemini_chat_service.dart';
 import '../features/scheduler/data/services/gemini_context_extractor.dart';
 import '../core/parser/task_parser.dart';
+import '../services/notification_service.dart';
 
 // ─── Service Providers ───────────────────────────────────────────────────────
 
@@ -479,7 +480,17 @@ class AssistantNotifier extends StateNotifier<AssistantState> {
       await ref.read(taskNotifierProvider.notifier).addTask(task);
       ref.invalidate(taskListProvider);
 
-      // ── Step 3: Compose response ───────────────────────────────────────────
+      // ── Step 3: Schedule notification if reminder time is set ─────────────
+      if (parsed.remindAt != null) {
+        await NotificationService.scheduleNotification(
+          id: task.id.hashCode,
+          title: '⏰ ${task.title}',
+          body: 'Time for your reminder!',
+          scheduledTime: parsed.remindAt!,
+        );
+      }
+
+      // ── Step 4: Compose response ───────────────────────────────────────────
       final buf = StringBuffer('✅ Task created: "${task.title}"');
       buf.write('\nPriority: ${task.priority.toUpperCase()}');
       if (parsed.remindAt != null) {

@@ -310,8 +310,159 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
     );
   }
 
+  void _showEditTaskDialog(Task task) {
+    _titleController.text = task.title;
+    _descController.text = task.description ?? '';
+    _dueDate = task.dueDate;
+    _priority = task.priority;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: AppTheme.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setSheetState) {
+          return Padding(
+            padding: EdgeInsets.only(
+              bottom: MediaQuery.of(ctx).viewInsets.bottom,
+              left: 20, right: 20, top: 20,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 36, height: 4,
+                    decoration: BoxDecoration(
+                      color: AppTheme.borderSubtle,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Text('Edit Task', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: AppTheme.textPrimary)),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: _titleController,
+                  autofocus: true,
+                  style: const TextStyle(color: AppTheme.textPrimary),
+                  decoration: InputDecoration(
+                    labelText: 'Task Title',
+                    labelStyle: TextStyle(color: AppTheme.textMuted),
+                    filled: true,
+                    fillColor: AppTheme.surfaceElevated,
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: _descController,
+                  style: const TextStyle(color: AppTheme.textPrimary, fontSize: 13),
+                  decoration: InputDecoration(
+                    labelText: 'Description (optional)',
+                    labelStyle: TextStyle(color: AppTheme.textMuted, fontSize: 13),
+                    filled: true,
+                    fillColor: AppTheme.surfaceElevated,
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                // Due date
+                GestureDetector(
+                  onTap: () async {
+                    final picked = await showDateTimePicker(ctx);
+                    if (picked != null) setSheetState(() => _dueDate = picked);
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    decoration: BoxDecoration(
+                      color: AppTheme.surfaceElevated,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(children: [
+                      Icon(Icons.schedule_rounded, size: 18, color: AppTheme.primary),
+                      const SizedBox(width: 10),
+                      Text(
+                        _dueDate == null ? 'Set due date & time' : '${_dueDate!.day}/${_dueDate!.month} at ${_dueDate!.hour}:${_dueDate!.minute.toString().padLeft(2, '0')}',
+                        style: TextStyle(color: _dueDate == null ? AppTheme.textMuted : AppTheme.textPrimary, fontSize: 14),
+                      ),
+                      if (_dueDate != null) ...[
+                        const Spacer(),
+                        GestureDetector(onTap: () => setSheetState(() => _dueDate = null), child: Icon(Icons.close, size: 16, color: AppTheme.textMuted)),
+                      ],
+                    ]),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () async {
+                      if (_titleController.text.trim().isEmpty) return;
+                      final updated = Task(
+                        id: task.id,
+                        title: _titleController.text.trim(),
+                        description: _descController.text.trim().isEmpty ? null : _descController.text.trim(),
+                        dueDate: _dueDate,
+                        priority: _priority,
+                        isCompleted: task.isCompleted,
+                        createdAt: task.createdAt,
+                      );
+                      ref.read(taskNotifierProvider.notifier).updateTask(updated);
+                      ref.invalidate(taskListProvider);
+                      if (ctx.mounted) Navigator.pop(ctx);
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppTheme.primary,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      elevation: 0,
+                    ),
+                    child: const Text('Save Changes', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+                  ),
+                ),
+                const SizedBox(height: 24),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Future<DateTime?> showDateTimePicker(BuildContext ctx) async {
+    final date = await showDatePicker(
+      context: ctx,
+      initialDate: _dueDate ?? DateTime.now(),
+      firstDate: DateTime.now().subtract(const Duration(days: 1)),
+      lastDate: DateTime.now().add(const Duration(days: 365)),
+      builder: (ctx, child) => Theme(
+        data: ThemeData.dark().copyWith(colorScheme: const ColorScheme.dark(primary: AppTheme.primary)),
+        child: child!,
+      ),
+    );
+    if (date == null) return null;
+    if (!ctx.mounted) return null;
+    final time = await showTimePicker(
+      context: ctx,
+      initialTime: TimeOfDay.fromDateTime(_dueDate ?? DateTime.now()),
+      builder: (ctx, child) => Theme(
+        data: ThemeData.dark().copyWith(colorScheme: const ColorScheme.dark(primary: AppTheme.primary)),
+        child: child!,
+      ),
+    );
+    if (time == null) return date;
+    return DateTime(date.year, date.month, date.day, time.hour, time.minute);
+  }
+
   @override
   Widget build(BuildContext context) {
+
     final stateTasks = ref.watch(taskNotifierProvider);
     final tasksFuture = ref.watch(taskListProvider).asData?.value ?? [];
     final tasks = stateTasks.isNotEmpty ? stateTasks : tasksFuture;
@@ -410,6 +561,7 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
                         const SizedBox(height: 8),
                         ...overdue.asMap().entries.map((e) => _TaskCard(
                               task: e.value,
+                              onEdit: () => _showEditTaskDialog(e.value),
                               onComplete: () {
                                 ref
                                     .read(taskNotifierProvider.notifier)
@@ -436,6 +588,7 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
                         const SizedBox(height: 8),
                         ...todayTasks.asMap().entries.map((e) => _TaskCard(
                               task: e.value,
+                              onEdit: () => _showEditTaskDialog(e.value),
                               onComplete: () {
                                 ref
                                     .read(taskNotifierProvider.notifier)
@@ -463,6 +616,7 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
                         const SizedBox(height: 8),
                         ...upcoming.asMap().entries.map((e) => _TaskCard(
                               task: e.value,
+                              onEdit: () => _showEditTaskDialog(e.value),
                               onComplete: () {
                                 ref
                                     .read(taskNotifierProvider.notifier)
@@ -505,6 +659,7 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
                         const SizedBox(height: 8),
                         ...completed.map((t) => _TaskCard(
                               task: t,
+                              onEdit: () => _showEditTaskDialog(t),
                               onComplete: () {
                                 ref
                                     .read(taskNotifierProvider.notifier)
@@ -670,11 +825,13 @@ class _TaskCard extends StatelessWidget {
   final Task task;
   final VoidCallback onComplete;
   final VoidCallback onDelete;
+  final VoidCallback? onEdit;
 
   const _TaskCard({
     required this.task,
     required this.onComplete,
     required this.onDelete,
+    this.onEdit,
   });
 
   Color _priorityColor() => switch (task.priority) {
@@ -690,16 +847,18 @@ class _TaskCard extends StatelessWidget {
         task.dueDate != null &&
         task.dueDate!.isBefore(DateTime.now());
 
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: AstraCard(
-        padding: EdgeInsets.zero,
-        borderColor: task.isCompleted
-            ? AstraColors.borderSoft
-            : isOverdue
-                ? AstraColors.red.withValues(alpha: .5)
-                : color.withValues(alpha: .3),
-        child: Row(
+    return GestureDetector(
+      onTap: onEdit,
+      child: Padding(
+        padding: const EdgeInsets.only(bottom: 10),
+        child: AstraCard(
+          padding: EdgeInsets.zero,
+          borderColor: task.isCompleted
+              ? AstraColors.borderSoft
+              : isOverdue
+                  ? AstraColors.red.withValues(alpha: .5)
+                  : color.withValues(alpha: .3),
+          child: Row(
         children: [
           // Priority strip
           Container(
@@ -843,8 +1002,9 @@ class _TaskCard extends StatelessWidget {
           ),
           const SizedBox(width: 8),
         ],
-      ),
-    ),
-  );
-}
+      ),   // Row
+    ),     // AstraCard
+    ),     // Padding
+    );     // GestureDetector
+  }
 }
