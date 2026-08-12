@@ -12,16 +12,18 @@ from pydantic import BaseModel, Field
 
 app = FastAPI(title="ASTRA AI Gateway", version="1.0.0")
 
-_raw_model = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
+_raw_model = os.getenv("GEMINI_MODEL", "gemini-3.6-flash")
 # Normalise any legacy alias that was previously stored in Render env vars.
 _LEGACY_ALIAS = {
-    "gemini-2.0-flash": "gemini-2.5-flash",
-    "gemini-2.0-flash-latest": "gemini-2.5-flash",
-    "flash-latest": "gemini-2.5-flash",
-    "gemini-1.5-flash": "gemini-2.5-flash",
-    "gemini-1.5-pro": "gemini-2.5-flash",
+    "gemini-2.0-flash": "gemini-3.6-flash",
+    "gemini-2.0-flash-latest": "gemini-3.6-flash",
+    "gemini-2.5-flash-lite": "gemini-3.5-flash-lite",
+    "gemini-2.5-flash": "gemini-3.5-flash",
+    "flash-latest": "gemini-3.6-flash",
+    "gemini-1.5-flash": "gemini-3.6-flash",
+    "gemini-1.5-pro": "gemini-3.5-flash",
 }
-GEMINI_MODEL = _LEGACY_ALIAS.get(_raw_model, "gemini-2.5-flash")
+GEMINI_MODEL = _LEGACY_ALIAS.get(_raw_model, "gemini-3.6-flash")
 
 
 class ChatRequest(BaseModel):
@@ -33,10 +35,12 @@ class ExtractRequest(BaseModel):
     source: str = Field(pattern="^(prompt|gmail)$")
 
 
-# Ordered fallback chain — active Google GenAI SDK models.
+# Ordered fallback chain — Gemini 3 and 3.5 models live on Google GenAI SDK.
 _FALLBACK_MODELS = [
-    "gemini-2.5-flash",
-    "gemini-2.5-flash-lite",
+    "gemini-3.6-flash",
+    "gemini-3.5-flash",
+    "gemini-3.5-flash-lite",
+    "gemini-2.5-pro",
 ]
 
 
