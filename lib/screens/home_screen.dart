@@ -20,6 +20,7 @@ import 'tasks_screen.dart';
 import 'focus_screen.dart';
 import 'panchang_screen.dart';
 import 'assistant_screen.dart';
+import '../core/updater/update_sheet.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -52,6 +53,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
     )..forward();
 
     _initShareListener();
+
+    // ── Update check: runs silently after first frame ───────────────────────
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) UpdateSheet.checkAndShow(context);
+    });
 
     Future.doWhile(() async {
       await Future.delayed(const Duration(seconds: 12));

@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:googleapis/gmail/v1.dart' as gmail;
 import 'package:googleapis_auth/googleapis_auth.dart' as auth;
+import '../../../../core/classification/email_classifier.dart';
 
 /// Data container for extracted email info.
 class GmailMessageData {
@@ -49,11 +50,24 @@ class GmailSyncService {
       try {
         final message = await gmailApi.users.messages.get('me', ref.id!, format: 'full');
         final data = _parseMessage(message);
-        if (data != null) {
-          result.add(data);
+        if (data == null) continue;
+
+        // ── Classification Gate ───────────────────────────────────────────
+        final classification = EmailClassifier.classify(
+          subject: data.subject,
+          body: data.bodyText,
+          sender: data.sender,
+        );
+
+        if (classification.shouldIgnore) {
+          // Silently skip promotional / noise emails.
+          continue;
         }
+        // AUTO_CREATE and CONFIRM emails are both returned to the caller;
+        // callers can inspect [GmailMessageData] further if needed.
+        result.add(data);
       } catch (_) {
-        // Skip individual message fetch errors gracefully
+        // Skip individual message fetch errors gracefully.
       }
     }
 

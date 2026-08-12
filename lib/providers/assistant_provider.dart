@@ -8,9 +8,9 @@ import '../models/task.dart';
 import 'ritual_provider.dart';
 import 'task_provider.dart';
 import '../services/panchang_service.dart';
-
 import '../features/scheduler/data/services/gemini_chat_service.dart';
 import '../features/scheduler/data/services/gemini_context_extractor.dart';
+import '../core/parser/task_parser.dart';
 
 // ─── Service Providers ───────────────────────────────────────────────────────
 
@@ -454,16 +454,24 @@ class AssistantNotifier extends StateNotifier<AssistantState> {
 
   Future<void> handleCreateTask(String input) async {
     try {
-      final extractor = ref.read(geminiContextExtractorProvider);
-      final extracted = await extractor.extractFromUserPrompt(input);
+      // ── Step 1: Local parser (instant, free, deterministic) ────────────────
+      final parsed = TaskParser.parse(input);
 
-      final taskTitle = extracted.title.isNotEmpty ? extracted.title : input;
+      if (parsed.title.isEmpty) {
+        addMessage(
+          '🤔 I didn\'t catch the task name. Try:\n"Remind me to call John at 5pm"',
+          type: AssistantMessageType.info,
+        );
+        return;
+      }
+
+      // ── Step 2: Build the Task ─────────────────────────────────────────────
       final task = Task(
         id: DateTime.now().millisecondsSinceEpoch.toString(),
-        title: taskTitle[0].toUpperCase() + taskTitle.substring(1),
-        description: extracted.description ?? 'Added via ASTRA Assistant',
-        dueDate: extracted.dueAt,
-        priority: extracted.priority.name,
+        title: parsed.title,
+        description: parsed.taskDescription,
+        dueDate: parsed.remindAt,
+        priority: parsed.priority,
         isCompleted: false,
         createdAt: DateTime.now(),
       );
@@ -471,20 +479,13 @@ class AssistantNotifier extends StateNotifier<AssistantState> {
       await ref.read(taskNotifierProvider.notifier).addTask(task);
       ref.invalidate(taskListProvider);
 
-      String response = '✅ Task created: "${task.title}"\nPriority: ${task.priority.toUpperCase()}';
-      if (task.dueDate != null) {
-        response += '\n📅 Due: ${DateFormat('MMM d, yyyy - h:mm a').format(task.dueDate!)}';
+      // ── Step 3: Compose response ───────────────────────────────────────────
+      final buf = StringBuffer('✅ Task created: "${task.title}"');
+      buf.write('\nPriority: ${task.priority.toUpperCase()}');
+      if (parsed.remindAt != null) {
+        buf.write('\n⏰ Reminder: ${parsed.formattedReminder}');
       }
-      if (extracted.context.companyName != null || extracted.context.role != null) {
-        response += '\n\n📋 Context:\n';
-        if (extracted.context.companyName != null) response += '• Company: ${extracted.context.companyName}\n';
-        if (extracted.context.role != null) response += '• Role: ${extracted.context.role}\n';
-      }
-
-      addMessage(
-        response,
-        type: AssistantMessageType.success,
-      );
+      addMessage(buf.toString(), type: AssistantMessageType.success);
     } catch (e) {
       addMessage(
         '⚠️ Error creating task: ${_friendlyError(e)}',
