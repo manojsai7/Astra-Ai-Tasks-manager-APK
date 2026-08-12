@@ -262,9 +262,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
                 style: AstraText.label(size: 15, color: AstraColors.textMuted),
               ),
               const SizedBox(height: 4),
-              Text(
-                'MANOJ',
-                style: AstraText.displayL(size: 46, color: AstraColors.textPrimary),
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  'MANOJ',
+                  style: AstraText.displayL(size: 46, color: AstraColors.textPrimary),
+                ),
               ).animate().fadeIn(duration: 500.ms).slideX(begin: -0.03, end: 0),
               const SizedBox(height: 6),
               Text(
@@ -277,6 +281,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
                   size: 15,
                   color: high > 0 ? AstraColors.red : AstraColors.textMuted,
                 ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
             ],
           ),
@@ -437,10 +443,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
             children: [
               Container(width: 4, height: 31, color: AstraColors.lime),
               const SizedBox(width: 10),
-              Text('TODAY', style: AstraText.displayM(size: 30)),
-              const Spacer(),
+              Expanded(
+                child: Text(
+                  'TODAY',
+                  style: AstraText.displayM(size: 30),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              const SizedBox(width: 8),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 decoration: BoxDecoration(
                   color: AstraColors.surface2,
                   borderRadius: BorderRadius.circular(14),
@@ -565,13 +578,23 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
       children: [
         Row(
           children: [
-            Icon(icon, size: 16, color: color),
-            const SizedBox(width: 6),
-            Text(label, style: AstraText.label(size: 11)),
+            Icon(icon, size: 14, color: color),
+            const SizedBox(width: 4),
+            Expanded(
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerLeft,
+                child: Text(label, style: AstraText.label(size: 11)),
+              ),
+            ),
           ],
         ),
         const SizedBox(height: 6),
-        Text(value, style: AstraText.body(size: 15, color: color)),
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          alignment: Alignment.centerLeft,
+          child: Text(value, style: AstraText.body(size: 15, color: color)),
+        ),
       ],
     );
   }
@@ -588,6 +611,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
             Expanded(
               child: Astra3DButton(
                 height: 62,
+                expand: true,
                 depth: AstraDepth.medium,
                 color: AstraColors.surface2,
                 textColor: AstraColors.textPrimary,
@@ -609,6 +633,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
             Expanded(
               child: Astra3DButton(
                 height: 62,
+                expand: true,
                 depth: AstraDepth.medium,
                 color: AstraColors.surface2,
                 textColor: AstraColors.textPrimary,
@@ -630,6 +655,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
             Expanded(
               child: Astra3DButton(
                 height: 62,
+                expand: true,
                 depth: AstraDepth.medium,
                 color: AstraColors.surface2,
                 textColor: AstraColors.textPrimary,
@@ -651,6 +677,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
             Expanded(
               child: Astra3DButton(
                 height: 62,
+                expand: true,
                 depth: AstraDepth.medium,
                 color: AstraColors.surface2,
                 textColor: AstraColors.textPrimary,

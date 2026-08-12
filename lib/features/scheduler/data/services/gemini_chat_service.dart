@@ -18,8 +18,10 @@ class GeminiChatService {
   String? _apiKey;
 
   static const List<String> _modelsToTry = [
-    'gemini-1.5-flash',
+    'gemini-2.5-flash-lite',
+    'gemini-2.5-flash',
     'gemini-2.0-flash',
+    'gemini-1.5-flash',
     'gemini-1.5-pro',
     'gemini-pro',
   ];
@@ -43,7 +45,7 @@ class GeminiChatService {
 
     if (_apiKey != null && _apiKey!.isNotEmpty) {
       _directModel = GenerativeModel(
-        model: 'gemini-1.5-flash',
+        model: 'gemini-2.5-flash-lite',
         apiKey: _apiKey!,
       );
     }
