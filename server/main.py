@@ -12,8 +12,15 @@ from pydantic import BaseModel, Field
 
 app = FastAPI(title="ASTRA AI Gateway", version="1.0.0")
 
-_raw_model = os.getenv("GEMINI_MODEL", "gemini-2.0-flash")
-GEMINI_MODEL = "gemini-2.0-flash" if "flash-latest" in _raw_model else _raw_model
+_raw_model = os.getenv("GEMINI_MODEL", "gemini-2.5-flash-lite")
+# Normalise any legacy alias that was previously stored in Render env vars.
+_LEGACY_ALIAS = {
+    "flash-latest": "gemini-2.5-flash",
+    "gemini-2.0-flash-latest": "gemini-2.5-flash",
+    "gemini-1.5-flash": "gemini-2.5-flash-lite",
+    "gemini-1.5-pro": "gemini-2.5-flash",
+}
+GEMINI_MODEL = _LEGACY_ALIAS.get(_raw_model, _raw_model)
 
 
 class ChatRequest(BaseModel):
@@ -25,23 +32,34 @@ class ExtractRequest(BaseModel):
     source: str = Field(pattern="^(prompt|gmail)$")
 
 
+# Ordered fallback chain — all models currently live on v1beta.
+_FALLBACK_MODELS = [
+    "gemini-2.5-flash-lite",
+    "gemini-2.5-flash",
+    "gemini-2.0-flash",
+]
+
+
 async def completion(system_instruction: str, prompt: str, *, json_mode: bool = False) -> str:
     api_key = os.getenv("GEMINI_API_KEY")
     if not api_key:
         raise HTTPException(503, "AI service is not configured.")
 
-    models_to_try = [GEMINI_MODEL]
-    for fallback in ["gemini-2.0-flash", "gemini-1.5-flash"]:
-        if fallback not in models_to_try:
-            models_to_try.append(fallback)
+    # Build attempt list: preferred model first, then the static fallbacks.
+    seen: set[str] = set()
+    models_to_try: list[str] = []
+    for m in [GEMINI_MODEL] + _FALLBACK_MODELS:
+        if m not in seen:
+            seen.add(m)
+            models_to_try.append(m)
 
-    last_exc = None
+    last_exc: Exception | None = None
     for model_name in models_to_try:
         try:
             client = genai.Client(api_key=api_key)
             config = types.GenerateContentConfig(
                 system_instruction=system_instruction,
-                max_output_tokens=700,
+                max_output_tokens=1024,
                 response_mime_type="application/json" if json_mode else "text/plain",
             )
             response = await asyncio.to_thread(
@@ -50,11 +68,23 @@ async def completion(system_instruction: str, prompt: str, *, json_mode: bool = 
                 contents=prompt,
                 config=config,
             )
+            # Check finish reason before trusting response.text.
+            if response.candidates:
+                finish = response.candidates[0].finish_reason
+                # finish_reason is an enum; compare by name for SDK version safety.
+                finish_name = finish.name if hasattr(finish, "name") else str(finish)
+                if finish_name in ("SAFETY", "RECITATION", "BLOCKLIST"):
+                    raise ValueError(f"Model blocked response: {finish_name}")
             content = (response.text or "").strip()
             if content:
                 return content
+            # Empty but not blocked — treat as transient and try next model.
+            last_exc = ValueError(f"{model_name} returned empty content")
+        except ValueError:
+            raise  # Propagate deliberate blocks immediately.
         except Exception as exc:
             last_exc = exc
+            continue
 
     raise HTTPException(502, f"Gemini service temporarily unavailable: {last_exc}")
 
