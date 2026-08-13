@@ -55,24 +55,24 @@ class GeminiChatService {
   }) async {
     final now = DateTime.now().toLocal();
     final timeStr = DateFormat('EEEE, MMMM d, yyyy · h:mm:ss a').format(now);
-    final lower = userMessage.toLowerCase().trim();
+    // Normalize for deterministic matching: lowercase + strip trailing punctuation
+    final lower = userMessage.toLowerCase().trim().replaceAll(RegExp(r'[?.!]+$'), '');
 
     // ── 1. Fast Deterministic Answers for Common Live Queries ────────────────
-    if (lower == "what's the time" ||
-        lower == "what is the time" ||
-        lower == "what's the time now" ||
-        lower == "what is the time now" ||
-        lower == "what time is it" ||
-        lower == "current time" ||
-        lower == "time now") {
+    final timeQueries = {
+      "what's the time", "what is the time", "what's the time now",
+      "what is the time now", "what time is it", "current time", "time now",
+      "tell me the time", "what time",
+    };
+    if (timeQueries.contains(lower)) {
       return '⏰ Current time is **${DateFormat('h:mm a').format(now)}** (${DateFormat('EEEE, MMMM d, yyyy').format(now)} · IST).';
     }
 
-    if (lower == "what's today's date" ||
-        lower == "what is today's date" ||
-        lower == "today's date" ||
-        lower == "what day is today" ||
-        lower == "what is today") {
+    final dateQueries = {
+      "what's today's date", "what is today's date", "today's date",
+      "what day is today", "what is today", "today date",
+    };
+    if (dateQueries.contains(lower)) {
       return '📅 Today is **${DateFormat('EEEE, MMMM d, yyyy').format(now)}**.';
     }
 
@@ -89,7 +89,7 @@ You are ASTRA, an intelligent, calm, and highly capable AI personal life schedul
 You are running natively inside the ASTRA mobile app.
 
 LIVE SYSTEM CONTEXT:
-• Current Date & Time: $timeStr (IST)
+• Current Date & Time: $timeStr (IST — Indian Standard Time, UTC+5:30)
 • User Account: ${userEmail ?? 'Local User (Offline)'}
 ${panchangSummary != null ? '• Panchang Info: $panchangSummary' : ''}
 • Current Pending Tasks:
@@ -97,9 +97,11 @@ $taskListSummary
 
 INSTRUCTIONS:
 - You know the current time, date, and user tasks from the LIVE SYSTEM CONTEXT above.
-- Use conversation history to maintain context and remember what the user previously discussed.
+- Always answer time/date questions using the IST values in LIVE SYSTEM CONTEXT, never guess or say you don't know.
+- Use conversation history to maintain full context. If the user asks "what did I ask just now?" or similar, refer to the previous user message in history.
 - Answer clearly, helpfully, and conversationally in 2-4 sentences unless detailed analysis is requested.
 - Do NOT say "as an AI language model". Speak naturally as ASTRA.
+- Never fabricate task data — only report tasks listed in LIVE SYSTEM CONTEXT.
 ''';
 
     // ── 3. Try Direct Gemini with Multi-turn History ─────────────────────────
@@ -113,13 +115,12 @@ INSTRUCTIONS:
             systemInstruction: Content.system(systemPrompt),
           );
 
-          // Build multi-turn contents from recent history
+          // Build multi-turn contents from history (does NOT include the current message)
           final contents = <Content>[];
           for (final turn in history) {
             final role = turn['role'];
             final text = turn['text'] ?? '';
             if (text.trim().isEmpty) continue;
-
             if (role == 'user') {
               contents.add(Content.text(text));
             } else {
@@ -127,7 +128,7 @@ INSTRUCTIONS:
             }
           }
 
-          // Add the current user query
+          // Add the current user query ONCE (no duplicate)
           contents.add(Content.text(userMessage));
 
           final response = await model.generateContent(contents);

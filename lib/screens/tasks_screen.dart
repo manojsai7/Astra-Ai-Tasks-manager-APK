@@ -403,14 +403,11 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
                   child: ElevatedButton(
                     onPressed: () async {
                       if (_titleController.text.trim().isEmpty) return;
-                      final updated = Task(
-                        id: task.id,
+                      final updated = task.copyWith(
                         title: _titleController.text.trim(),
                         description: _descController.text.trim().isEmpty ? null : _descController.text.trim(),
                         dueDate: _dueDate,
                         priority: _priority,
-                        isCompleted: task.isCompleted,
-                        createdAt: task.createdAt,
                       );
                       ref.read(taskNotifierProvider.notifier).updateTask(updated);
                       ref.invalidate(taskListProvider);
@@ -904,105 +901,206 @@ class _TaskCard extends StatelessWidget {
           ),
           const SizedBox(width: 12),
 
-          // Content
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 14),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    task.title,
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: task.isCompleted
-                          ? AstraColors.textMuted
-                          : AstraColors.text,
-                      decoration: task.isCompleted
-                          ? TextDecoration.lineThrough
-                          : null,
-                      decorationColor: AstraColors.textMuted,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  if (task.description != null &&
-                      task.description!.isNotEmpty) ...[
-                    const SizedBox(height: 2),
-                    Text(
-                      task.description!,
-                      style: TextStyle(
-                          fontSize: 11, color: AstraColors.textMuted),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                  if (task.dueDate != null) ...[
-                    const SizedBox(height: 4),
+            // Content
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
                     Row(
                       children: [
-                        Icon(
-                          LucideIcons.clock,
-                          size: 11,
-                          color: isOverdue
-                              ? AstraColors.red
-                              : AstraColors.textMuted,
+                        Expanded(
+                          child: Text(
+                            task.title,
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: task.isCompleted
+                                  ? AstraColors.textMuted
+                                  : AstraColors.text,
+                              decoration: task.isCompleted
+                                  ? TextDecoration.lineThrough
+                                  : null,
+                              decorationColor: AstraColors.textMuted,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
-                        const SizedBox(width: 4),
-                        Text(
-                          DateFormat('MMM d · h:mm a').format(task.dueDate!),
-                          style: TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w500,
+                        if (task.organization != null) ...[
+                          const SizedBox(width: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: AstraColors.surface2,
+                              borderRadius: BorderRadius.circular(6),
+                              border: Border.all(color: AstraColors.edgeSoft),
+                            ),
+                            child: Text(
+                              '🏢 ${task.organization}',
+                              style: const TextStyle(fontSize: 9, color: AstraColors.textMuted),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                    if (task.description != null &&
+                        task.description!.isNotEmpty) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        task.description!,
+                        style: TextStyle(
+                            fontSize: 11, color: AstraColors.textMuted),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                    if (task.dueDate != null) ...[
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          Icon(
+                            LucideIcons.clock,
+                            size: 11,
                             color: isOverdue
                                 ? AstraColors.red
                                 : AstraColors.textMuted,
                           ),
+                          const SizedBox(width: 4),
+                          Text(
+                            DateFormat('MMM d · h:mm a').format(task.dueDate!),
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w500,
+                              color: isOverdue
+                                  ? AstraColors.red
+                                  : AstraColors.textMuted,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                    if (task.subtasks.isNotEmpty) ...[
+                      const SizedBox(height: 8),
+                      // Subtask progress bar
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(4),
+                        child: LinearProgressIndicator(
+                          value: task.subtasks.completionRatio,
+                          minHeight: 3,
+                          backgroundColor: AstraColors.surface2,
+                          color: AstraColors.lime,
                         ),
-                      ],
-                    ),
+                      ),
+                      const SizedBox(height: 6),
+                      // Subtasks list
+                      ...task.subtasks.map((sub) => Consumer(
+                            builder: (context, ref, _) => GestureDetector(
+                              onTap: () {
+                                ref
+                                    .read(taskNotifierProvider.notifier)
+                                    .toggleSubtask(task.id, sub.id);
+                                ref.invalidate(taskListProvider);
+                              },
+                              child: Padding(
+                                padding: const EdgeInsets.only(top: 3),
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      sub.isCompleted
+                                          ? LucideIcons.checkSquare
+                                          : LucideIcons.square,
+                                      size: 12,
+                                      color: sub.isCompleted
+                                          ? AstraColors.lime
+                                          : AstraColors.textMuted,
+                                    ),
+                                    const SizedBox(width: 6),
+                                    Expanded(
+                                      child: Text(
+                                        sub.name,
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          color: sub.isCompleted
+                                              ? AstraColors.textMuted
+                                              : AstraColors.text,
+                                          decoration: sub.isCompleted
+                                              ? TextDecoration.lineThrough
+                                              : null,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          )),
+                    ],
                   ],
-                ],
+                ),
               ),
             ),
-          ),
 
-          // Priority badge + delete
-          Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                  // Neutral charcoal badge — priority lives in the left strip + color
-                  color: AstraColors.surface2,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: AstraColors.edgeSoft, width: 1),
+            // Priority & Status badges + delete
+            Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Consumer(
+                  builder: (context, ref, _) => GestureDetector(
+                    onTap: () {
+                      final next = task.status.nextStatus();
+                      ref.read(taskNotifierProvider.notifier).setStatus(task.id, next);
+                      ref.invalidate(taskListProvider);
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: AstraColors.surface2,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: AstraColors.edgeSoft, width: 1),
+                      ),
+                      child: Text(
+                        '${task.status.emoji} ${task.status.displayName}',
+                        style: TextStyle(
+                            fontSize: 9,
+                            fontWeight: FontWeight.w700,
+                            color: task.isCompleted ? AstraColors.lime : color),
+                      ),
+                    ),
+                  ),
                 ),
-                child: Text(
-                  task.priority.toUpperCase(),
-                  style: TextStyle(
-                      fontSize: 9,
-                      fontWeight: FontWeight.w700,
-                      color: task.isCompleted ? AstraColors.textMuted : color),
+                const SizedBox(height: 4),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: AstraColors.surface2,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: AstraColors.edgeSoft, width: 1),
+                  ),
+                  child: Text(
+                    task.priority.toUpperCase(),
+                    style: TextStyle(
+                        fontSize: 9,
+                        fontWeight: FontWeight.w700,
+                        color: task.isCompleted ? AstraColors.textMuted : color),
+                  ),
                 ),
-              ),
-              IconButton(
-                icon: const Icon(LucideIcons.trash2,
-                    size: 16, color: AppTheme.textMuted),
-                onPressed: onDelete,
-                padding: EdgeInsets.zero,
-                visualDensity: VisualDensity.compact,
-              ),
-            ],
-          ),
-          const SizedBox(width: 8),
-        ],
-      ),   // Row
-    ),     // AstraCard
-    ),     // Padding
-    );     // GestureDetector
+                IconButton(
+                  icon: const Icon(LucideIcons.trash2,
+                      size: 16, color: AppTheme.textMuted),
+                  onPressed: onDelete,
+                  padding: EdgeInsets.zero,
+                  visualDensity: VisualDensity.compact,
+                ),
+              ],
+            ),
+            const SizedBox(width: 8),
+          ],
+        ),
+      ),
+      ),
+      );
   }
 }

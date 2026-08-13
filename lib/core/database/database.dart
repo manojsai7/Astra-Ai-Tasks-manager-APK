@@ -28,13 +28,19 @@ class Tasks extends Table {
   TextColumn get inboxItemId => text().nullable()();
   TextColumn get title => text()();
   TextColumn get description => text().nullable()();
-  TextColumn get taskType => text()();
-  TextColumn get priority => text()();
-  TextColumn get status => text()();
+  TextColumn get taskType => text().withDefault(const Constant('reminder'))();
+  TextColumn get priority => text().withDefault(const Constant('medium'))();
+  TextColumn get status => text().withDefault(const Constant('pending'))();
+  IntColumn get order => integer().withDefault(const Constant(0))();
+  TextColumn get subtasksJson => text().withDefault(const Constant('[]'))();
   DateTimeColumn get dueAt => dateTime().nullable()();
   DateTimeColumn get completedAt => dateTime().nullable()();
   DateTimeColumn get createdAt => dateTime()();
   DateTimeColumn get updatedAt => dateTime()();
+  TextColumn get source => text().nullable()();
+  TextColumn get sourceId => text().nullable()();
+  TextColumn get category => text().nullable()();
+  TextColumn get organization => text().nullable()();
 
   @override
   Set<Column> get primaryKey => {id};
@@ -112,7 +118,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 5;
+  int get schemaVersion => 6;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -133,6 +139,14 @@ class AppDatabase extends _$AppDatabase {
       if (from < 5) {
         await m.createTable(chatSessions);
         await m.createTable(chatMessages);
+      }
+      if (from < 6) {
+        await m.addColumn(tasks, tasks.order);
+        await m.addColumn(tasks, tasks.subtasksJson);
+        await m.addColumn(tasks, tasks.source);
+        await m.addColumn(tasks, tasks.sourceId);
+        await m.addColumn(tasks, tasks.category);
+        await m.addColumn(tasks, tasks.organization);
       }
     },
   );

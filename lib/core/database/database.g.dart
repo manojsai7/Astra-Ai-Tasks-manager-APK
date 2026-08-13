@@ -530,7 +530,8 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, TaskEntry> {
     aliasedName,
     false,
     type: DriftSqlType.string,
-    requiredDuringInsert: true,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('reminder'),
   );
   static const VerificationMeta _priorityMeta = const VerificationMeta(
     'priority',
@@ -541,7 +542,8 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, TaskEntry> {
     aliasedName,
     false,
     type: DriftSqlType.string,
-    requiredDuringInsert: true,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('medium'),
   );
   static const VerificationMeta _statusMeta = const VerificationMeta('status');
   @override
@@ -550,7 +552,30 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, TaskEntry> {
     aliasedName,
     false,
     type: DriftSqlType.string,
-    requiredDuringInsert: true,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('pending'),
+  );
+  static const VerificationMeta _orderMeta = const VerificationMeta('order');
+  @override
+  late final GeneratedColumn<int> order = GeneratedColumn<int>(
+    'order',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _subtasksJsonMeta = const VerificationMeta(
+    'subtasksJson',
+  );
+  @override
+  late final GeneratedColumn<String> subtasksJson = GeneratedColumn<String>(
+    'subtasks_json',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('[]'),
   );
   static const VerificationMeta _dueAtMeta = const VerificationMeta('dueAt');
   @override
@@ -594,6 +619,48 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, TaskEntry> {
     type: DriftSqlType.dateTime,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _sourceMeta = const VerificationMeta('source');
+  @override
+  late final GeneratedColumn<String> source = GeneratedColumn<String>(
+    'source',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _sourceIdMeta = const VerificationMeta(
+    'sourceId',
+  );
+  @override
+  late final GeneratedColumn<String> sourceId = GeneratedColumn<String>(
+    'source_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _categoryMeta = const VerificationMeta(
+    'category',
+  );
+  @override
+  late final GeneratedColumn<String> category = GeneratedColumn<String>(
+    'category',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _organizationMeta = const VerificationMeta(
+    'organization',
+  );
+  @override
+  late final GeneratedColumn<String> organization = GeneratedColumn<String>(
+    'organization',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -603,10 +670,16 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, TaskEntry> {
     taskType,
     priority,
     status,
+    order,
+    subtasksJson,
     dueAt,
     completedAt,
     createdAt,
     updatedAt,
+    source,
+    sourceId,
+    category,
+    organization,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -656,24 +729,33 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, TaskEntry> {
         _taskTypeMeta,
         taskType.isAcceptableOrUnknown(data['task_type']!, _taskTypeMeta),
       );
-    } else if (isInserting) {
-      context.missing(_taskTypeMeta);
     }
     if (data.containsKey('priority')) {
       context.handle(
         _priorityMeta,
         priority.isAcceptableOrUnknown(data['priority']!, _priorityMeta),
       );
-    } else if (isInserting) {
-      context.missing(_priorityMeta);
     }
     if (data.containsKey('status')) {
       context.handle(
         _statusMeta,
         status.isAcceptableOrUnknown(data['status']!, _statusMeta),
       );
-    } else if (isInserting) {
-      context.missing(_statusMeta);
+    }
+    if (data.containsKey('order')) {
+      context.handle(
+        _orderMeta,
+        order.isAcceptableOrUnknown(data['order']!, _orderMeta),
+      );
+    }
+    if (data.containsKey('subtasks_json')) {
+      context.handle(
+        _subtasksJsonMeta,
+        subtasksJson.isAcceptableOrUnknown(
+          data['subtasks_json']!,
+          _subtasksJsonMeta,
+        ),
+      );
     }
     if (data.containsKey('due_at')) {
       context.handle(
@@ -705,6 +787,33 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, TaskEntry> {
       );
     } else if (isInserting) {
       context.missing(_updatedAtMeta);
+    }
+    if (data.containsKey('source')) {
+      context.handle(
+        _sourceMeta,
+        source.isAcceptableOrUnknown(data['source']!, _sourceMeta),
+      );
+    }
+    if (data.containsKey('source_id')) {
+      context.handle(
+        _sourceIdMeta,
+        sourceId.isAcceptableOrUnknown(data['source_id']!, _sourceIdMeta),
+      );
+    }
+    if (data.containsKey('category')) {
+      context.handle(
+        _categoryMeta,
+        category.isAcceptableOrUnknown(data['category']!, _categoryMeta),
+      );
+    }
+    if (data.containsKey('organization')) {
+      context.handle(
+        _organizationMeta,
+        organization.isAcceptableOrUnknown(
+          data['organization']!,
+          _organizationMeta,
+        ),
+      );
     }
     return context;
   }
@@ -743,6 +852,14 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, TaskEntry> {
         DriftSqlType.string,
         data['${effectivePrefix}status'],
       )!,
+      order: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}order'],
+      )!,
+      subtasksJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}subtasks_json'],
+      )!,
       dueAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}due_at'],
@@ -759,6 +876,22 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, TaskEntry> {
         DriftSqlType.dateTime,
         data['${effectivePrefix}updated_at'],
       )!,
+      source: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}source'],
+      ),
+      sourceId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}source_id'],
+      ),
+      category: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}category'],
+      ),
+      organization: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}organization'],
+      ),
     );
   }
 
@@ -776,10 +909,16 @@ class TaskEntry extends DataClass implements Insertable<TaskEntry> {
   final String taskType;
   final String priority;
   final String status;
+  final int order;
+  final String subtasksJson;
   final DateTime? dueAt;
   final DateTime? completedAt;
   final DateTime createdAt;
   final DateTime updatedAt;
+  final String? source;
+  final String? sourceId;
+  final String? category;
+  final String? organization;
   const TaskEntry({
     required this.id,
     this.inboxItemId,
@@ -788,10 +927,16 @@ class TaskEntry extends DataClass implements Insertable<TaskEntry> {
     required this.taskType,
     required this.priority,
     required this.status,
+    required this.order,
+    required this.subtasksJson,
     this.dueAt,
     this.completedAt,
     required this.createdAt,
     required this.updatedAt,
+    this.source,
+    this.sourceId,
+    this.category,
+    this.organization,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -807,6 +952,8 @@ class TaskEntry extends DataClass implements Insertable<TaskEntry> {
     map['task_type'] = Variable<String>(taskType);
     map['priority'] = Variable<String>(priority);
     map['status'] = Variable<String>(status);
+    map['order'] = Variable<int>(order);
+    map['subtasks_json'] = Variable<String>(subtasksJson);
     if (!nullToAbsent || dueAt != null) {
       map['due_at'] = Variable<DateTime>(dueAt);
     }
@@ -815,6 +962,18 @@ class TaskEntry extends DataClass implements Insertable<TaskEntry> {
     }
     map['created_at'] = Variable<DateTime>(createdAt);
     map['updated_at'] = Variable<DateTime>(updatedAt);
+    if (!nullToAbsent || source != null) {
+      map['source'] = Variable<String>(source);
+    }
+    if (!nullToAbsent || sourceId != null) {
+      map['source_id'] = Variable<String>(sourceId);
+    }
+    if (!nullToAbsent || category != null) {
+      map['category'] = Variable<String>(category);
+    }
+    if (!nullToAbsent || organization != null) {
+      map['organization'] = Variable<String>(organization);
+    }
     return map;
   }
 
@@ -831,6 +990,8 @@ class TaskEntry extends DataClass implements Insertable<TaskEntry> {
       taskType: Value(taskType),
       priority: Value(priority),
       status: Value(status),
+      order: Value(order),
+      subtasksJson: Value(subtasksJson),
       dueAt: dueAt == null && nullToAbsent
           ? const Value.absent()
           : Value(dueAt),
@@ -839,6 +1000,18 @@ class TaskEntry extends DataClass implements Insertable<TaskEntry> {
           : Value(completedAt),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
+      source: source == null && nullToAbsent
+          ? const Value.absent()
+          : Value(source),
+      sourceId: sourceId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(sourceId),
+      category: category == null && nullToAbsent
+          ? const Value.absent()
+          : Value(category),
+      organization: organization == null && nullToAbsent
+          ? const Value.absent()
+          : Value(organization),
     );
   }
 
@@ -855,10 +1028,16 @@ class TaskEntry extends DataClass implements Insertable<TaskEntry> {
       taskType: serializer.fromJson<String>(json['taskType']),
       priority: serializer.fromJson<String>(json['priority']),
       status: serializer.fromJson<String>(json['status']),
+      order: serializer.fromJson<int>(json['order']),
+      subtasksJson: serializer.fromJson<String>(json['subtasksJson']),
       dueAt: serializer.fromJson<DateTime?>(json['dueAt']),
       completedAt: serializer.fromJson<DateTime?>(json['completedAt']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+      source: serializer.fromJson<String?>(json['source']),
+      sourceId: serializer.fromJson<String?>(json['sourceId']),
+      category: serializer.fromJson<String?>(json['category']),
+      organization: serializer.fromJson<String?>(json['organization']),
     );
   }
   @override
@@ -872,10 +1051,16 @@ class TaskEntry extends DataClass implements Insertable<TaskEntry> {
       'taskType': serializer.toJson<String>(taskType),
       'priority': serializer.toJson<String>(priority),
       'status': serializer.toJson<String>(status),
+      'order': serializer.toJson<int>(order),
+      'subtasksJson': serializer.toJson<String>(subtasksJson),
       'dueAt': serializer.toJson<DateTime?>(dueAt),
       'completedAt': serializer.toJson<DateTime?>(completedAt),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
+      'source': serializer.toJson<String?>(source),
+      'sourceId': serializer.toJson<String?>(sourceId),
+      'category': serializer.toJson<String?>(category),
+      'organization': serializer.toJson<String?>(organization),
     };
   }
 
@@ -887,10 +1072,16 @@ class TaskEntry extends DataClass implements Insertable<TaskEntry> {
     String? taskType,
     String? priority,
     String? status,
+    int? order,
+    String? subtasksJson,
     Value<DateTime?> dueAt = const Value.absent(),
     Value<DateTime?> completedAt = const Value.absent(),
     DateTime? createdAt,
     DateTime? updatedAt,
+    Value<String?> source = const Value.absent(),
+    Value<String?> sourceId = const Value.absent(),
+    Value<String?> category = const Value.absent(),
+    Value<String?> organization = const Value.absent(),
   }) => TaskEntry(
     id: id ?? this.id,
     inboxItemId: inboxItemId.present ? inboxItemId.value : this.inboxItemId,
@@ -899,10 +1090,16 @@ class TaskEntry extends DataClass implements Insertable<TaskEntry> {
     taskType: taskType ?? this.taskType,
     priority: priority ?? this.priority,
     status: status ?? this.status,
+    order: order ?? this.order,
+    subtasksJson: subtasksJson ?? this.subtasksJson,
     dueAt: dueAt.present ? dueAt.value : this.dueAt,
     completedAt: completedAt.present ? completedAt.value : this.completedAt,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
+    source: source.present ? source.value : this.source,
+    sourceId: sourceId.present ? sourceId.value : this.sourceId,
+    category: category.present ? category.value : this.category,
+    organization: organization.present ? organization.value : this.organization,
   );
   TaskEntry copyWithCompanion(TasksCompanion data) {
     return TaskEntry(
@@ -917,12 +1114,22 @@ class TaskEntry extends DataClass implements Insertable<TaskEntry> {
       taskType: data.taskType.present ? data.taskType.value : this.taskType,
       priority: data.priority.present ? data.priority.value : this.priority,
       status: data.status.present ? data.status.value : this.status,
+      order: data.order.present ? data.order.value : this.order,
+      subtasksJson: data.subtasksJson.present
+          ? data.subtasksJson.value
+          : this.subtasksJson,
       dueAt: data.dueAt.present ? data.dueAt.value : this.dueAt,
       completedAt: data.completedAt.present
           ? data.completedAt.value
           : this.completedAt,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+      source: data.source.present ? data.source.value : this.source,
+      sourceId: data.sourceId.present ? data.sourceId.value : this.sourceId,
+      category: data.category.present ? data.category.value : this.category,
+      organization: data.organization.present
+          ? data.organization.value
+          : this.organization,
     );
   }
 
@@ -936,10 +1143,16 @@ class TaskEntry extends DataClass implements Insertable<TaskEntry> {
           ..write('taskType: $taskType, ')
           ..write('priority: $priority, ')
           ..write('status: $status, ')
+          ..write('order: $order, ')
+          ..write('subtasksJson: $subtasksJson, ')
           ..write('dueAt: $dueAt, ')
           ..write('completedAt: $completedAt, ')
           ..write('createdAt: $createdAt, ')
-          ..write('updatedAt: $updatedAt')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('source: $source, ')
+          ..write('sourceId: $sourceId, ')
+          ..write('category: $category, ')
+          ..write('organization: $organization')
           ..write(')'))
         .toString();
   }
@@ -953,10 +1166,16 @@ class TaskEntry extends DataClass implements Insertable<TaskEntry> {
     taskType,
     priority,
     status,
+    order,
+    subtasksJson,
     dueAt,
     completedAt,
     createdAt,
     updatedAt,
+    source,
+    sourceId,
+    category,
+    organization,
   );
   @override
   bool operator ==(Object other) =>
@@ -969,10 +1188,16 @@ class TaskEntry extends DataClass implements Insertable<TaskEntry> {
           other.taskType == this.taskType &&
           other.priority == this.priority &&
           other.status == this.status &&
+          other.order == this.order &&
+          other.subtasksJson == this.subtasksJson &&
           other.dueAt == this.dueAt &&
           other.completedAt == this.completedAt &&
           other.createdAt == this.createdAt &&
-          other.updatedAt == this.updatedAt);
+          other.updatedAt == this.updatedAt &&
+          other.source == this.source &&
+          other.sourceId == this.sourceId &&
+          other.category == this.category &&
+          other.organization == this.organization);
 }
 
 class TasksCompanion extends UpdateCompanion<TaskEntry> {
@@ -983,10 +1208,16 @@ class TasksCompanion extends UpdateCompanion<TaskEntry> {
   final Value<String> taskType;
   final Value<String> priority;
   final Value<String> status;
+  final Value<int> order;
+  final Value<String> subtasksJson;
   final Value<DateTime?> dueAt;
   final Value<DateTime?> completedAt;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
+  final Value<String?> source;
+  final Value<String?> sourceId;
+  final Value<String?> category;
+  final Value<String?> organization;
   final Value<int> rowid;
   const TasksCompanion({
     this.id = const Value.absent(),
@@ -996,10 +1227,16 @@ class TasksCompanion extends UpdateCompanion<TaskEntry> {
     this.taskType = const Value.absent(),
     this.priority = const Value.absent(),
     this.status = const Value.absent(),
+    this.order = const Value.absent(),
+    this.subtasksJson = const Value.absent(),
     this.dueAt = const Value.absent(),
     this.completedAt = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
+    this.source = const Value.absent(),
+    this.sourceId = const Value.absent(),
+    this.category = const Value.absent(),
+    this.organization = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   TasksCompanion.insert({
@@ -1007,19 +1244,22 @@ class TasksCompanion extends UpdateCompanion<TaskEntry> {
     this.inboxItemId = const Value.absent(),
     required String title,
     this.description = const Value.absent(),
-    required String taskType,
-    required String priority,
-    required String status,
+    this.taskType = const Value.absent(),
+    this.priority = const Value.absent(),
+    this.status = const Value.absent(),
+    this.order = const Value.absent(),
+    this.subtasksJson = const Value.absent(),
     this.dueAt = const Value.absent(),
     this.completedAt = const Value.absent(),
     required DateTime createdAt,
     required DateTime updatedAt,
+    this.source = const Value.absent(),
+    this.sourceId = const Value.absent(),
+    this.category = const Value.absent(),
+    this.organization = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
        title = Value(title),
-       taskType = Value(taskType),
-       priority = Value(priority),
-       status = Value(status),
        createdAt = Value(createdAt),
        updatedAt = Value(updatedAt);
   static Insertable<TaskEntry> custom({
@@ -1030,10 +1270,16 @@ class TasksCompanion extends UpdateCompanion<TaskEntry> {
     Expression<String>? taskType,
     Expression<String>? priority,
     Expression<String>? status,
+    Expression<int>? order,
+    Expression<String>? subtasksJson,
     Expression<DateTime>? dueAt,
     Expression<DateTime>? completedAt,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
+    Expression<String>? source,
+    Expression<String>? sourceId,
+    Expression<String>? category,
+    Expression<String>? organization,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -1044,10 +1290,16 @@ class TasksCompanion extends UpdateCompanion<TaskEntry> {
       if (taskType != null) 'task_type': taskType,
       if (priority != null) 'priority': priority,
       if (status != null) 'status': status,
+      if (order != null) 'order': order,
+      if (subtasksJson != null) 'subtasks_json': subtasksJson,
       if (dueAt != null) 'due_at': dueAt,
       if (completedAt != null) 'completed_at': completedAt,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
+      if (source != null) 'source': source,
+      if (sourceId != null) 'source_id': sourceId,
+      if (category != null) 'category': category,
+      if (organization != null) 'organization': organization,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -1060,10 +1312,16 @@ class TasksCompanion extends UpdateCompanion<TaskEntry> {
     Value<String>? taskType,
     Value<String>? priority,
     Value<String>? status,
+    Value<int>? order,
+    Value<String>? subtasksJson,
     Value<DateTime?>? dueAt,
     Value<DateTime?>? completedAt,
     Value<DateTime>? createdAt,
     Value<DateTime>? updatedAt,
+    Value<String?>? source,
+    Value<String?>? sourceId,
+    Value<String?>? category,
+    Value<String?>? organization,
     Value<int>? rowid,
   }) {
     return TasksCompanion(
@@ -1074,10 +1332,16 @@ class TasksCompanion extends UpdateCompanion<TaskEntry> {
       taskType: taskType ?? this.taskType,
       priority: priority ?? this.priority,
       status: status ?? this.status,
+      order: order ?? this.order,
+      subtasksJson: subtasksJson ?? this.subtasksJson,
       dueAt: dueAt ?? this.dueAt,
       completedAt: completedAt ?? this.completedAt,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
+      source: source ?? this.source,
+      sourceId: sourceId ?? this.sourceId,
+      category: category ?? this.category,
+      organization: organization ?? this.organization,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -1106,6 +1370,12 @@ class TasksCompanion extends UpdateCompanion<TaskEntry> {
     if (status.present) {
       map['status'] = Variable<String>(status.value);
     }
+    if (order.present) {
+      map['order'] = Variable<int>(order.value);
+    }
+    if (subtasksJson.present) {
+      map['subtasks_json'] = Variable<String>(subtasksJson.value);
+    }
     if (dueAt.present) {
       map['due_at'] = Variable<DateTime>(dueAt.value);
     }
@@ -1117,6 +1387,18 @@ class TasksCompanion extends UpdateCompanion<TaskEntry> {
     }
     if (updatedAt.present) {
       map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (source.present) {
+      map['source'] = Variable<String>(source.value);
+    }
+    if (sourceId.present) {
+      map['source_id'] = Variable<String>(sourceId.value);
+    }
+    if (category.present) {
+      map['category'] = Variable<String>(category.value);
+    }
+    if (organization.present) {
+      map['organization'] = Variable<String>(organization.value);
     }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
@@ -1134,10 +1416,16 @@ class TasksCompanion extends UpdateCompanion<TaskEntry> {
           ..write('taskType: $taskType, ')
           ..write('priority: $priority, ')
           ..write('status: $status, ')
+          ..write('order: $order, ')
+          ..write('subtasksJson: $subtasksJson, ')
           ..write('dueAt: $dueAt, ')
           ..write('completedAt: $completedAt, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
+          ..write('source: $source, ')
+          ..write('sourceId: $sourceId, ')
+          ..write('category: $category, ')
+          ..write('organization: $organization, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -4035,13 +4323,19 @@ typedef $$TasksTableCreateCompanionBuilder =
       Value<String?> inboxItemId,
       required String title,
       Value<String?> description,
-      required String taskType,
-      required String priority,
-      required String status,
+      Value<String> taskType,
+      Value<String> priority,
+      Value<String> status,
+      Value<int> order,
+      Value<String> subtasksJson,
       Value<DateTime?> dueAt,
       Value<DateTime?> completedAt,
       required DateTime createdAt,
       required DateTime updatedAt,
+      Value<String?> source,
+      Value<String?> sourceId,
+      Value<String?> category,
+      Value<String?> organization,
       Value<int> rowid,
     });
 typedef $$TasksTableUpdateCompanionBuilder =
@@ -4053,10 +4347,16 @@ typedef $$TasksTableUpdateCompanionBuilder =
       Value<String> taskType,
       Value<String> priority,
       Value<String> status,
+      Value<int> order,
+      Value<String> subtasksJson,
       Value<DateTime?> dueAt,
       Value<DateTime?> completedAt,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
+      Value<String?> source,
+      Value<String?> sourceId,
+      Value<String?> category,
+      Value<String?> organization,
       Value<int> rowid,
     });
 
@@ -4103,6 +4403,16 @@ class $$TasksTableFilterComposer extends Composer<_$AppDatabase, $TasksTable> {
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnFilters<int> get order => $composableBuilder(
+    column: $table.order,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get subtasksJson => $composableBuilder(
+    column: $table.subtasksJson,
+    builder: (column) => ColumnFilters(column),
+  );
+
   ColumnFilters<DateTime> get dueAt => $composableBuilder(
     column: $table.dueAt,
     builder: (column) => ColumnFilters(column),
@@ -4120,6 +4430,26 @@ class $$TasksTableFilterComposer extends Composer<_$AppDatabase, $TasksTable> {
 
   ColumnFilters<DateTime> get updatedAt => $composableBuilder(
     column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get source => $composableBuilder(
+    column: $table.source,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get sourceId => $composableBuilder(
+    column: $table.sourceId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get category => $composableBuilder(
+    column: $table.category,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get organization => $composableBuilder(
+    column: $table.organization,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -4168,6 +4498,16 @@ class $$TasksTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<int> get order => $composableBuilder(
+    column: $table.order,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get subtasksJson => $composableBuilder(
+    column: $table.subtasksJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get dueAt => $composableBuilder(
     column: $table.dueAt,
     builder: (column) => ColumnOrderings(column),
@@ -4185,6 +4525,26 @@ class $$TasksTableOrderingComposer
 
   ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
     column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get source => $composableBuilder(
+    column: $table.source,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get sourceId => $composableBuilder(
+    column: $table.sourceId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get category => $composableBuilder(
+    column: $table.category,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get organization => $composableBuilder(
+    column: $table.organization,
     builder: (column) => ColumnOrderings(column),
   );
 }
@@ -4223,6 +4583,14 @@ class $$TasksTableAnnotationComposer
   GeneratedColumn<String> get status =>
       $composableBuilder(column: $table.status, builder: (column) => column);
 
+  GeneratedColumn<int> get order =>
+      $composableBuilder(column: $table.order, builder: (column) => column);
+
+  GeneratedColumn<String> get subtasksJson => $composableBuilder(
+    column: $table.subtasksJson,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<DateTime> get dueAt =>
       $composableBuilder(column: $table.dueAt, builder: (column) => column);
 
@@ -4236,6 +4604,20 @@ class $$TasksTableAnnotationComposer
 
   GeneratedColumn<DateTime> get updatedAt =>
       $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  GeneratedColumn<String> get source =>
+      $composableBuilder(column: $table.source, builder: (column) => column);
+
+  GeneratedColumn<String> get sourceId =>
+      $composableBuilder(column: $table.sourceId, builder: (column) => column);
+
+  GeneratedColumn<String> get category =>
+      $composableBuilder(column: $table.category, builder: (column) => column);
+
+  GeneratedColumn<String> get organization => $composableBuilder(
+    column: $table.organization,
+    builder: (column) => column,
+  );
 }
 
 class $$TasksTableTableManager
@@ -4273,10 +4655,16 @@ class $$TasksTableTableManager
                 Value<String> taskType = const Value.absent(),
                 Value<String> priority = const Value.absent(),
                 Value<String> status = const Value.absent(),
+                Value<int> order = const Value.absent(),
+                Value<String> subtasksJson = const Value.absent(),
                 Value<DateTime?> dueAt = const Value.absent(),
                 Value<DateTime?> completedAt = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
+                Value<String?> source = const Value.absent(),
+                Value<String?> sourceId = const Value.absent(),
+                Value<String?> category = const Value.absent(),
+                Value<String?> organization = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => TasksCompanion(
                 id: id,
@@ -4286,10 +4674,16 @@ class $$TasksTableTableManager
                 taskType: taskType,
                 priority: priority,
                 status: status,
+                order: order,
+                subtasksJson: subtasksJson,
                 dueAt: dueAt,
                 completedAt: completedAt,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
+                source: source,
+                sourceId: sourceId,
+                category: category,
+                organization: organization,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -4298,13 +4692,19 @@ class $$TasksTableTableManager
                 Value<String?> inboxItemId = const Value.absent(),
                 required String title,
                 Value<String?> description = const Value.absent(),
-                required String taskType,
-                required String priority,
-                required String status,
+                Value<String> taskType = const Value.absent(),
+                Value<String> priority = const Value.absent(),
+                Value<String> status = const Value.absent(),
+                Value<int> order = const Value.absent(),
+                Value<String> subtasksJson = const Value.absent(),
                 Value<DateTime?> dueAt = const Value.absent(),
                 Value<DateTime?> completedAt = const Value.absent(),
                 required DateTime createdAt,
                 required DateTime updatedAt,
+                Value<String?> source = const Value.absent(),
+                Value<String?> sourceId = const Value.absent(),
+                Value<String?> category = const Value.absent(),
+                Value<String?> organization = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => TasksCompanion.insert(
                 id: id,
@@ -4314,10 +4714,16 @@ class $$TasksTableTableManager
                 taskType: taskType,
                 priority: priority,
                 status: status,
+                order: order,
+                subtasksJson: subtasksJson,
                 dueAt: dueAt,
                 completedAt: completedAt,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
+                source: source,
+                sourceId: sourceId,
+                category: category,
+                organization: organization,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0

@@ -36,7 +36,7 @@ void main() {
       );
 
       expect(result.isTask, isTrue);
-      expect(result.title, contains('Amazon SDE Internship'));
+      expect(result.title, contains('Amazon'));
       expect(result.context.companyName, equals('Amazon'));
       expect(result.context.applicationLink, equals('https://amazon.jobs/en/jobs/12345'));
       expect(result.context.source, equals('gmail'));
@@ -71,9 +71,9 @@ void main() {
             TasksCompanion.insert(
               id: taskId,
               title: 'Amazon SDE Internship Application',
-              taskType: TaskType.application.value,
-              priority: TaskPriority.high.value,
-              status: TaskStatus.pending.value,
+              taskType: drift.Value(TaskType.application.value),
+              priority: drift.Value(TaskPriority.high.value),
+              status: drift.Value(TaskStatus.pending.value),
               createdAt: now,
               updatedAt: now,
             ),

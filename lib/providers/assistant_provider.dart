@@ -1,5 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import 'package:timezone/timezone.dart' as tz;
+import 'dart:math' as math;
 import '../features/scheduler/data/services/calendar_sync_service.dart';
 import '../features/scheduler/data/services/gmail_sync_service.dart';
 import '../features/scheduler/data/services/google_auth_service.dart';
@@ -9,7 +11,6 @@ import 'ritual_provider.dart';
 import 'task_provider.dart';
 import '../services/panchang_service.dart';
 import '../features/scheduler/data/services/gemini_chat_service.dart';
-import '../features/scheduler/data/services/gemini_context_extractor.dart';
 import '../core/parser/task_parser.dart';
 import '../services/notification_service.dart';
 import 'auth_provider.dart';
@@ -26,10 +27,6 @@ final gmailSyncServiceProvider = Provider<GmailSyncService>((ref) {
 
 final calendarSyncServiceProvider = Provider<CalendarSyncService>((ref) {
   return CalendarSyncService();
-});
-
-final geminiContextExtractorProvider = Provider<GeminiContextExtractor>((ref) {
-  return GeminiContextExtractor();
 });
 
 final geminiChatServiceProvider = Provider<GeminiChatService>((ref) {
@@ -104,6 +101,132 @@ class AssistantState {
   }
 }
 
+// ─── Intent Detection Regexes ────────────────────────────────────────────────
+
+/// Returns the first matching [_Intent] for [input], or null for general chat.
+_Intent? _detectIntent(String lower) {
+  // ── Task creation / reminders (highest priority) ──────────────────────────
+  if (RegExp(
+    r'\b(remind\s+me|create\s+task|add\s+task|new\s+task|set\s+reminder|reminder|todo|to-do|schedule.*task)\b',
+    caseSensitive: false,
+  ).hasMatch(lower)) {
+    return _Intent.createTask;
+  }
+
+  // ── Standalone "remind" at the start ─────────────────────────────────────
+  if (RegExp(r'^remind\b', caseSensitive: false).hasMatch(lower)) {
+    return _Intent.createTask;
+  }
+
+  // ── Sign out (check before sign in to avoid false positive) ──────────────
+  if (RegExp(r'\b(sign\s+out|logout|log\s+out)\b', caseSensitive: false).hasMatch(lower)) {
+    return _Intent.signOut;
+  }
+
+  // ── Sign in ───────────────────────────────────────────────────────────────
+  if (RegExp(r'\b(sign\s+in|login|connect\s+google|google\s+sign)\b', caseSensitive: false)
+      .hasMatch(lower)) {
+    return _Intent.signIn;
+  }
+
+  // ── Email sync ────────────────────────────────────────────────────────────
+  if (RegExp(
+    r'\b(sync|fetch|check|get|read|show|scan)\s+(my\s+)?(email|emails|gmail|inbox|mail|mails)\b',
+    caseSensitive: false,
+  ).hasMatch(lower)) {
+    return _Intent.syncEmails;
+  }
+
+  if (RegExp(r'\b(last|latest|newest|recent)\s+(mail|email|message)\b', caseSensitive: false)
+      .hasMatch(lower)) {
+    return _Intent.latestEmail;
+  }
+
+  // ── Calendar ──────────────────────────────────────────────────────────────
+  if (RegExp(
+    r'\b(sync|fetch|check|get)\s+(my\s+)?(calendar|events|meetings|schedule)\b',
+    caseSensitive: false,
+  ).hasMatch(lower)) {
+    return _Intent.syncCalendar;
+  }
+
+  if (RegExp(
+    r'\b(today.*meeting|today.*calendar|what.*calendar|next\s+meeting|upcoming\s+meeting)\b',
+    caseSensitive: false,
+  ).hasMatch(lower)) {
+    return _Intent.todayCalendar;
+  }
+
+  // ── Full sync ─────────────────────────────────────────────────────────────
+  if (RegExp(r'\b(sync|refresh|update)\s+(all|everything|life)\b', caseSensitive: false)
+          .hasMatch(lower) ||
+      RegExp(r'\b(life\s+sync|full\s+sync)\b', caseSensitive: false).hasMatch(lower)) {
+    return _Intent.fullSync;
+  }
+
+  // ── Panchang ─────────────────────────────────────────────────────────────
+  if (RegExp(
+    r'\b(panchang|ekadashi|amavasya|purnima|chaturdashi|shivaratri|tithi)\b',
+    caseSensitive: false,
+  ).hasMatch(lower)) {
+    return _Intent.panchang;
+  }
+
+  // ── Task completion ───────────────────────────────────────────────────────
+  if (RegExp(
+    r'\b(complete|done|finish|mark\s+as\s+done|tick\s+off)\s*(task|todo|reminder)?\b',
+    caseSensitive: false,
+  ).hasMatch(lower)) {
+    return _Intent.completeTask;
+  }
+
+  // ── List tasks ────────────────────────────────────────────────────────────
+  if (RegExp(
+        r'\b(list|show|view|get|display|what\s+are)\s*(my\s*)?(task|tasks|todo|todos|reminder|reminders|schedule|agenda)\b',
+        caseSensitive: false,
+      ).hasMatch(lower) ||
+      RegExp(
+        r"\b(my\s+tasks|what'?s?\s+next|coming\s+up|pending\s+tasks)\b",
+        caseSensitive: false,
+      ).hasMatch(lower)) {
+    return _Intent.listTasks;
+  }
+
+  // ── Time query ────────────────────────────────────────────────────────────
+  if (RegExp(
+    r"\b(what'?s?\s+the\s+time|what\s+time\s+is\s+it|current\s+time|time\s+now|tell\s+me\s+the\s+time)\b",
+    caseSensitive: false,
+  ).hasMatch(lower)) {
+    return _Intent.currentTime;
+  }
+
+  // ── Date query ────────────────────────────────────────────────────────────
+  if (RegExp(
+    r"\b(what'?s?\s+today'?s?\s+date|what\s+day\s+is|today'?s?\s+date)\b",
+    caseSensitive: false,
+  ).hasMatch(lower)) {
+    return _Intent.currentDate;
+  }
+
+  return null; // → falls through to general Gemini chat
+}
+
+enum _Intent {
+  createTask,
+  signIn,
+  signOut,
+  syncEmails,
+  latestEmail,
+  syncCalendar,
+  todayCalendar,
+  fullSync,
+  panchang,
+  completeTask,
+  listTasks,
+  currentTime,
+  currentDate,
+}
+
 // ─── Notifier ────────────────────────────────────────────────────────────────
 
 class AssistantNotifier extends StateNotifier<AssistantState> {
@@ -159,102 +282,60 @@ class AssistantNotifier extends StateNotifier<AssistantState> {
     final trimmed = input.trim();
     if (trimmed.isEmpty) return;
 
+    // Normalize: strip trailing punctuation for intent matching only
+    final lower = trimmed.toLowerCase().replaceAll(RegExp(r'[?.!]+$'), '').trim();
+
     // Add user message
     addMessage(trimmed, isUser: true);
-
     state = state.copyWith(isLoading: true, error: null);
-    final lower = trimmed.toLowerCase();
 
     try {
-      // ── 🥇 TASK CREATION — checked FIRST (highest priority) ───────────────
-      // Must be before all other checks so "remind me" never falls through.
-      if (lower.contains('remind me') ||
-          lower.contains('create task') ||
-          lower.contains('add task') ||
-          lower.contains('schedule') ||
-          lower.contains('set reminder') ||
-          lower.contains('new task') ||
-          lower.contains('remind')) {
-        await handleCreateTask(trimmed);
-        return;
+      final intent = _detectIntent(lower);
+
+      switch (intent) {
+        case _Intent.createTask:
+          await handleCreateTask(trimmed);
+
+        case _Intent.signIn:
+          await handleSignIn();
+
+        case _Intent.signOut:
+          await handleSignOut();
+
+        case _Intent.syncEmails:
+          await handleSyncEmails();
+
+        case _Intent.latestEmail:
+          await handleLatestInboxEmail();
+
+        case _Intent.syncCalendar:
+          await handleSyncCalendar();
+
+        case _Intent.todayCalendar:
+          await handleTodayCalendar();
+
+        case _Intent.fullSync:
+          await handleFullSync();
+
+        case _Intent.panchang:
+          handlePanchangQuery();
+
+        case _Intent.completeTask:
+          await handleCompleteTask(trimmed);
+
+        case _Intent.listTasks:
+          await handleListTasks();
+
+        case _Intent.currentTime:
+          _handleCurrentTime();
+
+        case _Intent.currentDate:
+          _handleCurrentDate();
+
+        case null:
+          // Fallback: Gemini conversational chat
+          await _handleGeneralChat(trimmed);
       }
-
-      // ── AUTH ───────────────────────────────────────────────────────────────
-      if (lower.contains('sign in') || lower.contains('login') || lower.contains('connect google')) {
-        await handleSignIn();
-        return;
-      }
-
-      if (lower.contains('sign out') || lower.contains('logout') || lower.contains('log out')) {
-        await handleSignOut();
-        return;
-      }
-
-      // ── EMAIL ──────────────────────────────────────────────────────────────
-      if (lower.contains('sync email') || lower.contains('check email') || lower.contains('scan email') || lower.contains('sync gmail')) {
-        await handleSyncEmails();
-        return;
-      }
-
-      if (lower.contains('last mail') || lower.contains('last email') || lower.contains('latest mail') || lower.contains('latest email') || lower.contains('newest email')) {
-        await handleLatestInboxEmail();
-        return;
-      }
-
-      if (lower.contains('important mail') || lower.contains('important email') || lower.contains('important inbox')) {
-        await handleSyncEmails();
-        return;
-      }
-
-      // ── CALENDAR ───────────────────────────────────────────────────────────
-      if (lower.contains('sync calendar') || lower.contains('check calendar') || lower.contains('fetch calendar')) {
-        await handleSyncCalendar();
-        return;
-      }
-
-      if (lower.contains('today meeting') || lower.contains('today calendar') || lower.contains('what is on my calendar') || lower.contains('next meeting')) {
-        await handleTodayCalendar();
-        return;
-      }
-
-      // ── PANCHANG ───────────────────────────────────────────────────────────
-      if (lower.contains('panchang') || lower.contains('ekadashi') || lower.contains('amavasya') || lower.contains('purnima') || lower.contains('chaturdashi') || lower.contains('shivaratri')) {
-        handlePanchangQuery();
-        return;
-      }
-
-      // ── FULL SYNC ──────────────────────────────────────────────────────────
-      if (lower.contains('sync all') || lower.contains('life sync') || lower.contains('full sync') || lower.contains('sync everything')) {
-        await handleFullSync();
-        return;
-      }
-
-      // ── TASK MANAGEMENT ────────────────────────────────────────────────────
-      if (lower.contains('complete') || lower.contains('done') || lower.contains('finish')) {
-        await handleCompleteTask(trimmed);
-        return;
-      }
-
-      if (lower.contains('list') || lower.contains('my tasks') || lower.contains('what\'s next') || lower.contains('coming up')) {
-        await handleListTasks();
-        return;
-      }
-
-      // ── GEMINI CONVERSATIONAL CHAT (fallback) ──────────────────────────────
-      final chatService = ref.read(geminiChatServiceProvider);
-      final tasks = ref.read(taskNotifierProvider);
-      final history = state.messages.take(12).map((m) => {
-        'role': m.isUser ? 'user' : 'model',
-        'text': m.text,
-      }).toList();
-
-      final response = await chatService.chat(
-        userMessage: trimmed,
-        history: history,
-        pendingTasks: tasks.where((t) => !t.isCompleted).toList(),
-        userEmail: state.userEmail,
-      );
-      addMessage(response, type: AssistantMessageType.text);
     } catch (e) {
       state = state.copyWith(isLoading: false, error: e.toString());
       addMessage(
@@ -262,6 +343,26 @@ class AssistantNotifier extends StateNotifier<AssistantState> {
         type: AssistantMessageType.error,
       );
     }
+  }
+
+  // ─── Instant Handlers (no async needed) ──────────────────────────────────
+
+  void _handleCurrentTime() {
+    final now = DateTime.now().toLocal();
+    final timeStr = DateFormat('h:mm a').format(now);
+    final dateStr = DateFormat('EEEE, MMMM d, yyyy').format(now);
+    addMessage(
+      '🕐 Current time: **$timeStr** IST\n📅 $dateStr',
+      type: AssistantMessageType.info,
+    );
+  }
+
+  void _handleCurrentDate() {
+    final now = DateTime.now().toLocal();
+    addMessage(
+      '📅 Today is **${DateFormat('EEEE, MMMM d, yyyy').format(now)}**.',
+      type: AssistantMessageType.info,
+    );
   }
 
   // ─── Handlers ──────────────────────────────────────────────────────────────
@@ -351,13 +452,15 @@ class AssistantNotifier extends StateNotifier<AssistantState> {
     final auth = ref.read(googleAuthServiceProvider);
     final client = await auth.getAuthenticatedClient();
     if (client == null) {
-      addMessage('Please sign in with Google first so I can read your inbox.', type: AssistantMessageType.auth);
+      addMessage('Please sign in with Google first so I can read your inbox.',
+          type: AssistantMessageType.auth);
       return;
     }
 
     final email = await ref.read(gmailSyncServiceProvider).fetchLatestInboxEmail(client);
     if (email == null) {
-      addMessage('Your inbox does not have a readable recent message.', type: AssistantMessageType.info);
+      addMessage('Your inbox does not have a readable recent message.',
+          type: AssistantMessageType.info);
       return;
     }
     addMessage(
@@ -401,15 +504,18 @@ class AssistantNotifier extends StateNotifier<AssistantState> {
     final auth = ref.read(googleAuthServiceProvider);
     final client = await auth.getAuthenticatedClient();
     if (client == null) {
-      addMessage('Please sign in with Google first so I can check your calendar.', type: AssistantMessageType.auth);
+      addMessage('Please sign in with Google first so I can check your calendar.',
+          type: AssistantMessageType.auth);
       return;
     }
-    final events = await ref.read(calendarSyncServiceProvider).fetchUpcomingEvents(client, daysAhead: 1);
+    final events =
+        await ref.read(calendarSyncServiceProvider).fetchUpcomingEvents(client, daysAhead: 1);
     if (events.isEmpty) {
       addMessage('Your calendar is clear for the next day.', type: AssistantMessageType.info);
       return;
     }
-    addMessage('Here is what is coming up next:', type: AssistantMessageType.calendarSummary, calendarEvents: events);
+    addMessage('Here is what is coming up next:',
+        type: AssistantMessageType.calendarSummary, calendarEvents: events);
   }
 
   void handlePanchangQuery() {
@@ -418,7 +524,11 @@ class AssistantNotifier extends StateNotifier<AssistantState> {
       addMessage('Panchang events are unavailable right now.', type: AssistantMessageType.info);
       return;
     }
-    final lines = events.take(6).map((event) => '${event.displayName} — ${DateFormat('EEE, d MMM').format(event.eventDate)}\n${event.description}').join('\n\n');
+    final lines = events
+        .take(6)
+        .map((event) =>
+            '${event.displayName} — ${DateFormat('EEE, d MMM').format(event.eventDate)}\n${event.description}')
+        .join('\n\n');
     addMessage('Upcoming Panchang\n\n$lines', type: AssistantMessageType.info);
   }
 
@@ -446,7 +556,6 @@ class AssistantNotifier extends StateNotifier<AssistantState> {
       return;
     }
 
-    // Mirror synced DB tasks to TaskNotifier so UI updates immediately
     await _syncDbTasksToNotifier();
 
     addMessage(
@@ -461,31 +570,16 @@ class AssistantNotifier extends StateNotifier<AssistantState> {
   }
 
   Future<void> _syncDbTasksToNotifier() async {
-    final db = ref.read(databaseProvider);
-    final dbTasks = await db.select(db.tasks).get();
     final taskNotifier = ref.read(taskNotifierProvider.notifier);
-
-    for (final t in dbTasks) {
-      final taskModel = Task(
-        id: t.id,
-        title: t.title,
-        description: t.description,
-        dueDate: t.dueAt,
-        priority: t.priority,
-        isCompleted: t.status == 'completed',
-        createdAt: t.createdAt,
-      );
-      await taskNotifier.addTask(taskModel);
-    }
+    await taskNotifier.loadTasks();
     ref.invalidate(taskListProvider);
   }
 
   Future<void> handleCreateTask(String input) async {
     try {
-      // ── Step 1: Local parser (instant, free, deterministic) ────────────────
       final parsed = TaskParser.parse(input);
 
-      if (parsed.title.isEmpty) {
+      if (parsed.title.isEmpty || parsed.title.length < 2) {
         addMessage(
           '🤔 I didn\'t catch the task name. Try:\n"Remind me to call John at 5pm"',
           type: AssistantMessageType.info,
@@ -493,36 +587,68 @@ class AssistantNotifier extends StateNotifier<AssistantState> {
         return;
       }
 
-      // ── Step 2: Build the Task ─────────────────────────────────────────────
       final task = Task(
         id: DateTime.now().millisecondsSinceEpoch.toString(),
         title: parsed.title,
         description: parsed.taskDescription,
         dueDate: parsed.remindAt,
         priority: parsed.priority,
-        isCompleted: false,
+        status: parsed.remindAt != null ? 'active' : 'pending',
+        subtasks: parsed.subtasks,
+        organization: parsed.organization,
+        source: 'assistant',
         createdAt: DateTime.now(),
       );
 
       await ref.read(taskNotifierProvider.notifier).addTask(task);
       ref.invalidate(taskListProvider);
 
-      // ── Step 3: Schedule notification if reminder time is set ─────────────
+      // Schedule notification if a reminder time was detected and is in future
+      bool notifScheduled = false;
       if (parsed.remindAt != null) {
-        await NotificationService.scheduleNotification(
-          id: task.id.hashCode,
-          title: '⏰ ${task.title}',
-          body: 'Time for your reminder!',
-          scheduledTime: parsed.remindAt!,
-        );
+        try {
+          final ist = tz.getLocation('Asia/Kolkata');
+          final istNow = tz.TZDateTime.now(ist);
+          final scheduledIst = tz.TZDateTime.from(parsed.remindAt!, ist);
+
+          if (scheduledIst.isBefore(istNow)) {
+            // Time already passed
+            notifScheduled = false;
+          } else {
+            notifScheduled = await NotificationService.scheduleNotification(
+              id: task.id.hashCode,
+              title: '⏰ Reminder: ${task.title}',
+              body: 'Time for your task: ${task.title}',
+              scheduledTime: parsed.remindAt!,
+              payload: task.id,
+            );
+          }
+        } catch (_) {
+          notifScheduled = false;
+        }
       }
 
-      // ── Step 4: Compose response ───────────────────────────────────────────
-      final buf = StringBuffer('✅ Task created: "${task.title}"');
-      buf.write('\nPriority: ${task.priority.toUpperCase()}');
+      // Build rich FAANG-level response
+      final buf = StringBuffer('✅ Task created: **"${task.title}"**\n');
       if (parsed.remindAt != null) {
-        buf.write('\n⏰ Reminder: ${parsed.formattedReminder}');
+        buf.write('⏰ Reminder: ${parsed.formattedReminder}\n');
       }
+      if (parsed.organization != null) {
+        buf.write('🏢 Organization: ${parsed.organization}\n');
+      }
+      if (parsed.subtasks.isNotEmpty) {
+        buf.write('📋 Subtasks:\n');
+        for (final sub in parsed.subtasks) {
+          buf.write('  • ${sub.name}\n');
+        }
+      }
+      buf.write('📊 Priority: ${task.priority.toUpperCase()}\n');
+      buf.write('📌 Status: ${task.status.emoji} ${task.status.displayName}');
+
+      if (parsed.remindAt != null && !notifScheduled) {
+        buf.write('\n⚠️ Note: Reminder set in past or notification permission missing.');
+      }
+
       addMessage(buf.toString(), type: AssistantMessageType.success);
     } catch (e) {
       addMessage(
@@ -542,7 +668,8 @@ class AssistantNotifier extends StateNotifier<AssistantState> {
     }
 
     String? query;
-    final match = RegExp(r'(?:complete|done|finish)\s*(.+)$', caseSensitive: false).firstMatch(input);
+    final match =
+        RegExp(r'(?:complete|done|finish|mark)\s+(.+)$', caseSensitive: false).firstMatch(input);
     if (match != null) {
       query = match.group(1)?.trim().toLowerCase();
     }
@@ -557,9 +684,10 @@ class AssistantNotifier extends StateNotifier<AssistantState> {
 
     await ref.read(taskNotifierProvider.notifier).toggleComplete(target.id);
     ref.invalidate(taskListProvider);
+    await NotificationService.cancelNotification(target.id.hashCode);
 
     addMessage(
-      '✅ Marked "${target.title}" as complete!',
+      '✅ Marked **"${target.title}"** as complete!',
       type: AssistantMessageType.success,
     );
   }
@@ -573,32 +701,62 @@ class AssistantNotifier extends StateNotifier<AssistantState> {
       return;
     }
 
-    String list = '📋 Your pending tasks (${pending.length}):\n\n';
+    final buf = StringBuffer('📋 Your pending tasks (${pending.length}):\n\n');
     for (var i = 0; i < pending.length && i < 8; i++) {
       final t = pending[i];
-      list += '${i + 1}. ${t.title}';
-      if (t.priority == 'high') list += ' 🔴 HIGH';
+      buf.write('${i + 1}. ${t.title}');
+      if (t.priority == 'high') buf.write(' 🔴 HIGH');
+      if (t.priority == 'low') buf.write(' 🟢 LOW');
       if (t.dueDate != null) {
-        list += '\n   📅 Due: ${DateFormat("MMM d, h:mm a").format(t.dueDate!)}';
+        buf.write('\n   📅 Due: ${DateFormat("MMM d, h:mm a").format(t.dueDate!)}');
       }
-      list += '\n\n';
+      buf.write('\n\n');
     }
     if (pending.length > 8) {
-      list += '... and ${pending.length - 8} more.';
+      buf.write('... and ${pending.length - 8} more.');
     }
-    addMessage(list, type: AssistantMessageType.info);
+    addMessage(buf.toString(), type: AssistantMessageType.info);
   }
+
+  // ─── General Chat Fallback (Gemini) ──────────────────────────────────────
+
+  Future<void> _handleGeneralChat(String message) async {
+    final chatService = ref.read(geminiChatServiceProvider);
+    final tasks = ref.read(taskNotifierProvider);
+
+    // Sliding window: last 10 messages EXCLUDING the one we just added
+    final allMessages = state.messages;
+    final historyMessages = allMessages.length > 1
+        ? allMessages.sublist(0, allMessages.length - 1)
+        : <AssistantMessage>[];
+    final recentHistory = historyMessages
+        .sublist(math.max(0, historyMessages.length - 10))
+        .map((m) => {'role': m.isUser ? 'user' : 'model', 'text': m.text})
+        .toList();
+
+    final response = await chatService.chat(
+      userMessage: message,
+      history: recentHistory,
+      pendingTasks: tasks.where((t) => !t.isCompleted).toList(),
+      userEmail: state.userEmail,
+    );
+    addMessage(response, type: AssistantMessageType.text);
+  }
+
+  // ─── Error Formatting ─────────────────────────────────────────────────────
 
   String _friendlyError(Object e) {
     final str = e.toString().toLowerCase();
     if (str.contains('network') || str.contains('socket')) return 'Check internet connection.';
     if (str.contains('403') || str.contains('permission')) return 'Google permissions denied.';
+    if (str.contains('401') || str.contains('unauthorized')) return 'Please sign in again.';
     return e.toString();
   }
 }
 
 // ─── Provider Declaration ────────────────────────────────────────────────────
 
-final assistantStateProvider = StateNotifierProvider<AssistantNotifier, AssistantState>((ref) {
+final assistantStateProvider =
+    StateNotifierProvider<AssistantNotifier, AssistantState>((ref) {
   return AssistantNotifier(ref);
 });
