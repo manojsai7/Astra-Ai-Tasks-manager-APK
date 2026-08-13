@@ -3,6 +3,8 @@ import 'package:drift/drift.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/database/database.dart';
 import '../models/task.dart';
+import '../services/reminder_service.dart';
+import 'reminder_provider.dart';
 import 'ritual_provider.dart'; // exposes databaseProvider
 
 enum SortMode {
@@ -34,13 +36,15 @@ final sortModeProvider = StateProvider<SortMode>((ref) => SortMode.myOrder);
 final taskNotifierProvider =
     StateNotifierProvider<TaskNotifier, List<Task>>((ref) {
   final db = ref.watch(databaseProvider);
-  return TaskNotifier(db)..loadTasks();
+  final reminders = ref.watch(reminderServiceProvider);
+  return TaskNotifier(db, reminders)..loadTasks();
 });
 
 class TaskNotifier extends StateNotifier<List<Task>> {
   final AppDatabase _db;
+  final ReminderService _reminders;
 
-  TaskNotifier(this._db) : super([]);
+  TaskNotifier(this._db, this._reminders) : super([]);
 
   // ─── Read ───────────────────────────────────────────────────────────────────
 
@@ -114,6 +118,9 @@ class TaskNotifier extends StateNotifier<List<Task>> {
     final task = state.firstWhere((t) => t.id == id, orElse: () => throw Exception('Task $id not found'));
     final newStatus = task.status == 'completed' ? 'pending' : 'completed';
     await setStatus(id, newStatus);
+    if (newStatus == 'completed') {
+      await _reminders.cancelReminderForTask(id);
+    }
   }
 
   // ─── Toggle Subtask ─────────────────────────────────────────────────────────
@@ -170,6 +177,7 @@ class TaskNotifier extends StateNotifier<List<Task>> {
   // ─── Delete ─────────────────────────────────────────────────────────────────
 
   Future<void> deleteTask(String id) async {
+    await _reminders.cancelReminderForTask(id);
     await (_db.delete(_db.tasks)..where((t) => t.id.equals(id))).go();
     await loadTasks();
   }

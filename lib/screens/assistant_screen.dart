@@ -14,6 +14,7 @@ import '../features/scheduler/data/services/calendar_sync_service.dart';
 import '../core/motion.dart';
 import '../widgets/design_system/astra_3d_button.dart';
 import '../widgets/design_system/astra_3d_surface.dart';
+import '../widgets/assistant/astra_response_card.dart';
 
 class AssistantScreen extends ConsumerStatefulWidget {
   const AssistantScreen({super.key});
@@ -49,7 +50,7 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen>
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_scrollController.hasClients) {
         _scrollController.animateTo(
-          _scrollController.position.maxScrollExtent,
+          0,
           duration: const Duration(milliseconds: 320),
           curve: Curves.easeOut,
         );
@@ -209,9 +210,11 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen>
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(assistantStateProvider);
+    final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
 
     return Scaffold(
       backgroundColor: AppTheme.background,
+      resizeToAvoidBottomInset: false,
       body: SafeArea(
         child: Column(
           children: [
@@ -222,7 +225,10 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen>
                   : _buildMessageList(context, state),
             ),
             if (state.isLoading) _buildThinkingIndicator(),
-            _buildInputBar(context),
+            Padding(
+              padding: EdgeInsets.only(bottom: bottomInset),
+              child: _buildInputBar(context),
+            ),
           ],
         ),
       ),
@@ -415,11 +421,13 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen>
   Widget _buildMessageList(BuildContext context, AssistantState state) {
     return ListView.builder(
       controller: _scrollController,
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+      reverse: true,
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
       physics: const BouncingScrollPhysics(),
+      keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
       itemCount: state.messages.length,
       itemBuilder: (ctx, index) {
-        final msg = state.messages[index];
+        final msg = state.messages[state.messages.length - 1 - index];
         return _buildMessageBubble(context, msg);
       },
     );
@@ -465,7 +473,7 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen>
                       softWrap: true,
                       overflow: TextOverflow.visible,
                       style: const TextStyle(
-                        color: Colors.black,
+                        color: AstraColors.textPrimary,
                         fontSize: 14,
                         fontWeight: FontWeight.w500,
                         height: 1.5,
@@ -485,7 +493,7 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen>
       ).withPremiumEntry(delayMs: 0);
     }
 
-    // ── ASTRA response card — charcoal surface + left accent strip ──
+    // ── ASTRA response card — structured or plain text ──
     final accent = _accentFor(msg.messageType);
     final accentDepth = switch (msg.messageType) {
       AssistantMessageType.success  => AstraDepthColors.limeDepth,
@@ -494,6 +502,46 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen>
       AssistantMessageType.calendarSummary => AstraDepthColors.violetDepth,
       _                            => AstraDepthColors.cyanDepth,
     };
+
+    if (msg.structured != null) {
+      return Align(
+        alignment: Alignment.centerLeft,
+        child: Container(
+          margin: const EdgeInsets.only(bottom: 14),
+          constraints: BoxConstraints(maxWidth: maxW),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              AstraResponseCard(
+                response: msg.structured!,
+                accent: accent,
+                accentDepth: accentDepth,
+              ),
+              Padding(
+                padding: const EdgeInsets.only(left: 4, top: 4),
+                child: Row(
+                  children: [
+                    IconButton(
+                      onPressed: () => _copyMessage(msg.text),
+                      tooltip: 'Copy response',
+                      visualDensity: VisualDensity.compact,
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                      icon: const Icon(LucideIcons.copy, size: 13, color: AstraColors.textMuted),
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      DateFormat('h:mm a').format(msg.timestamp),
+                      style: const TextStyle(fontSize: 9, color: AstraColors.textMuted),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ).withPremiumEntry(delayMs: 0);
+    }
 
     return Align(
       alignment: Alignment.centerLeft,

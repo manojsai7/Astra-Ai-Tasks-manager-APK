@@ -112,13 +112,29 @@ class ChatMessages extends Table {
   DateTimeColumn get timestamp => dateTime()();
 }
 
+/// Persistent reminder records linked to tasks — tracks OS notification state.
+@DataClassName('ReminderEntry')
+class Reminders extends Table {
+  TextColumn get id => text()();
+  TextColumn get taskId => text().references(Tasks, #id)();
+  DateTimeColumn get scheduledAt => dateTime()();
+  TextColumn get timezone => text().withDefault(const Constant('Asia/Kolkata'))();
+  IntColumn get notificationId => integer()();
+  TextColumn get status => text().withDefault(const Constant('scheduled'))();
+  DateTimeColumn get createdAt => dateTime()();
+  DateTimeColumn get updatedAt => dateTime()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
 /// The local application database.
-@DriftDatabase(tables: [InboxItems, Tasks, PanchangEvents, RitualRules, TaskContexts, ChatSessions, ChatMessages])
+@DriftDatabase(tables: [InboxItems, Tasks, PanchangEvents, RitualRules, TaskContexts, ChatSessions, ChatMessages, Reminders])
 class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 6;
+  int get schemaVersion => 7;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -148,8 +164,54 @@ class AppDatabase extends _$AppDatabase {
         await m.addColumn(tasks, tasks.category);
         await m.addColumn(tasks, tasks.organization);
       }
+      if (from < 7) {
+        await m.createTable(reminders);
+      }
     },
   );
+
+  // --- Reminder Queries ---
+
+  Future<List<ReminderEntry>> getActiveReminders() {
+    return (select(reminders)
+          ..where((r) => r.status.isIn(['scheduled', 'snoozed']))
+          ..orderBy([(r) => OrderingTerm.asc(r.scheduledAt)]))
+        .get();
+  }
+
+  Future<ReminderEntry?> getReminderByTaskId(String taskId) {
+    return (select(reminders)
+          ..where((r) => r.taskId.equals(taskId))
+          ..where((r) => r.status.isIn(['scheduled', 'snoozed']))
+          ..orderBy([(r) => OrderingTerm.desc(r.createdAt)]))
+        .getSingleOrNull();
+  }
+
+  Future<ReminderEntry?> getReminderById(String id) {
+    return (select(reminders)..where((r) => r.id.equals(id))).getSingleOrNull();
+  }
+
+  Future<void> upsertReminder(RemindersCompanion companion) async {
+    await into(reminders).insertOnConflictUpdate(companion);
+  }
+
+  Future<void> updateReminderStatus(String id, String status) async {
+    await (update(reminders)..where((r) => r.id.equals(id))).write(
+      RemindersCompanion(
+        status: Value(status),
+        updatedAt: Value(DateTime.now()),
+      ),
+    );
+  }
+
+  Future<void> cancelRemindersForTask(String taskId) async {
+    await (update(reminders)..where((r) => r.taskId.equals(taskId))).write(
+      RemindersCompanion(
+        status: const Value('cancelled'),
+        updatedAt: Value(DateTime.now()),
+      ),
+    );
+  }
 
   // --- PanchangEvent Queries ---
 

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'theme/app_theme.dart';
 import 'providers/auth_provider.dart';
+import 'providers/reminder_provider.dart';
 import 'screens/auth_screen.dart';
 import 'screens/home_screen.dart';
 
@@ -31,6 +32,9 @@ class _AstraAppState extends ConsumerState<AstraApp> {
 
   @override
   Widget build(BuildContext context) {
+    // Bootstrap reminder engine on first frame.
+    ref.watch(reminderBootstrapProvider);
+
     return MaterialApp(
       title: 'ASTRA',
       debugShowCheckedModeBanner: false,

@@ -1,6 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
-import 'package:timezone/timezone.dart' as tz;
 import 'dart:math' as math;
 import '../features/scheduler/data/services/calendar_sync_service.dart';
 import '../features/scheduler/data/services/gmail_sync_service.dart';
@@ -12,7 +11,12 @@ import 'task_provider.dart';
 import '../services/panchang_service.dart';
 import '../features/scheduler/data/services/gemini_chat_service.dart';
 import '../core/parser/task_parser.dart';
-import '../services/notification_service.dart';
+import '../core/reminders/reminder.dart';
+import '../core/commands/astra_command.dart';
+import '../core/commands/astra_command_bus.dart';
+import '../core/commands/astra_response.dart';
+import '../core/commands/astra_response_builder.dart';
+import 'reminder_provider.dart';
 import 'auth_provider.dart';
 
 // ─── Service Providers ───────────────────────────────────────────────────────
@@ -52,6 +56,7 @@ class AssistantMessage {
   final bool isUser;
   final DateTime timestamp;
   final AssistantMessageType messageType;
+  final AstraResponse? structured;
   final List<GmailMessageData>? emails;
   final List<CalendarEventData>? calendarEvents;
   final SchedulerSyncResult? syncResult;
@@ -62,6 +67,7 @@ class AssistantMessage {
     required this.isUser,
     required this.timestamp,
     this.messageType = AssistantMessageType.text,
+    this.structured,
     this.emails,
     this.calendarEvents,
     this.syncResult,
@@ -101,131 +107,9 @@ class AssistantState {
   }
 }
 
-// ─── Intent Detection Regexes ────────────────────────────────────────────────
+// ─── Command Bus ─────────────────────────────────────────────────────────────
 
-/// Returns the first matching [_Intent] for [input], or null for general chat.
-_Intent? _detectIntent(String lower) {
-  // ── Task creation / reminders (highest priority) ──────────────────────────
-  if (RegExp(
-    r'\b(remind\s+me|create\s+task|add\s+task|new\s+task|set\s+reminder|reminder|todo|to-do|schedule.*task)\b',
-    caseSensitive: false,
-  ).hasMatch(lower)) {
-    return _Intent.createTask;
-  }
-
-  // ── Standalone "remind" at the start ─────────────────────────────────────
-  if (RegExp(r'^remind\b', caseSensitive: false).hasMatch(lower)) {
-    return _Intent.createTask;
-  }
-
-  // ── Sign out (check before sign in to avoid false positive) ──────────────
-  if (RegExp(r'\b(sign\s+out|logout|log\s+out)\b', caseSensitive: false).hasMatch(lower)) {
-    return _Intent.signOut;
-  }
-
-  // ── Sign in ───────────────────────────────────────────────────────────────
-  if (RegExp(r'\b(sign\s+in|login|connect\s+google|google\s+sign)\b', caseSensitive: false)
-      .hasMatch(lower)) {
-    return _Intent.signIn;
-  }
-
-  // ── Email sync ────────────────────────────────────────────────────────────
-  if (RegExp(
-    r'\b(sync|fetch|check|get|read|show|scan)\s+(my\s+)?(email|emails|gmail|inbox|mail|mails)\b',
-    caseSensitive: false,
-  ).hasMatch(lower)) {
-    return _Intent.syncEmails;
-  }
-
-  if (RegExp(r'\b(last|latest|newest|recent)\s+(mail|email|message)\b', caseSensitive: false)
-      .hasMatch(lower)) {
-    return _Intent.latestEmail;
-  }
-
-  // ── Calendar ──────────────────────────────────────────────────────────────
-  if (RegExp(
-    r'\b(sync|fetch|check|get)\s+(my\s+)?(calendar|events|meetings|schedule)\b',
-    caseSensitive: false,
-  ).hasMatch(lower)) {
-    return _Intent.syncCalendar;
-  }
-
-  if (RegExp(
-    r'\b(today.*meeting|today.*calendar|what.*calendar|next\s+meeting|upcoming\s+meeting)\b',
-    caseSensitive: false,
-  ).hasMatch(lower)) {
-    return _Intent.todayCalendar;
-  }
-
-  // ── Full sync ─────────────────────────────────────────────────────────────
-  if (RegExp(r'\b(sync|refresh|update)\s+(all|everything|life)\b', caseSensitive: false)
-          .hasMatch(lower) ||
-      RegExp(r'\b(life\s+sync|full\s+sync)\b', caseSensitive: false).hasMatch(lower)) {
-    return _Intent.fullSync;
-  }
-
-  // ── Panchang ─────────────────────────────────────────────────────────────
-  if (RegExp(
-    r'\b(panchang|ekadashi|amavasya|purnima|chaturdashi|shivaratri|tithi)\b',
-    caseSensitive: false,
-  ).hasMatch(lower)) {
-    return _Intent.panchang;
-  }
-
-  // ── Task completion ───────────────────────────────────────────────────────
-  if (RegExp(
-    r'\b(complete|done|finish|mark\s+as\s+done|tick\s+off)\s*(task|todo|reminder)?\b',
-    caseSensitive: false,
-  ).hasMatch(lower)) {
-    return _Intent.completeTask;
-  }
-
-  // ── List tasks ────────────────────────────────────────────────────────────
-  if (RegExp(
-        r'\b(list|show|view|get|display|what\s+are)\s*(my\s*)?(task|tasks|todo|todos|reminder|reminders|schedule|agenda)\b',
-        caseSensitive: false,
-      ).hasMatch(lower) ||
-      RegExp(
-        r"\b(my\s+tasks|what'?s?\s+next|coming\s+up|pending\s+tasks)\b",
-        caseSensitive: false,
-      ).hasMatch(lower)) {
-    return _Intent.listTasks;
-  }
-
-  // ── Time query ────────────────────────────────────────────────────────────
-  if (RegExp(
-    r"\b(what'?s?\s+the\s+time|what\s+time\s+is\s+it|current\s+time|time\s+now|tell\s+me\s+the\s+time)\b",
-    caseSensitive: false,
-  ).hasMatch(lower)) {
-    return _Intent.currentTime;
-  }
-
-  // ── Date query ────────────────────────────────────────────────────────────
-  if (RegExp(
-    r"\b(what'?s?\s+today'?s?\s+date|what\s+day\s+is|today'?s?\s+date)\b",
-    caseSensitive: false,
-  ).hasMatch(lower)) {
-    return _Intent.currentDate;
-  }
-
-  return null; // → falls through to general Gemini chat
-}
-
-enum _Intent {
-  createTask,
-  signIn,
-  signOut,
-  syncEmails,
-  latestEmail,
-  syncCalendar,
-  todayCalendar,
-  fullSync,
-  panchang,
-  completeTask,
-  listTasks,
-  currentTime,
-  currentDate,
-}
+final astraCommandBusProvider = Provider<AstraCommandBus>((ref) => AstraCommandBus());
 
 // ─── Notifier ────────────────────────────────────────────────────────────────
 
@@ -251,16 +135,19 @@ class AssistantNotifier extends StateNotifier<AssistantState> {
     String text, {
     bool isUser = false,
     AssistantMessageType type = AssistantMessageType.text,
+    AstraResponse? structured,
     List<GmailMessageData>? emails,
     List<CalendarEventData>? calendarEvents,
     SchedulerSyncResult? syncResult,
   }) {
+    final displayText = structured?.toPlainText() ?? text;
     final newMsg = AssistantMessage(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
-      text: text,
+      text: displayText,
       isUser: isUser,
       timestamp: DateTime.now(),
       messageType: type,
+      structured: structured,
       emails: emails,
       calendarEvents: calendarEvents,
       syncResult: syncResult,
@@ -272,6 +159,28 @@ class AssistantNotifier extends StateNotifier<AssistantState> {
     );
   }
 
+  void addStructuredResponse(AstraResponse response, {AssistantMessageType? type}) {
+    final msgType = type ?? _typeForResponse(response);
+    addMessage(response.toPlainText(), type: msgType, structured: response);
+  }
+
+  AssistantMessageType _typeForResponse(AstraResponse response) => switch (response.type) {
+        AstraResponseType.error => AssistantMessageType.error,
+        AstraResponseType.auth => AssistantMessageType.auth,
+        AstraResponseType.syncResult => AssistantMessageType.syncResult,
+        AstraResponseType.emailSummary => AssistantMessageType.emailSummary,
+        AstraResponseType.calendarSummary => AssistantMessageType.calendarSummary,
+        AstraResponseType.taskCreated ||
+        AstraResponseType.taskCompleted ||
+        AstraResponseType.reminderCancelled ||
+        AstraResponseType.reminderSnoozed ||
+        AstraResponseType.success =>
+          AssistantMessageType.success,
+        AstraResponseType.info || AstraResponseType.taskList || AstraResponseType.taskQuery =>
+          AssistantMessageType.info,
+        _ => AssistantMessageType.text,
+      };
+
   void clearMessages() {
     state = state.copyWith(messages: []);
   }
@@ -282,66 +191,68 @@ class AssistantNotifier extends StateNotifier<AssistantState> {
     final trimmed = input.trim();
     if (trimmed.isEmpty) return;
 
-    // Normalize: strip trailing punctuation for intent matching only
-    final lower = trimmed.toLowerCase().replaceAll(RegExp(r'[?.!]+$'), '').trim();
-
-    // Add user message
     addMessage(trimmed, isUser: true);
     state = state.copyWith(isLoading: true, error: null);
 
     try {
-      final intent = _detectIntent(lower);
+      final command = ref.read(astraCommandBusProvider).parse(trimmed);
 
-      switch (intent) {
-        case _Intent.createTask:
-          await handleCreateTask(trimmed);
+      switch (command.intent) {
+        case AstraIntent.createReminder:
+        case AstraIntent.createTask:
+          await handleCreateTask(trimmed, command: command);
 
-        case _Intent.signIn:
+        case AstraIntent.signIn:
           await handleSignIn();
 
-        case _Intent.signOut:
+        case AstraIntent.signOut:
           await handleSignOut();
 
-        case _Intent.syncEmails:
+        case AstraIntent.syncEmails:
           await handleSyncEmails();
 
-        case _Intent.latestEmail:
+        case AstraIntent.latestEmail:
           await handleLatestInboxEmail();
 
-        case _Intent.syncCalendar:
+        case AstraIntent.syncCalendar:
           await handleSyncCalendar();
 
-        case _Intent.todayCalendar:
+        case AstraIntent.todayCalendar:
           await handleTodayCalendar();
 
-        case _Intent.fullSync:
+        case AstraIntent.fullSync:
           await handleFullSync();
 
-        case _Intent.panchang:
+        case AstraIntent.panchang:
           handlePanchangQuery();
 
-        case _Intent.completeTask:
+        case AstraIntent.completeTask:
           await handleCompleteTask(trimmed);
 
-        case _Intent.listTasks:
+        case AstraIntent.cancelReminder:
+          await handleCancelReminder(trimmed);
+
+        case AstraIntent.snoozeReminder:
+          await handleSnoozeReminder(trimmed);
+
+        case AstraIntent.queryTask:
+          await handleQueryTask(trimmed);
+
+        case AstraIntent.listTasks:
           await handleListTasks();
 
-        case _Intent.currentTime:
+        case AstraIntent.currentTime:
           _handleCurrentTime();
 
-        case _Intent.currentDate:
+        case AstraIntent.currentDate:
           _handleCurrentDate();
 
-        case null:
-          // Fallback: Gemini conversational chat
+        case AstraIntent.generalChat:
           await _handleGeneralChat(trimmed);
       }
     } catch (e) {
       state = state.copyWith(isLoading: false, error: e.toString());
-      addMessage(
-        '⚠️ Something went wrong: ${_friendlyError(e)}',
-        type: AssistantMessageType.error,
-      );
+      addStructuredResponse(AstraResponseBuilder.error(_friendlyError(e)));
     }
   }
 
@@ -349,20 +260,24 @@ class AssistantNotifier extends StateNotifier<AssistantState> {
 
   void _handleCurrentTime() {
     final now = DateTime.now().toLocal();
-    final timeStr = DateFormat('h:mm a').format(now);
-    final dateStr = DateFormat('EEEE, MMMM d, yyyy').format(now);
-    addMessage(
-      '🕐 Current time: **$timeStr** IST\n📅 $dateStr',
-      type: AssistantMessageType.info,
-    );
+    addStructuredResponse(AstraResponseBuilder.info(
+      'Current time',
+      lines: [
+        AstraResponseLine(label: 'Time', value: DateFormat('h:mm a').format(now)),
+        AstraResponseLine(label: 'Date', value: DateFormat('EEEE, MMMM d, yyyy').format(now)),
+        const AstraResponseLine(label: 'Timezone', value: 'Asia/Kolkata'),
+      ],
+    ));
   }
 
   void _handleCurrentDate() {
     final now = DateTime.now().toLocal();
-    addMessage(
-      '📅 Today is **${DateFormat('EEEE, MMMM d, yyyy').format(now)}**.',
-      type: AssistantMessageType.info,
-    );
+    addStructuredResponse(AstraResponseBuilder.info(
+      'Today\'s date',
+      lines: [
+        AstraResponseLine(label: 'Date', value: DateFormat('EEEE, MMMM d, yyyy').format(now)),
+      ],
+    ));
   }
 
   // ─── Handlers ──────────────────────────────────────────────────────────────
@@ -575,15 +490,36 @@ class AssistantNotifier extends StateNotifier<AssistantState> {
     ref.invalidate(taskListProvider);
   }
 
-  Future<void> handleCreateTask(String input) async {
+  Future<void> handleCreateTask(String input, {AstraCommand? command}) async {
     try {
       final parsed = TaskParser.parse(input);
 
       if (parsed.title.isEmpty || parsed.title.length < 2) {
-        addMessage(
-          '🤔 I didn\'t catch the task name. Try:\n"Remind me to call John at 5pm"',
-          type: AssistantMessageType.info,
-        );
+        addStructuredResponse(AstraResponseBuilder.info(
+          'Need more detail',
+          lines: const [
+            AstraResponseLine(
+              label: '',
+              value: 'Try: "Remind me to drink water in 2 minutes"',
+            ),
+          ],
+        ));
+        return;
+      }
+
+      final wantsReminder = command?.wantsReminder ?? parsed.hasReminder;
+
+      if (wantsReminder && parsed.remindAt == null) {
+        addStructuredResponse(AstraResponseBuilder.info(
+          'When should I remind you?',
+          lines: [
+            AstraResponseLine(label: 'Task', value: parsed.title, highlight: true),
+            const AstraResponseLine(
+              label: '',
+              value: 'Add a time like "tomorrow at 10am" or "in 5 minutes".',
+            ),
+          ],
+        ));
         return;
       }
 
@@ -603,58 +539,55 @@ class AssistantNotifier extends StateNotifier<AssistantState> {
       await ref.read(taskNotifierProvider.notifier).addTask(task);
       ref.invalidate(taskListProvider);
 
-      // Schedule notification if a reminder time was detected and is in future
-      bool notifScheduled = false;
-      if (parsed.remindAt != null) {
-        try {
-          final ist = tz.getLocation('Asia/Kolkata');
-          final istNow = tz.TZDateTime.now(ist);
-          final scheduledIst = tz.TZDateTime.from(parsed.remindAt!, ist);
-
-          if (scheduledIst.isBefore(istNow)) {
-            // Time already passed
-            notifScheduled = false;
-          } else {
-            notifScheduled = await NotificationService.scheduleNotification(
-              id: task.id.hashCode,
-              title: '⏰ Reminder: ${task.title}',
-              body: 'Time for your task: ${task.title}',
-              scheduledTime: parsed.remindAt!,
-              payload: task.id,
+      ScheduleOutcome? notificationOutcome;
+      if (wantsReminder && parsed.remindAt != null) {
+        final scheduleResult = await ref.read(reminderServiceProvider).scheduleReminder(
+              taskId: task.id,
+              taskTitle: task.title,
+              scheduledAt: parsed.remindAt!,
+              timezone: parsed.timezone,
             );
-          }
-        } catch (_) {
-          notifScheduled = false;
-        }
+        notificationOutcome = scheduleResult.outcome;
       }
 
-      // Build rich FAANG-level response
-      final buf = StringBuffer('✅ Task created: **"${task.title}"**\n');
-      if (parsed.remindAt != null) {
-        buf.write('⏰ Reminder: ${parsed.formattedReminder}\n');
-      }
-      if (parsed.organization != null) {
-        buf.write('🏢 Organization: ${parsed.organization}\n');
-      }
-      if (parsed.subtasks.isNotEmpty) {
-        buf.write('📋 Subtasks:\n');
-        for (final sub in parsed.subtasks) {
-          buf.write('  • ${sub.name}\n');
-        }
-      }
-      buf.write('📊 Priority: ${task.priority.toUpperCase()}\n');
-      buf.write('📌 Status: ${task.status.emoji} ${task.status.displayName}');
-
-      if (parsed.remindAt != null && !notifScheduled) {
-        buf.write('\n⚠️ Note: Reminder set in past or notification permission missing.');
-      }
-
-      addMessage(buf.toString(), type: AssistantMessageType.success);
+      addStructuredResponse(AstraResponseBuilder.taskCreated(
+        title: task.title,
+        dueAt: parsed.remindAt,
+        timezone: parsed.timezone,
+        organization: parsed.organization,
+        priority: task.priority,
+        notificationOutcome: notificationOutcome,
+        taskId: task.id,
+        subtasks: parsed.subtasks.map((s) => s.name).toList(),
+      ));
     } catch (e) {
-      addMessage(
-        '⚠️ Error creating task: ${_friendlyError(e)}',
-        type: AssistantMessageType.error,
-      );
+      addStructuredResponse(AstraResponseBuilder.error(_friendlyError(e)));
+    }
+  }
+
+  Future<void> handleResponseAction(String actionId) async {
+    if (actionId.startsWith('complete_')) {
+      final taskId = actionId.replaceFirst('complete_', '');
+      final tasks = ref.read(taskNotifierProvider);
+      final target = tasks.cast<Task?>().firstWhere((t) => t?.id == taskId, orElse: () => null);
+      if (target != null) {
+        await ref.read(taskNotifierProvider.notifier).toggleComplete(taskId);
+        ref.invalidate(taskListProvider);
+        await ref.read(reminderServiceProvider).cancelReminderForTask(taskId);
+        addStructuredResponse(AstraResponseBuilder.taskCompleted(target.title));
+      }
+    } else if (actionId.startsWith('snooze_')) {
+      final taskId = actionId.replaceFirst('snooze_', '');
+      final tasks = ref.read(taskNotifierProvider);
+      final target = tasks.cast<Task?>().firstWhere((t) => t?.id == taskId, orElse: () => null);
+      if (target != null) {
+        final db = ref.read(databaseProvider);
+        final reminder = await db.getReminderByTaskId(taskId);
+        if (reminder != null) {
+          await ref.read(reminderServiceProvider).snoozeReminder(reminder.id, duration: const Duration(minutes: 10));
+        }
+        addStructuredResponse(AstraResponseBuilder.reminderSnoozed(target.title, const Duration(minutes: 10)));
+      }
     }
   }
 
@@ -663,15 +596,17 @@ class AssistantNotifier extends StateNotifier<AssistantState> {
     final pending = tasks.where((t) => !t.isCompleted).toList();
 
     if (pending.isEmpty) {
-      addMessage('🎉 No pending tasks to complete!', type: AssistantMessageType.info);
+      addStructuredResponse(AstraResponseBuilder.info('No pending tasks to complete.'));
       return;
     }
 
     String? query;
     final match =
-        RegExp(r'(?:complete|done|finish|mark)\s+(.+)$', caseSensitive: false).firstMatch(input);
+        RegExp(r'(?:complete|done|finish|mark\s+as\s+done|tick\s+off|mark)\s+(.+)$', caseSensitive: false).firstMatch(input);
     if (match != null) {
       query = match.group(1)?.trim().toLowerCase();
+      // Strip trailing "complete", "done", "as done" if present
+      query = query?.replaceAll(RegExp(r'\s+(?:as\s+)?(?:done|complete|completed)$', caseSensitive: false), '').trim();
     }
 
     Task target = pending.first;
@@ -684,12 +619,105 @@ class AssistantNotifier extends StateNotifier<AssistantState> {
 
     await ref.read(taskNotifierProvider.notifier).toggleComplete(target.id);
     ref.invalidate(taskListProvider);
-    await NotificationService.cancelNotification(target.id.hashCode);
+    await ref.read(reminderServiceProvider).cancelReminderForTask(target.id);
 
-    addMessage(
-      '✅ Marked **"${target.title}"** as complete!',
-      type: AssistantMessageType.success,
-    );
+    addStructuredResponse(AstraResponseBuilder.taskCompleted(target.title));
+  }
+
+  Future<void> handleCancelReminder(String input) async {
+    final target = _findTaskFromQuery(input, r'(?:cancel|delete|remove|stop)\s+(?:my\s+)?(?:the\s+)?(?:\w+\s+){0,3}?(?:reminder|alarm|notification)\s*(?:for\s+)?(.+)?$');
+    if (target == null) {
+      addStructuredResponse(AstraResponseBuilder.info('No matching reminder found.'));
+      return;
+    }
+    await ref.read(reminderServiceProvider).cancelReminderForTask(target.id);
+    addStructuredResponse(AstraResponseBuilder.reminderCancelled(target.title));
+  }
+
+  Future<void> handleSnoozeReminder(String input) async {
+    final target = _findTaskFromQuery(input, r'(?:snooze|postpone|delay)\s+(?:my\s+)?(?:the\s+)?(?:\w+\s+){0,3}?(?:reminder\s+)?(?:for\s+)?(.+?)(?:\s+(\d+)\s*(?:min|mins|minutes))?$');
+    if (target == null) {
+      addStructuredResponse(AstraResponseBuilder.info('No matching reminder to snooze.'));
+      return;
+    }
+
+    final minutesMatch = RegExp(r'(\d+)\s*(?:min|mins|minutes)', caseSensitive: false).firstMatch(input);
+    final duration = Duration(minutes: int.tryParse(minutesMatch?.group(1) ?? '') ?? 10);
+
+    final db = ref.read(databaseProvider);
+    final reminder = await db.getReminderByTaskId(target.id);
+    if (reminder != null) {
+      await ref.read(reminderServiceProvider).snoozeReminder(reminder.id, duration: duration);
+    }
+    addStructuredResponse(AstraResponseBuilder.reminderSnoozed(target.title, duration));
+  }
+
+  Task? _findTaskFromQuery(String input, String pattern) {
+    final tasks = ref.read(taskNotifierProvider).where((t) => !t.isCompleted).toList();
+    if (tasks.isEmpty) return null;
+
+    final match = RegExp(pattern, caseSensitive: false).firstMatch(input);
+    final query = match?.group(1)?.trim().toLowerCase();
+    if (query == null || query.isEmpty) return tasks.first;
+
+    return tasks.cast<Task?>().firstWhere(
+          (t) => t!.title.toLowerCase().contains(query),
+          orElse: () => tasks.first,
+        );
+  }
+
+  Future<void> handleQueryTask(String input) async {
+    final tasks = ref.read(taskNotifierProvider);
+    final pending = tasks.where((t) => !t.isCompleted).toList();
+
+    if (pending.isEmpty) {
+      addStructuredResponse(AstraResponseBuilder.info('No matching tasks found.'));
+      return;
+    }
+
+    // Extract subject after "my" — e.g. "what time is my exam"
+    String? subject;
+    final match = RegExp(
+      r"(?:what\s+time\s+is\s+my|when\s+is\s+my|what'?s?\s+my)\s+(.+?)(?:\?|$)",
+      caseSensitive: false,
+    ).firstMatch(input);
+    if (match != null) {
+      subject = match.group(1)?.trim().toLowerCase();
+    }
+
+    Task? target;
+    if (subject != null && subject.isNotEmpty) {
+      final matches = pending
+          .where((t) =>
+              t.title.toLowerCase().contains(subject!) ||
+              (t.organization?.toLowerCase().contains(subject) ?? false))
+          .toList();
+      if (matches.isNotEmpty) target = matches.first;
+    }
+    target ??= pending.first;
+
+    addStructuredResponse(AstraResponse(
+      type: AstraResponseType.taskQuery,
+      headline: target.title,
+      lines: [
+        if (target.dueDate != null)
+          AstraResponseLine(
+            label: 'Scheduled',
+            value: DateFormat('EEEE, MMM d, yyyy · h:mm a').format(target.dueDate!),
+            highlight: true,
+          )
+        else
+          const AstraResponseLine(label: 'Scheduled', value: 'No reminder time set'),
+        const AstraResponseLine(label: 'Timezone', value: 'Asia/Kolkata'),
+        if (target.organization != null)
+          AstraResponseLine(label: 'Organization', value: target.organization!),
+        AstraResponseLine(label: 'Priority', value: target.priority.toUpperCase()),
+      ],
+      actions: [
+        AstraAction(id: 'complete_${target.id}', label: 'DONE'),
+        AstraAction(id: 'snooze_${target.id}', label: 'SNOOZE 10m'),
+      ],
+    ));
   }
 
   Future<void> handleListTasks() async {
@@ -697,25 +725,29 @@ class AssistantNotifier extends StateNotifier<AssistantState> {
     final pending = tasks.where((t) => !t.isCompleted).toList();
 
     if (pending.isEmpty) {
-      addMessage('📭 No pending tasks. Your schedule is clear!', type: AssistantMessageType.info);
+      addStructuredResponse(AstraResponseBuilder.info('No pending tasks. Your schedule is clear!'));
       return;
     }
 
-    final buf = StringBuffer('📋 Your pending tasks (${pending.length}):\n\n');
+    final lines = <AstraResponseLine>[];
     for (var i = 0; i < pending.length && i < 8; i++) {
       final t = pending[i];
-      buf.write('${i + 1}. ${t.title}');
-      if (t.priority == 'high') buf.write(' 🔴 HIGH');
-      if (t.priority == 'low') buf.write(' 🟢 LOW');
+      var val = t.title;
+      if (t.priority == 'high') val += ' [HIGH]';
       if (t.dueDate != null) {
-        buf.write('\n   📅 Due: ${DateFormat("MMM d, h:mm a").format(t.dueDate!)}');
+        val += ' · Due ${DateFormat("MMM d, h:mm a").format(t.dueDate!)}';
       }
-      buf.write('\n\n');
+      lines.add(AstraResponseLine(label: '${i + 1}', value: val));
     }
     if (pending.length > 8) {
-      buf.write('... and ${pending.length - 8} more.');
+      lines.add(AstraResponseLine(label: '', value: '... and ${pending.length - 8} more'));
     }
-    addMessage(buf.toString(), type: AssistantMessageType.info);
+
+    addStructuredResponse(AstraResponse(
+      type: AstraResponseType.taskList,
+      headline: 'Pending Tasks (${pending.length})',
+      lines: lines,
+    ));
   }
 
   // ─── General Chat Fallback (Gemini) ──────────────────────────────────────

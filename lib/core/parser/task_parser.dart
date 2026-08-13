@@ -1,29 +1,103 @@
 import 'package:intl/intl.dart';
-import 'package:timezone/data/latest.dart' as tz_data;
-import 'package:timezone/timezone.dart' as tz;
-import '../../models/task.dart';
 
-/// ASTRA Task Parser v2.0
+import '../../models/task.dart';
+import '../time/astra_clock.dart';
+import '../time/astra_time_service.dart';
+
+/// ASTRA Task Parser v3 — deterministic local entity + temporal extraction.
 ///
-/// Converts natural-language task strings like
-/// "dear students you have exam tomorrow at 10am by Microsoft" into a
-/// structured [ParsedTask] with a clean title, IST-aware [remindAt], priority,
-/// and optional organization name.
-///
-/// Runs entirely locally — no API calls, no packages beyond `intl` + `timezone`.
+/// Converts natural-language strings like
+/// "remind me to drink water in the next 2 mins" or
+/// "dear students you have exam tomorrow at 10am by Microsoft"
+/// into a structured [ParsedTask] without any AI involvement.
 class TaskParser {
+  TaskParser._();
+
+  static AstraTimeService _timeService = AstraTimeService();
+
+  /// Override clock for unit tests.
+  static void setClock(AstraClock clock) {
+    _timeService = AstraTimeService(clock: clock);
+  }
+
+  static void resetClock() {
+    _timeService = AstraTimeService();
+  }
+
+  static void setTimezone(String timezone) {
+    _timeService.setTimezone(timezone);
+  }
+
   // ─── Weekday lookup ───────────────────────────────────────────────────────
+
   static const Map<String, int> _weekdays = {
-    'monday': 1, 'tuesday': 2, 'wednesday': 3,
-    'thursday': 4, 'friday': 5, 'saturday': 6, 'sunday': 7,
+    'monday': 1,
+    'tuesday': 2,
+    'wednesday': 3,
+    'thursday': 4,
+    'friday': 5,
+    'saturday': 6,
+    'sunday': 7,
   };
 
-  // ─── Intent prefixes to strip ─────────────────────────────────────────────
+  static const Map<String, int> _months = {
+    'january': 1,
+    'jan': 1,
+    'february': 2,
+    'feb': 2,
+    'march': 3,
+    'mar': 3,
+    'april': 4,
+    'apr': 4,
+    'may': 5,
+    'june': 6,
+    'jun': 6,
+    'july': 7,
+    'jul': 7,
+    'august': 8,
+    'aug': 8,
+    'september': 9,
+    'sep': 9,
+    'sept': 9,
+    'october': 10,
+    'oct': 10,
+    'november': 11,
+    'nov': 11,
+    'december': 12,
+    'dec': 12,
+  };
+
   static const List<String> _intentPrefixes = [
     'please remind me to',
+    'please remind me about',
     'please remind me',
+    'pls remind me to',
+    'pls remind me about',
+    'pls remind me',
     'remind me to',
+    'remind me about',
     'remind me',
+    "don't let me forget to",
+    "don't let me forget about",
+    "don't let me forget",
+    'make sure i remember to',
+    'make sure i remember',
+    'make sure to remember',
+    'let me know to',
+    'let me know about',
+    'let me know',
+    'notify me to',
+    'notify me about',
+    'notify me',
+    'alert me to',
+    'alert me about',
+    'alert me',
+    'tell me to',
+    'tell me about',
+    'remember to',
+    'ping me to',
+    'ping me about',
+    'ping me',
     'create task:',
     'create task',
     'add task:',
@@ -32,9 +106,12 @@ class TaskParser {
     'new task',
     'set reminder for',
     'set reminder',
+    'schedule a reminder for',
+    'schedule a reminder',
+    'schedule reminder for',
+    'schedule reminder',
     'schedule',
     'remind',
-    // common academic/broadcast phrases that pollute the title
     'dear students you have',
     'dear students',
     'hi students',
@@ -46,78 +123,87 @@ class TaskParser {
     'fyi:',
   ];
 
-  // ─── Filler words regex (used for leading-word cleanup in body) ──────────
-  // Patterns for combined time detection ────────────────────────────────────
-
-  /// Matches patterns like:
-  ///   "in 2 mins"  /  "in a few hours"  /  "tomorrow at 10am"
-  ///   "at 5pm"     /  "next monday"      /  "on friday"
-  ///   "today"  /  "next week"
+  /// Relative duration including "next minute", "in a minute", "in next minute", word numbers.
   static final RegExp _relativeRe = RegExp(
-    r'in\s+(?:a\s+few|an?\s+|(?:one|two|three|four|five|six|seven|eight|nine|ten|\d+))\s*(?:minute|minutes|min|mins|hour|hours|hr|hrs|day|days|week|weeks)',
+    r'(?:\b(?:in|after|for)\s+(?:like\s+|about\s+|around\s+)?(?:the\s+)?(?:next\s+)?(?:a\s+)?|\b(?:the\s+)?next\s+)'
+    r'(?:a\s+few|a\b|an\b|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|fifteen|twenty|thirty|forty|fifty|sixty|ninety|\d+)?\s*'
+    r'(?:second|seconds|sec|secs|minute|minutes|min|mins|hour|hours|hr|hrs|day|days|week|weeks)\b',
     caseSensitive: false,
   );
 
   static final RegExp _atTimeRe = RegExp(
-    r'(?:^|\s)(?:at\s+)?(\d{1,2})(?::(\d{2}))?\s*(am|pm)',
+    r'(?:^|\s)(?:at\s+)?(\d{1,2})(?::(\d{2}))?\s*(am|pm)\b',
+    caseSensitive: false,
+  );
+
+  /// Time without am/pm suffix: "tomorrow 10:30", "Friday 4"
+  static final RegExp _bareTimeRe = RegExp(
+    r'(?:^|\s)(\d{1,2})(?::(\d{2}))?\s*(am|pm)?\b',
     caseSensitive: false,
   );
 
   static final RegExp _atHourRe = RegExp(
-    r'at\s+(\d{1,2})(?::(\d{2}))?(?!\s*(?:am|pm))',
+    r'\bat\s+(\d{1,2})(?::(\d{2}))?(?!\s*(?:am|pm)\b)',
+    caseSensitive: false,
+  );
+
+  static final RegExp _monthDayRe = RegExp(
+    r'\b(january|jan|february|feb|march|mar|april|apr|may|june|jun|july|jul|august|aug|september|sep|sept|october|oct|november|nov|december|dec)\s+(\d{1,2})(?:st|nd|rd|th)?(?:\s*,\s*(\d{4}))?\b',
+    caseSensitive: false,
+  );
+
+  static final RegExp _dayMonthRe = RegExp(
+    r'\b(\d{1,2})(?:st|nd|rd|th)?\s+(?:of\s+)?(january|jan|february|feb|march|mar|april|apr|may|june|jun|july|jul|august|aug|september|sep|sept|october|oct|november|nov|december|dec)(?:\s*,\s*(\d{4}))?\b',
     caseSensitive: false,
   );
 
   static final RegExp _orgRe = RegExp(
-    r'\bby\s+([A-Za-z][A-Za-z0-9\s]{0,30}?)(?:\s*$|\s+(?:at|on|in|by|for|from|to))',
+    r'\bby\s+([A-Za-z][A-Za-z0-9\s]{0,40}?)(?:\s*[.,!?]*)?(?:\r?\n|$)',
     caseSensitive: false,
   );
 
-  static final RegExp _orgTrailingRe = RegExp(
-    r'\bby\s+([A-Za-z][A-Za-z0-9]+)\s*$',
+  static final RegExp _orgInlineRe = RegExp(
+    r'\bby\s+([A-Za-z][A-Za-z0-9\s]{0,40}?)(?=\s+(?:at|on|in|for|from|to)\b|\s*[.,!?]*(?:\r?\n|$))',
     caseSensitive: false,
   );
 
   // ─── Entry Point ──────────────────────────────────────────────────────────
 
-  /// Parses [message] into a [ParsedTask].
   static ParsedTask parse(String message) {
-    _ensureTimezones();
     final lower = message.toLowerCase().trim();
 
-    // 1. Strip intent prefixes
-    String body = _stripIntent(lower);
+    // For multi-line messages, isolate the main instruction line from bullet subtasks
+    final lines = lower.split(RegExp(r'\r?\n'));
+    final mainLine = lines.firstWhere(
+      (l) => l.trim().isNotEmpty && !RegExp(r'^(?:[-*•]|\d+\.)').hasMatch(l.trim()),
+      orElse: () => lower,
+    );
 
-    // 2. Extract organization (before removing time so "by Google at 5pm" works)
+    String body = _stripIntent(mainLine);
+
     String? organization;
     String? orgRaw;
-    final orgMatch = _orgRe.firstMatch(body) ?? _orgTrailingRe.firstMatch(body);
+    final orgMatch = _orgRe.firstMatch(body) ?? _orgInlineRe.firstMatch(body);
     if (orgMatch != null) {
-      organization = _capitalize(orgMatch.group(1)!.trim());
+      organization = _titleCase(orgMatch.group(1)!.trim());
       orgRaw = orgMatch.group(0)!;
     }
 
-    // 3. Extract subtasks (bullet points, numbered lists, or "subtasks: x, y, z")
     final subtasks = _extractSubtasks(message);
 
-    // 4. Extract time expression
-    final timeResult = _extractTime(body);
+    final timeResult = _extractTime(body) ?? _extractTime(lower);
     if (timeResult != null) {
       body = body.replaceFirst(timeResult.raw, '').trim();
     }
 
-    // 4. Remove organization phrase from body
     if (orgRaw != null) {
       body = body.replaceFirst(orgRaw, '').trim();
     }
 
-    // 5. Clean filler words and punctuation
     body = _cleanBody(body);
 
-    // 6. Determine priority
     final priority = _extractPriority(lower);
-
-    final title = _capitalize(body.isEmpty ? message : body);
+    final title = _titleCase(body.isEmpty ? message : body);
 
     return ParsedTask(
       title: title,
@@ -127,6 +213,7 @@ class TaskParser {
       subtasks: subtasks,
       originalMessage: message,
       detectedExpression: timeResult?.raw,
+      timezone: _timeService.timezone,
     );
   }
 
@@ -142,20 +229,22 @@ class TaskParser {
       if (bulletMatch != null) {
         final subtaskName = bulletMatch.group(1)!.trim();
         if (subtaskName.isNotEmpty) {
-          result.add(SubTask.create(_capitalize(subtaskName)));
+          result.add(SubTask.create(_titleCase(subtaskName)));
         }
       }
     }
 
     if (result.isEmpty) {
-      final subtasksKeywordMatch = RegExp(r'(?:with\s+subtasks|subtasks|steps):\s*(.+)', caseSensitive: false).firstMatch(message);
+      final subtasksKeywordMatch = RegExp(
+        r'(?:with\s+subtasks|subtasks|steps):\s*(.+)',
+        caseSensitive: false,
+      ).firstMatch(message);
       if (subtasksKeywordMatch != null) {
         final itemsStr = subtasksKeywordMatch.group(1)!;
-        final items = itemsStr.split(RegExp(r'[,;]'));
-        for (final item in items) {
+        for (final item in itemsStr.split(RegExp(r'[,;]'))) {
           final clean = item.trim();
           if (clean.isNotEmpty) {
-            result.add(SubTask.create(_capitalize(clean)));
+            result.add(SubTask.create(_titleCase(clean)));
           }
         }
       }
@@ -164,57 +253,62 @@ class TaskParser {
     return result;
   }
 
-  // ─── Timezone initialisation ─────────────────────────────────────────────
-
-  static bool _tzInitialized = false;
-  static void _ensureTimezones() {
-    if (_tzInitialized) return;
-    try {
-      tz_data.initializeTimeZones();
-      tz.setLocalLocation(tz.getLocation('Asia/Kolkata'));
-    } catch (_) {
-      // Fallback — already initialised elsewhere
-    }
-    _tzInitialized = true;
-  }
-
   // ─── Intent Stripping ─────────────────────────────────────────────────────
 
   static String _stripIntent(String text) {
+    var result = text;
+    result = result.replaceFirst(
+      RegExp(
+        r'^(?:/(?:task|calendar|mail|panchang)|@(?:task|calendar|mail|panchang))\s+',
+        caseSensitive: false,
+      ),
+      '',
+    );
+    result = result.replaceFirst(
+      RegExp(
+        r'^(?:hey(?:\s+can\s+you)?|hi|hello|yo|ok|okay|please|pls|can\s+you\s+(?:pls\s+|please\s+)?|could\s+you\s+(?:pls\s+|please\s+)?|i\s+have\s+(?:an?\s+)?)[,\s]+',
+        caseSensitive: false,
+      ),
+      '',
+    );
     for (final prefix in _intentPrefixes) {
-      if (text.startsWith(prefix)) {
-        return text.substring(prefix.length).trim();
+      if (!result.startsWith(prefix)) continue;
+      // Require word boundary after prefix — prevents "remind me to" matching "remind me tomorrow".
+      if (result.length > prefix.length) {
+        final next = result[prefix.length];
+        if (next != ' ' && next != ',' && next != ':') continue;
       }
+      return result.substring(prefix.length).trim();
     }
-    return text;
+    return result;
   }
 
   // ─── Time Expression Extraction ───────────────────────────────────────────
 
   static _TimeResult? _extractTime(String text) {
-    final ist = tz.getLocation('Asia/Kolkata');
-    final now = tz.TZDateTime.now(ist);
+    final now = _timeService.nowTZ();
 
-    // ── "in X minutes/hours/days" ──────────────────────────────────────────
+    // ── Relative: "in the next 2 mins", "after 2 minutes", "in next minute", etc.
     final mIn = _relativeRe.firstMatch(text);
     if (mIn != null) {
       final raw = mIn.group(0)!;
-      // Extract the numeric part
       final numRe = RegExp(
-        r'(?:a\s+few|an?\s+|(?:one|two|three|four|five|six|seven|eight|nine|ten|\d+))',
+        r'(?:a\s+few|a\b|an\b|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|fifteen|twenty|thirty|forty|fifty|sixty|ninety|\d+)',
         caseSensitive: false,
       );
       final unitRe = RegExp(
-        r'(?:minute|minutes|min|mins|hour|hours|hr|hrs|day|days|week|weeks)',
+        r'(?:second|seconds|sec|secs|minute|minutes|min|mins|hour|hours|hr|hrs|day|days|week|weeks)',
         caseSensitive: false,
       );
-      final numM = numRe.firstMatch(raw.replaceFirst(RegExp(r'^in\s*', caseSensitive: false), ''));
+      final numM = numRe.firstMatch(raw);
       final unitM = unitRe.firstMatch(raw);
-      if (numM != null && unitM != null) {
-        final amount = _wordToNumber(numM.group(0)!.trim());
+      if (unitM != null) {
+        final amount = numM != null ? _wordToNumber(numM.group(0)!.trim()) : 1;
         final unit = unitM.group(0)!.toLowerCase();
-        Duration add;
-        if (unit.startsWith('min')) {
+        final Duration add;
+        if (unit.startsWith('sec')) {
+          add = Duration(seconds: amount);
+        } else if (unit.startsWith('min')) {
           add = Duration(minutes: amount);
         } else if (unit.startsWith('hour') || unit == 'hr' || unit == 'hrs') {
           add = Duration(hours: amount);
@@ -223,119 +317,218 @@ class TaskParser {
         } else {
           add = Duration(days: amount * 7);
         }
-        return _TimeResult(raw: raw, dt: now.add(add));
+        return _TimeResult(raw: raw.trim(), dt: now.add(add));
       }
     }
 
-    // ── "tomorrow [at X]" ────────────────────────────────────────────────
-    if (text.contains('tomorrow')) {
-      final tBase = now.add(const Duration(days: 1));
-      final atM = _atTimeRe.firstMatch(text) ?? _atHourRe.firstMatch(text);
+    // ── Month date: "August 20 at 7pm", "Aug 14 at 10am" ──────────────────
+    final mMonthDay = _monthDayRe.firstMatch(text) ?? _dayMonthRe.firstMatch(text);
+    if (mMonthDay != null) {
+      final isDayFirst = _dayMonthRe.hasMatch(text);
+      final monthStr = isDayFirst ? mMonthDay.group(2)!.toLowerCase() : mMonthDay.group(1)!.toLowerCase();
+      final dayStr = isDayFirst ? mMonthDay.group(1)! : mMonthDay.group(2)!;
+      final yearStr = mMonthDay.group(3);
+
+      final month = _months[monthStr] ?? 1;
+      final day = int.tryParse(dayStr) ?? 1;
+      var year = yearStr != null ? int.tryParse(yearStr) ?? now.year : now.year;
+
+      if (yearStr == null) {
+        // If date has passed this year, roll forward
+        final candidate = DateTime(year, month, day, 23, 59);
+        if (candidate.isBefore(now)) {
+          year += 1;
+        }
+      }
+
+      final dateBase = _timeService.buildDateTime(year, month, day, 9, 0);
+      final after = text.substring(mMonthDay.end);
+      final atM = _findTimeMatch(after) ?? _findTimeMatch(text);
       if (atM != null) {
-        final dt = _buildTZDate(ist, tBase, atM);
+        final dt = _buildTZDate(dateBase, atM);
         if (dt != null) {
-          return _TimeResult(raw: 'tomorrow${atM.group(0)}', dt: dt);
+          return _TimeResult(
+            raw: '${mMonthDay.group(0)!} ${atM.group(0)!.trim()}'.trim(),
+            dt: dt,
+          );
+        }
+      }
+      return _TimeResult(raw: mMonthDay.group(0)!, dt: dateBase);
+    }
+
+    // ── "tomorrow [at X]" ──────────────────────────────────────────────────
+    if (RegExp(r'\btomorrow\b', caseSensitive: false).hasMatch(text)) {
+      final tBase = now.add(const Duration(days: 1));
+      final atM = _findTimeMatch(text);
+      if (atM != null) {
+        final dt = _buildTZDate(tBase, atM);
+        if (dt != null) {
+          return _TimeResult(raw: _combinedRaw('tomorrow', atM), dt: dt);
         }
       }
       return _TimeResult(
         raw: 'tomorrow',
-        dt: _tzDate(ist, tBase.year, tBase.month, tBase.day, 9, 0),
+        dt: _timeService.buildDateTime(tBase.year, tBase.month, tBase.day, 9, 0),
       );
     }
 
-    // ── "today [at X]" ───────────────────────────────────────────────────
-    if (text.contains('today')) {
-      final atM = _atTimeRe.firstMatch(text) ?? _atHourRe.firstMatch(text);
+    // ── "today [at X]" ─────────────────────────────────────────────────────
+    if (RegExp(r'\btoday\b', caseSensitive: false).hasMatch(text)) {
+      final atM = _findTimeMatch(text);
       if (atM != null) {
-        final dt = _buildTZDate(ist, now, atM);
+        final dt = _buildTZDate(now, atM);
         if (dt != null) {
-          return _TimeResult(raw: 'today${atM.group(0)}', dt: dt);
+          return _TimeResult(raw: _combinedRaw('today', atM), dt: dt);
         }
       }
       return _TimeResult(
         raw: 'today',
-        dt: _tzDate(ist, now.year, now.month, now.day, 9, 0),
+        dt: _timeService.buildDateTime(now.year, now.month, now.day, 9, 0),
+      );
+    }
+
+    // ── "day after tomorrow" ───────────────────────────────────────────────
+    if (RegExp(r'\bday after tomorrow\b', caseSensitive: false).hasMatch(text)) {
+      final d = now.add(const Duration(days: 2));
+      final atM = _findTimeMatch(text);
+      if (atM != null) {
+        final dt = _buildTZDate(d, atM);
+        if (dt != null) {
+          return _TimeResult(raw: _combinedRaw('day after tomorrow', atM), dt: dt);
+        }
+      }
+      return _TimeResult(
+        raw: 'day after tomorrow',
+        dt: _timeService.buildDateTime(d.year, d.month, d.day, 9, 0),
       );
     }
 
     // ── "next week" ────────────────────────────────────────────────────────
-    if (text.contains('next week')) {
+    if (RegExp(r'\bnext week\b', caseSensitive: false).hasMatch(text)) {
       final d = now.add(const Duration(days: 7));
       return _TimeResult(
         raw: 'next week',
-        dt: _tzDate(ist, d.year, d.month, d.day, 9, 0),
+        dt: _timeService.buildDateTime(d.year, d.month, d.day, 9, 0),
       );
     }
 
-    // ── Day-of-week: "on Monday" / "next Friday" ──────────────────────────
-    for (final entry in _weekdays.entries) {
-      if (text.contains(entry.key)) {
-        int diff = entry.value - now.weekday;
-        if (diff <= 0) diff += 7;
-        final d = now.add(Duration(days: diff));
-        // Check for time after the weekday name
-        final after = text.substring(text.indexOf(entry.key) + entry.key.length);
-        final atM = _atTimeRe.firstMatch(after) ?? _atHourRe.firstMatch(after);
-        if (atM != null) {
-          final dt = _buildTZDate(ist, d, atM);
-          if (dt != null) {
-            return _TimeResult(raw: '${entry.key}${atM.group(0)}', dt: dt);
-          }
+    // ── Weekday: "next Monday at 9:30am" / "Friday at 4pm" ────────────────
+    final weekdayMatch = _findWeekdayMatch(text);
+    if (weekdayMatch != null) {
+      final dayName = weekdayMatch.key;
+      final forceNext = weekdayMatch.value;
+      final weekday = _weekdays[dayName]!;
+      final now = _timeService.nowTZ();
+      var diff = weekday - now.weekday;
+      if (diff <= 0 || forceNext) diff += 7;
+      final d = now.add(Duration(days: diff));
+      final dayIndex = text.indexOf(dayName);
+      final after = dayIndex >= 0 ? text.substring(dayIndex + dayName.length) : '';
+      final atM = _findTimeMatch(after) ?? _findTimeMatch(text);
+      if (atM != null) {
+        final dt = _buildTZDate(d, atM);
+        if (dt != null) {
+          return _TimeResult(
+            raw: '${forceNext ? 'next ' : ''}$dayName ${atM.group(0)!.trim()}'.trim(),
+            dt: dt,
+          );
         }
-        return _TimeResult(
-          raw: entry.key,
-          dt: _tzDate(ist, d.year, d.month, d.day, 9, 0),
-        );
       }
+      return _TimeResult(
+        raw: forceNext ? 'next $dayName' : dayName,
+        dt: _timeService.buildDateTime(d.year, d.month, d.day, 9, 0),
+      );
     }
 
-    // ── Bare "at Xam/pm" ─────────────────────────────────────────────────
-    final atM = _atTimeRe.firstMatch(text);
+    // ── Bare "at Xam/pm" or "at 7" ───────────────────────────────────────
+    final atM = _findTimeMatch(text);
     if (atM != null) {
-      final dt = _buildTZDate(ist, now, atM);
+      final dt = _buildTZDate(now, atM);
       if (dt != null) {
         return _TimeResult(raw: atM.group(0)!.trim(), dt: dt);
       }
     }
 
-    // ── "at noon" / "at midnight" ────────────────────────────────────────
-    if (text.contains('at noon')) {
+    // ── "at noon" / "at midnight" ──────────────────────────────────────────
+    if (RegExp(r'\bat noon\b', caseSensitive: false).hasMatch(text)) {
       return _TimeResult(
         raw: 'at noon',
-        dt: _tzDate(ist, now.year, now.month, now.day, 12, 0),
+        dt: _timeService.buildDateTime(now.year, now.month, now.day, 12, 0),
       );
     }
-    if (text.contains('at midnight')) {
+    if (RegExp(r'\bat midnight\b', caseSensitive: false).hasMatch(text)) {
       return _TimeResult(
         raw: 'at midnight',
-        dt: _tzDate(ist, now.year, now.month, now.day, 0, 0),
+        dt: _timeService.buildDateTime(now.year, now.month, now.day, 0, 0),
       );
     }
 
     return null;
   }
 
-  // ─── Time helpers ─────────────────────────────────────────────────────────
-
-  static tz.TZDateTime _tzDate(
-      tz.Location loc, int year, int month, int day, int hour, int minute) {
-    return tz.TZDateTime(loc, year, month, day, hour, minute);
+  static RegExpMatch? _findTimeMatch(String text) {
+    return _atTimeRe.firstMatch(text) ??
+        _atHourRe.firstMatch(text) ??
+        _bareTimeWithMeridiem(text) ??
+        _bareHourAfterDate(text);
   }
 
-  /// Builds a TZDateTime from a regex match group containing hour/minute/ampm.
-  static tz.TZDateTime? _buildTZDate(
-      tz.Location loc, tz.TZDateTime base, RegExpMatch m) {
+  /// Matches " 10:30 pm" or " 4pm" or " 5 pm" even without the word "at".
+  static RegExpMatch? _bareTimeWithMeridiem(String text) {
+    final m = _bareTimeRe.firstMatch(text);
+    if (m == null) return null;
+    final ampm = m.group(3);
+    if (ampm != null && ampm.isNotEmpty) return m;
+    return null;
+  }
+
+  /// Matches hour following date words like "tomorrow 10" or "Friday 4"
+  static RegExpMatch? _bareHourAfterDate(String text) {
+    final m = RegExp(
+      r'(?:tomorrow|today|day\s+after\s+tomorrow|monday|tuesday|wednesday|thursday|friday|saturday|sunday)\s+(\d{1,2})(?::(\d{2}))?\s*(am|pm)?\b',
+      caseSensitive: false,
+    ).firstMatch(text);
+    if (m == null) return null;
+    return m;
+  }
+
+  static MapEntry<String, bool>? _findWeekdayMatch(String text) {
+    final nextRe = RegExp(r'\bnext\s+(monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b', caseSensitive: false);
+    final nextM = nextRe.firstMatch(text);
+    if (nextM != null) {
+      return MapEntry(nextM.group(1)!.toLowerCase(), true);
+    }
+    for (final entry in _weekdays.entries) {
+      if (RegExp(r'\b' + entry.key + r'\b', caseSensitive: false).hasMatch(text)) {
+        return MapEntry(entry.key, false);
+      }
+    }
+    return null;
+  }
+
+  static String _combinedRaw(String dayPart, RegExpMatch atM) {
+    return '$dayPart ${atM.group(0)!.trim()}';
+  }
+
+  static DateTime? _buildTZDate(DateTime base, RegExpMatch m) {
     try {
-      // group indices differ between _atTimeRe (1,2,3) and _atHourRe (1,2)
       int hour = int.parse(m.group(1)!);
-      int minute = int.tryParse(m.group(2) ?? '') ?? 0;
-      final String ampm = (m.groupCount >= 3 ? m.group(3) : null)?.toLowerCase() ?? '';
+      final minute = int.tryParse(m.group(2) ?? '') ?? 0;
+      final ampm = (m.groupCount >= 3 ? m.group(3) : null)?.toLowerCase() ?? '';
       if (ampm == 'pm' && hour < 12) hour += 12;
       if (ampm == 'am' && hour == 12) hour = 0;
-      var dt = _tzDate(loc, base.year, base.month, base.day, hour, minute);
-      final now = tz.TZDateTime.now(loc);
-      if (dt.isBefore(now)) dt = dt.add(const Duration(days: 1));
-      return dt;
+      if (ampm.isEmpty && hour >= 1 && hour <= 7) {
+        // "call mom at 7" → evening unless context says morning
+        hour += 12;
+      }
+      var dt = _timeService.buildDateTime(
+        base.year,
+        base.month,
+        base.day,
+        hour,
+        minute,
+      );
+      return _timeService.rollForwardIfPast(dt);
     } catch (_) {
       return null;
     }
@@ -344,51 +537,69 @@ class TaskParser {
   // ─── Priority Detection ───────────────────────────────────────────────────
 
   static String _extractPriority(String lower) {
-    if (RegExp(r'\b(urgent|critical|asap|emergency|immediately)\b').hasMatch(lower)) return 'high';
-    if (RegExp(r'\b(high priority|important|must|deadline)\b').hasMatch(lower)) return 'high';
-    if (RegExp(r'\b(low priority|later|someday|whenever|no rush)\b').hasMatch(lower)) return 'low';
+    if (RegExp(r'\b(urgent|critical|asap|emergency|immediately)\b').hasMatch(lower)) {
+      return 'high';
+    }
+    if (RegExp(r'\b(high priority|important|must|deadline)\b').hasMatch(lower)) {
+      return 'high';
+    }
+    if (RegExp(r'\b(low priority|later|someday|whenever|no rush)\b').hasMatch(lower)) {
+      return 'low';
+    }
     return 'medium';
   }
 
   // ─── Body Cleaning ────────────────────────────────────────────────────────
 
   static String _cleanBody(String text) {
-    String cleaned = text
-        // Remove residual time connectors
-        .replaceAll(RegExp(r'\bat\b\s*$', caseSensitive: false), '')
-        .replaceAll(RegExp(r'\bon\b\s*$', caseSensitive: false), '')
-        .replaceAll(RegExp(r'\bfor\b\s*$', caseSensitive: false), '')
-        // Remove filler words at the beginning only
-        .replaceAll(RegExp(r'^(to|the|an?\s+)\s+', caseSensitive: false), '')
-        // Collapse spaces
+    var cleaned = text
+        .replaceAll(RegExp(r'\b(?:at|on|for)\s*$', caseSensitive: false), '')
+        .replaceAll(RegExp(r'^(?:to|the|an?|your|my|our)\s+', caseSensitive: false), '')
         .replaceAll(RegExp(r'\s+'), ' ')
         .trim();
-
-    // Remove trailing punctuation
     cleaned = cleaned.replaceAll(RegExp(r'[.,!?]+$'), '').trim();
     return cleaned;
   }
 
   // ─── Helpers ─────────────────────────────────────────────────────────────
 
-  static String _capitalize(String text) {
+  static String _titleCase(String text) {
     if (text.isEmpty) return text;
-    return text[0].toUpperCase() + text.substring(1);
+    return text.split(' ').map((w) {
+      if (w.isEmpty) return '';
+      return w[0].toUpperCase() + w.substring(1);
+    }).join(' ');
   }
 
-  /// Converts English number words and digit strings to integers.
   static int _wordToNumber(String word) {
     const map = {
-      'a': 1, 'an': 1, 'one': 1, 'two': 2, 'three': 3, 'four': 4,
-      'five': 5, 'six': 6, 'seven': 7, 'eight': 8, 'nine': 9, 'ten': 10,
+      'a': 1,
+      'an': 1,
+      'one': 1,
+      'two': 2,
+      'three': 3,
+      'four': 4,
+      'five': 5,
+      'six': 6,
+      'seven': 7,
+      'eight': 8,
+      'nine': 9,
+      'ten': 10,
+      'eleven': 11,
+      'twelve': 12,
+      'fifteen': 15,
+      'twenty': 20,
+      'thirty': 30,
+      'forty': 40,
+      'fifty': 50,
+      'sixty': 60,
+      'ninety': 90,
       'a few': 3,
     };
     final clean = word.toLowerCase().trim();
     return map[clean] ?? int.tryParse(clean) ?? 1;
   }
 }
-
-// ─── Private helpers ──────────────────────────────────────────────────────────
 
 class _TimeResult {
   final String raw;
@@ -401,11 +612,12 @@ class _TimeResult {
 class ParsedTask {
   final String title;
   final DateTime? remindAt;
-  final String priority;           // 'low' | 'medium' | 'high'
-  final String? organization;      // e.g. 'Microsoft', 'Google'
+  final String priority;
+  final String? organization;
   final List<SubTask> subtasks;
   final String originalMessage;
   final String? detectedExpression;
+  final String timezone;
 
   const ParsedTask({
     required this.title,
@@ -415,14 +627,15 @@ class ParsedTask {
     this.subtasks = const [],
     required this.originalMessage,
     this.detectedExpression,
+    this.timezone = AstraTimeService.defaultTimezone,
   });
 
   bool get hasReminder => remindAt != null;
 
-  String get formattedReminder =>
-      remindAt == null ? 'No reminder set' : DateFormat('MMM d, yyyy h:mm a').format(remindAt!);
+  String get formattedReminder => remindAt == null
+      ? 'No reminder set'
+      : DateFormat('MMM d, yyyy h:mm a').format(remindAt!);
 
-  /// Description string added to the created task for traceability.
   String get taskDescription {
     final buf = StringBuffer('Created via ASTRA Assistant.');
     if (remindAt != null) buf.write('\n⏰ Reminder: $formattedReminder');

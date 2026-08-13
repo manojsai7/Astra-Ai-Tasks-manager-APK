@@ -169,7 +169,28 @@ class Astra3DIconButton extends StatelessWidget {
     this.borderColor = AstraDepthColors.neutralBorder,
     this.iconColor = AstraColors.textPrimary,
     this.borderRadius = AstraRadii.md,
+    this.palette,
   });
+
+  /// Canonical physical 3D back button with charcoal face (#171717),
+  /// grey border (#777777), grey extrusion underside (#777777), ~8px depth, ~28px radius.
+  factory Astra3DIconButton.back({
+    Key? key,
+    required VoidCallback onTap,
+    double size = 48,
+    double iconSize = 20,
+  }) {
+    return Astra3DIconButton(
+      key: key,
+      icon: Icons.arrow_back,
+      onTap: onTap,
+      size: size,
+      iconSize: iconSize,
+      depth: AstraDepth.large,
+      borderRadius: 28,
+      palette: AstraMaterials.dark,
+    );
+  }
 
   final IconData icon;
   final VoidCallback? onTap;
@@ -181,13 +202,19 @@ class Astra3DIconButton extends StatelessWidget {
   final Color borderColor;
   final Color iconColor;
   final double borderRadius;
+  final AstraMaterialPalette? palette;
 
   @override
   Widget build(BuildContext context) {
+    final face = palette?.face ?? faceColor;
+    final depthCol = palette?.depth ?? depthColor;
+    final borderCol = palette?.border ?? borderColor;
+    final iconCol = palette?.content ?? iconColor;
+
     return Astra3DSurface(
-      faceColor: faceColor,
-      depthColor: depthColor,
-      borderColor: borderColor,
+      faceColor: face,
+      depthColor: depthCol,
+      borderColor: borderCol,
       depthOffset: depth,
       borderRadius: borderRadius,
       onTap: onTap,
@@ -196,7 +223,7 @@ class Astra3DIconButton extends StatelessWidget {
         width: size,
         height: size,
         child: Center(
-          child: Icon(icon, size: iconSize, color: iconColor),
+          child: Icon(icon, size: iconSize, color: iconCol),
         ),
       ),
     );
