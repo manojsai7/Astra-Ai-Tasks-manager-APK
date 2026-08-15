@@ -38,18 +38,8 @@ class AppUpdater {
       final releaseNotes = data['body'] as String? ?? '';
       final assets = (data['assets'] as List<dynamic>?) ?? [];
 
-      // Prefer arm64 APK; fall back to the first asset.
-      String downloadUrl = '';
-      for (final asset in assets) {
-        final name = (asset['name'] as String? ?? '').toLowerCase();
-        if (name.contains('arm64-v8a') && name.endsWith('.apk')) {
-          downloadUrl = asset['browser_download_url'] as String? ?? '';
-          break;
-        }
-      }
-      if (downloadUrl.isEmpty && assets.isNotEmpty) {
-        downloadUrl = assets.first['browser_download_url'] as String? ?? '';
-      }
+      // Select release asset matching device ABI (prefer arm64-v8a on modern Android).
+      final downloadUrl = selectReleaseAsset(assets);
 
       // Get current installed version.
       final info = await PackageInfo.fromPlatform();
@@ -70,10 +60,46 @@ class AppUpdater {
     }
   }
 
+  /// Selects the most appropriate APK asset (prefers arm64-v8a, then armeabi-v7a, then first APK).
+  static String selectReleaseAsset(List<dynamic> assets, {String targetAbi = 'arm64'}) {
+    if (assets.isEmpty) return '';
+
+    // Check for target ABI specifically
+    for (final asset in assets) {
+      final name = (asset['name'] as String? ?? '').toLowerCase();
+      if (targetAbi == 'arm64' && name.contains('arm64-v8a') && name.endsWith('.apk')) {
+        return asset['browser_download_url'] as String? ?? '';
+      }
+      if (targetAbi == 'armv7' && (name.contains('armeabi-v7a') || name.contains('arm-v7a')) && name.endsWith('.apk')) {
+        return asset['browser_download_url'] as String? ?? '';
+      }
+    }
+
+    // Generic arm64 preference fallback
+    for (final asset in assets) {
+      final name = (asset['name'] as String? ?? '').toLowerCase();
+      if (name.contains('arm64-v8a') && name.endsWith('.apk')) {
+        return asset['browser_download_url'] as String? ?? '';
+      }
+    }
+
+    // Any APK fallback
+    for (final asset in assets) {
+      final name = (asset['name'] as String? ?? '').toLowerCase();
+      if (name.endsWith('.apk')) {
+        return asset['browser_download_url'] as String? ?? '';
+      }
+    }
+
+    return assets.first['browser_download_url'] as String? ?? '';
+  }
+
   // ─── Version Comparison ───────────────────────────────────────────────────
 
   /// Returns true if [latest] is strictly newer than [current].
   /// Handles "1.2.3" style semver strings.
+  static bool isNewer(String latest, String current) => _isNewer(latest, current);
+
   static bool _isNewer(String latest, String current) {
     try {
       final l = _parse(latest);

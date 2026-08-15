@@ -34,7 +34,7 @@ void main() {
       final sessionNotifier = container.read(chatSessionProvider.notifier);
       final assistantNotifier = container.read(assistantStateProvider.notifier);
       // Keep chatSessionProvider alive in tests
-      container.listen(chatSessionProvider, (_, __) {});
+      container.listen(chatSessionProvider, (_, _) {});
 
       // Create session 1 and simulate user + assistant interaction
       final session1Id = await sessionNotifier.createSession(title: 'Exam Planning');
