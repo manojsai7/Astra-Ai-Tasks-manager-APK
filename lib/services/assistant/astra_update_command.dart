@@ -171,19 +171,27 @@ class AstraUpdateParser {
           // If only time is given (e.g. "2pm"), prefix with today or evaluate with now
           final containsDateWord = RegExp(r'\b(?:today|tomorrow|tmrw|monday|tuesday|wednesday|thursday|friday|saturday|sunday|jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\b', caseSensitive: false).hasMatch(temporalPortion);
           final parseInput = containsDateWord ? temporalPortion : 'today at $temporalPortion';
+          // Check if temporalPortion has an explicit time (e.g. "7pm", "10:30am", "14:00")
+          final hasExplicitTime = RegExp(r'\b(?:\d{1,2}:\d{2}|\d{1,2}\s*(?:am|pm))\b', caseSensitive: false).hasMatch(temporalPortion);
+          final isPureRelativeDay = RegExp(r'^(?:today|tomorrow|tmrw)$', caseSensitive: false).hasMatch(temporalPortion.trim());
 
-          final temporalResult = _temporalEngine.parse(parseInput, now: now);
-
-          if (temporalResult.ambiguous) {
+          if (isPureRelativeDay && !hasExplicitTime) {
             explicitConfirmationRequired = true;
-            warnings.addAll(temporalResult.warnings.isNotEmpty
-                ? temporalResult.warnings
-                : ['The new date or time is ambiguous.']);
+            warnings.add('Please specify a time for the rescheduled task (e.g. 7pm).');
           } else {
-            newDueAt = temporalResult.eventStart ?? temporalResult.deadline;
-            if (newDueAt == null) {
+            final temporalResult = _temporalEngine.parse(parseInput, now: now);
+
+            if (temporalResult.ambiguous) {
               explicitConfirmationRequired = true;
-              warnings.add('Could not determine new time from "$temporalPortion".');
+              warnings.addAll(temporalResult.warnings.isNotEmpty
+                  ? temporalResult.warnings
+                  : ['The new date or time is ambiguous.']);
+            } else {
+              newDueAt = temporalResult.eventStart ?? temporalResult.deadline;
+              if (newDueAt == null) {
+                explicitConfirmationRequired = true;
+                warnings.add('Could not determine new time from "$temporalPortion".');
+              }
             }
           }
         }

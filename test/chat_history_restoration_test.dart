@@ -33,6 +33,8 @@ void main() {
 
       final sessionNotifier = container.read(chatSessionProvider.notifier);
       final assistantNotifier = container.read(assistantStateProvider.notifier);
+      // Keep chatSessionProvider alive in tests
+      container.listen(chatSessionProvider, (_, __) {});
 
       // Create session 1 and simulate user + assistant interaction
       final session1Id = await sessionNotifier.createSession(title: 'Exam Planning');
@@ -62,7 +64,7 @@ void main() {
       expect(state.messages[1].isUser, isFalse);
 
       // Verify no extra sessions were created
-      final allSessions = await db.getAllChatSessions();
+      final allSessions = await db.select(db.chatSessions).get();
       expect(allSessions.length, 2);
       expect(allSessions.map((s) => s.id), containsAll([session1Id, session2Id]));
 

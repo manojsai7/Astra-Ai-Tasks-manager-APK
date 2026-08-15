@@ -52,6 +52,7 @@ class ChatSessionNotifier extends StateNotifier<List<ChatSession>> {
           ..orderBy([(t) => OrderingTerm(expression: t.updatedAt, mode: OrderingMode.desc)]))
         .get();
 
+    if (!mounted) return;
     state = sessions
         .map((s) => ChatSession(
               id: s.id,
@@ -129,7 +130,9 @@ class ChatSessionNotifier extends StateNotifier<List<ChatSession>> {
     await (db.update(db.chatSessions)..where((t) => t.id.equals(sessionId))).write(
       ChatSessionsCompanion(updatedAt: Value(now)),
     );
-    await loadSessions();
+    if (mounted) {
+      await loadSessions();
+    }
   }
 }
 
