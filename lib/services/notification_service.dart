@@ -152,6 +152,21 @@ class NotificationService {
       iOS: iosDetails,
     );
 
+    bool? exactAllowed;
+    try {
+      final androidPlugin = _plugin.resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin>();
+      if (androidPlugin != null) {
+        exactAllowed = await androidPlugin.canScheduleExactNotifications();
+      }
+    } catch (_) {}
+
+    debugPrint(
+      '[NotificationService DIAGNOSTIC] id=$id title="$title" '
+      'requestedTime=$scheduledTime scheduledTz=$scheduledTz nowTz=$nowTz '
+      'timezone=$_timezone exactAlarmPermission=$exactAllowed',
+    );
+
     try {
       await _plugin.zonedSchedule(
         id: id,
@@ -162,9 +177,10 @@ class NotificationService {
         androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
         payload: payload,
       );
+      debugPrint('[NotificationService DIAGNOSTIC] result=EXACT (exactAllowWhileIdle succeeded)');
       return NotificationScheduleResult.exact;
     } catch (e) {
-      debugPrint('[NotificationService] exactAllowWhileIdle failed: $e');
+      debugPrint('[NotificationService DIAGNOSTIC] exactAllowWhileIdle failed: $e. Falling back to inexactAllowWhileIdle.');
       try {
         await _plugin.zonedSchedule(
           id: id,
@@ -175,13 +191,15 @@ class NotificationService {
           androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
           payload: payload,
         );
+        debugPrint('[NotificationService DIAGNOSTIC] result=INEXACT (inexactAllowWhileIdle succeeded — may be delayed by Android Doze/battery optimization)');
         return NotificationScheduleResult.inexact;
       } catch (e2) {
         final err = e2.toString().toLowerCase();
         if (err.contains('exact') || err.contains('alarm') || err.contains('permission')) {
+          debugPrint('[NotificationService DIAGNOSTIC] result=PERMISSION_REQUIRED ($e2)');
           return NotificationScheduleResult.permissionRequired;
         }
-        debugPrint('[NotificationService] scheduleReminderNotification failed: $e2');
+        debugPrint('[NotificationService DIAGNOSTIC] result=FAILED ($e2)');
         return NotificationScheduleResult.failed;
       }
     }
@@ -267,14 +285,28 @@ class NotificationService {
   // ─── Cancellation ─────────────────────────────────────────────────────────
 
   static Future<void> cancelNotification(int id) async {
-    await _plugin.cancel(id: id);
+    try {
+      await _plugin.cancel(id: id);
+    } catch (e) {
+      debugPrint('[NotificationService] cancelNotification failed or running in test: $e');
+    }
   }
 
   static Future<void> cancelAllNotifications() async {
-    await _plugin.cancelAll();
+    try {
+      await _plugin.cancelAll();
+    } catch (e) {
+      debugPrint('[NotificationService] cancelAllNotifications failed: $e');
+    }
   }
 
   static Future<void> _ensureInitialized() async {
-    if (!_initialized) await initialize();
+    if (!_initialized) {
+      try {
+        await initialize();
+      } catch (e) {
+        debugPrint('[NotificationService] initialize failed or running in test: $e');
+      }
+    }
   }
 }

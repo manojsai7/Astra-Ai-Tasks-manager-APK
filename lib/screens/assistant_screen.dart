@@ -177,9 +177,10 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen>
                                   }
                                 },
                               ),
-                              onTap: () {
+                              onTap: () async {
                                 ref.read(currentSessionIdProvider.notifier).state = session.id;
-                                Navigator.pop(ctx);
+                                await ref.read(assistantStateProvider.notifier).loadSessionMessages(session.id);
+                                if (ctx.mounted) Navigator.pop(ctx);
                               },
                             ),
                           );
@@ -874,6 +875,7 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen>
   // ─── Input Bar Component (Fixed UI Padding for Keyboard & Bottom Nav) ──────
 
   Widget _buildInputBar(BuildContext context) {
+    final assistantState = ref.watch(assistantStateProvider);
     return Container(
       padding: const EdgeInsets.fromLTRB(12, 10, 12, 14),
       decoration: const BoxDecoration(
@@ -906,19 +908,35 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen>
             ),
           ),
           const SizedBox(width: 10),
-          // Send: lime face + olive depth + neutral border — NO gradient, NO glow
-          Astra3DIconButton(
-            icon: LucideIcons.send,
-            iconSize: 18,
-            size: 46,
-            depth: AstraDepth.small,
-            faceColor: AstraDepthColors.limeFace,
-            depthColor: AstraDepthColors.limeDepth,
-            borderColor: AstraDepthColors.limeBorder,
-            iconColor: Colors.black,
-            borderRadius: AstraRadii.md,
-            onTap: _sendInput,
-          ),
+          // Send / Stop button: toggle based on assistant isLoading state
+          if (assistantState.isLoading)
+            Astra3DIconButton(
+              icon: LucideIcons.square,
+              iconSize: 16,
+              size: 46,
+              depth: AstraDepth.small,
+              faceColor: const Color(0xFFEF4444),
+              depthColor: const Color(0xFFB91C1C),
+              borderColor: const Color(0xFFDC2626),
+              iconColor: Colors.white,
+              borderRadius: AstraRadii.md,
+              onTap: () {
+                ref.read(assistantStateProvider.notifier).stopCommand();
+              },
+            )
+          else
+            Astra3DIconButton(
+              icon: LucideIcons.send,
+              iconSize: 18,
+              size: 46,
+              depth: AstraDepth.small,
+              faceColor: AstraDepthColors.limeFace,
+              depthColor: AstraDepthColors.limeDepth,
+              borderColor: AstraDepthColors.limeBorder,
+              iconColor: Colors.black,
+              borderRadius: AstraRadii.md,
+              onTap: _sendInput,
+            ),
         ],
       ),
     );

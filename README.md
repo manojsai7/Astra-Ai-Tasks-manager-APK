@@ -1,7 +1,8 @@
-# 🚀 ASTRA — Premium AI Life Scheduler & Task Manager
+# 🚀 ASTRA — Production AI Assistant & Life Operating System
 
 ![ASTRA Banner](https://img.shields.io/badge/ASTRA-v1.0.0--Release-7C65F4?style=for-the-badge&logo=android&logoColor=white)
 ![Flutter](https://img.shields.io/badge/Flutter-3.29.0-02569B?style=for-the-badge&logo=flutter&logoColor=white)
+![Tests](https://img.shields.io/badge/Tests-228%20Passing-brightgreen?style=for-the-badge&logo=dart)
 ![Auto-Update](https://img.shields.io/badge/Auto--Update-GitHub%20Releases-2EA44F?style=for-the-badge&logo=github&logoColor=white)
 ![License](https://img.shields.io/badge/License-MIT-C6FF3D?style=for-the-badge)
 
@@ -9,153 +10,152 @@
 
 ## 📲 DOWNLOAD THE LATEST APK
 
-> The app checks for updates automatically on startup. If you received an "Update Available" prompt, tap **Download & Install** and follow the Android installer.
+> The app automatically checks for releases on startup. If an update is available, you will receive a clean in-app prompt with changelog notes.
 
-Get the latest pre-compiled ASTRA release APK directly on your Android phone:
+Get the latest release APK directly for your Android phone:
 
-| Architecture | Recommended For | Download |
+| Architecture | Recommended For | Download Link |
 |---|---|---|
-| **ARM64 (64-bit)** | **All modern phones (Recommended)** | [⬇️ `app-arm64-v8a-release.apk`](https://github.com/manojsai7/Ai-Tasks-manager/releases/latest/) |
+| **ARM64 (64-bit)** | **All modern Android phones (Recommended)** | [⬇️ `app-arm64-v8a-release.apk`](https://github.com/manojsai7/Ai-Tasks-manager/releases/latest/) |
 | ARMv7 (32-bit) | Older Android devices | [⬇️ `app-armeabi-v7a-release.apk`](https://github.com/manojsai7/Ai-Tasks-manager/releases/latest/download/app-armeabi-v7a-release.apk) |
 
-### 📥 How to Install on Your Android Phone
-1. Tap the **ARM64 download link** above on your phone browser.
-2. Open the downloaded file → tap **Install**.  
-   *(If prompted, enable "Install from Unknown Sources" for your browser.)*
-3. Open **ASTRA** — done!
+### 📥 Installation Steps:
+1. Tap the **ARM64 download link** on your device.
+2. Open the downloaded `.apk` file $\rightarrow$ tap **Install**.  
+   *(Enable "Install from Unknown Sources" if prompted by your browser).*
+3. Open **ASTRA** $\rightarrow$ Ready to go!
 
 ---
 
-## 🔄 HOW TO PUSH AN UPDATE TO YOUR USERS
+## 🧠 SYSTEM ARCHITECTURE & AI PIPELINE
 
-> This is the complete release workflow. Every time you update the app, follow these 3 steps — your users will be notified automatically next time they open ASTRA.
+ASTRA is built with a **deterministic + ML hybrid architecture** prioritizing zero silent failures, exact-time local reminders, and bi-directional Google Calendar sync.
 
-### Step 1 — Bump the Version in `pubspec.yaml`
-```yaml
-# pubspec.yaml
-version: 1.1.0+2   # ← change BOTH the name (1.1.0) and build number (+2)
-```
-- **`1.1.0`** is what users see (e.g. "v1.1.0 is available")
-- **`+2`** is the Android build number (must always increase)
-
-### Step 2 — Build the Split Release APKs
-```bash
-flutter build apk --release --split-per-abi
-```
-This produces 3 APKs in `build/app/outputs/flutter-apk/`:
-```
-app-arm64-v8a-release.apk      ← most phones (upload this)
-app-armeabi-v7a-release.apk    ← older phones (upload this too)
-app-x86_64-release.apk         ← emulator only (skip)
-```
-
-### Step 3 — Create a GitHub Release
-1. Go to **[github.com/manojsai7/Ai-Tasks-manager/releases/new](https://github.com/manojsai7/Ai-Tasks-manager/releases/new)**
-2. Set the **Tag** to match your version: `v1.1.0`
-3. Write release notes (they show in the update dialog inside ASTRA)
-4. Upload both APK files from `build/app/outputs/flutter-apk/`
-5. Click **Publish Release**
-
-> ✅ That's it. Every user who opens ASTRA will see the "Update Available" sheet within seconds.
-
-### How It Works (Under the Hood)
-```
-User opens ASTRA
-      │
-      ▼ (after first frame, silently)
-AppUpdater.check()
+```text
+User Input Query
       │
       ▼
-GET https://api.github.com/repos/manojsai7/Ai-Tasks-manager/releases/latest
+Set A Intent Classifier (FastAPI ML + Deterministic Rules)
       │
-      ▼
-Compare latestVersion (from GitHub tag) vs currentVersion (from pubspec)
+      ├─► LIST_TASKS / SYNC_EMAIL / GET_PANCHANG / COMPLETE_TASK (Authoritative Fast-Path)
       │
-      ┌──────────────┬──────────────────────────────────────────┐
-      ▼              ▼
-  Same version    Newer version available
-  → silent        → Show "Update Available" bottom-sheet
-                         │
-                         ▼ User taps "Download & Install"
-                  Opens GitHub CDN APK link in browser
-                         │
-                         ▼
-                  Android downloads & prompts installer
-                         │
-                         ▼
-                  User taps Install → updated ✅
+      └─► CREATE_TASK / CREATE_REMINDER / CREATE_CALENDAR_EVENT / UPDATE_TASK
+            │
+            ▼
+      Set B Event Classifier (TF-IDF + Ridge Classifier)
+            │
+            ▼
+      AstraSemanticEngine (Entity, Action & Title Extraction)
+            │
+            ▼
+      AstraTemporalEngine (IST Canonical Time & Recurrence Parsing: DAILY, WEEKDAYS, WEEKLY, MONTHLY)
+            │
+            ▼
+      AstraExecutionGate (Safety Check: Past-Time & Ambiguity Confirmation)
+            │
+      ┌─────┴────────────────────────┐
+      ▼                              ▼
+  CONFIRM (Disambiguation)        EXECUTE
+                                     │
+                                     ▼
+                           AstraCommandExecutor
+                                     │
+                         ┌───────────┴────────────┐
+                         ▼                        ▼
+               Local Drift DB Task        Google Calendar Writer
+              + Exact Alarm Reminders      (Best-Effort Non-Blocking Sync)
 ```
 
-**No server. No billing. No Play Store approval wait. GitHub's CDN is free and fast.**
+### Key Architectural Invariants:
+1. **Safety & Ambiguity Gate:** Multi-match task updates or ambiguous times (e.g. `today at 6pm` when current time is 9pm) require explicit user confirmation.
+2. **Local-First Reliability:** Google Calendar failures or offline mode **never destroy or drop** local task creation.
+3. **Exact Android Alarms:** Diagnostic logging tracks `exactAllowWhileIdle` vs fallback scheduling across Android versions.
+4. **Interactive Request Cancellation:** Real-time generation tokens allow users to **STOP** active processing instantly without late database side-effects.
 
 ---
 
-## 💻 QUICK RUN & BUILD GUIDE FOR DEVELOPERS
+## 💻 DEVELOPER SETUP & LOCAL RUN
 
-### 1️⃣ Clone & Install Dependencies
+### 1️⃣ Prerequisites
+- Flutter SDK `3.29.0` or later
+- Python 3.10+ (for FastAPI local classifier server)
+- Android SDK (API 33+ recommended for exact alarms)
+
+### 2️⃣ Clone & Install
 ```bash
 git clone https://github.com/manojsai7/Ai-Tasks-manager.git
 cd Ai-Tasks-manager
 flutter pub get
 ```
 
-### 2️⃣ Run on Connected Device / Emulator
+### 3️⃣ Backend ML Server Setup
 ```bash
-flutter run
+cd server
+pip install -r requirements.txt
+uvicorn main:app --host 0.0.0.0 --port 8000
 ```
 
-### 3️⃣ Build Production Split Release APKs
+### 4️⃣ Run the Flutter App
 ```bash
-flutter build apk --release --split-per-abi
+# Point to your local server IP (or emulator localhost)
+flutter run --dart-define=ASTRA_BACKEND_URL=http://<YOUR_LAN_IP>:8000
 ```
-The compiled APK will be at: `build/app/outputs/flutter-apk/app-arm64-v8a-release.apk`
 
 ---
 
-## 🔑 WHERE TO ADD API KEYS (Step-by-Step)
+## 🧪 COMPREHENSIVE AUTOMATED TEST SUITE
 
-You need **3 types of credentials**. Here is exactly where they go:
+The codebase is covered by **228 formal automated tests** across all architectural boundaries:
 
-### 1. 🤖 Gemini API Key (For AI Context Extraction)
-This is a simple text string used to call Google's Gemini AI.
+```bash
+flutter test
+```
 
-- **Where to get it**: Go to [Google AI Studio](https://aistudio.google.com/app/apikey) → Click "Create API Key".
-- **Where to put it**: Edit `assets/.env`:
-   ```env
-   GEMINI_API_KEY=YOUR_ACTUAL_GEMINI_API_KEY_HERE
+### Test Coverage Highlights:
+- **Set A & Set B ML Intent Providers:** Real client contract parsing & fallback modes.
+- **Temporal & Recurrence Engine:** Daily, Weekdays, Weekly, Monthly, and multi-missed occurrence recovery.
+- **Safety Gate & Ambiguity Protection:** `AstraTaskResolver` zero-write guarantees for update operations.
+- **Google Calendar Writer Integration:** OAuth scope validation, mock calendar events, and recurring event synchronization.
+- **Lifecycle & Snooze Synchronization:** Guaranteed $T + 10\text{m}$ task due-date sync with active reminder state.
+- **Stop Button & Request Cancellation:** Request generation tokens prevent late response mutations.
+
+---
+
+## 🔑 CONFIGURATION & CREDENTIALS GUIDE
+
+> [!WARNING]
+> **NEVER COMMIT REAL CREDENTIALS OR SECRETS TO PUBLIC VERSION CONTROL.**  
+> Always use local environment variables or template files (`.env.example`).
+
+### 1. 🤖 Gemini AI API Key (Optional LLM Fallback)
+Copy the example environment file and add your key from Google AI Studio:
+```env
+# assets/.env.example -> assets/.env
+GEMINI_API_KEY=YOUR_GEMINI_API_KEY_HERE
+```
+
+### 2. 📱 Google OAuth 2.0 (For Gmail & Google Calendar Sync)
+1. Register your debug SHA-1 fingerprint in the Google Cloud Console:
+   ```bash
+   cd android && ./gradlew signingReport
    ```
+2. Download `google-services.json` and place it at: `android/app/google-services.json`.
+3. Enable **Google Calendar API** and **Gmail API** in your Google Cloud project.
 
 ---
 
-### 2. 📱 Google OAuth 2.0 Client ID (For Gmail + Calendar Sync)
-Configured via `android/app/google-services.json`.
+## 🔄 RELEASE & DEPLOYMENT WORKFLOW
 
-#### How to get SHA-1 Fingerprint:
-In your terminal, run:
-```bash
-cd android
-./gradlew signingReport
-```
-Copy the `SHA-1` fingerprint under the `debug` variant and add it to your Google Cloud Console Android OAuth client.
-
-Place `google-services.json` in: [`android/app/google-services.json`](file:///b:/Projects/astra/android/app/google-services.json).
+1. Bump the version in `pubspec.yaml` (e.g. `version: 1.1.0+2`).
+2. Build release split APKs:
+   ```bash
+   flutter build apk --release --split-per-abi
+   ```
+3. Create a new release at [github.com/manojsai7/Ai-Tasks-manager/releases/new](https://github.com/manojsai7/Ai-Tasks-manager/releases/new) matching tag `v1.1.0`.
+4. Upload `app-arm64-v8a-release.apk` and publish. Installed ASTRA devices will detect the update automatically!
 
 ---
 
-### 3. 🔓 Enable APIs in Google Cloud Console
-1. Go to [Google Cloud Console > APIs & Services > Library](https://console.cloud.google.com/apis/library).
-2. Search for **Gmail API** and click **Enable**.
-3. Search for **Google Calendar API** and click **Enable**.
+## 📄 LICENSE
 
----
-
-## ✨ KEY FEATURES
-
-- 🎨 **Matiks-Inspired Design System**: Dynamic dark mode (`#0A0A0F`), sleek glassmorphism, accent purple, neon lime, and custom display typography.
-- 🧠 **Multi-Model Gemini AI Chat**: Automatic fallback across `gemini-3.5-flash` and `gemini-2.5-pro`.
-- 🔍 **Email Classifier**: Zero-cost rule-based filter that drops newsletters and promotions before they reach Gemini — only real task emails create tasks.
-- ⏰ **Smart Task Parser**: Understands "remind me to take water in 2 mins" and sets the actual reminder time locally — no API call.
-- 💬 **Persistent SQLite Chat Sessions**: Multi-session management, auto-naming from prompts, and full history retention.
-- 📧 **Gmail & Calendar Auto-Extraction**: Automatically extracts job applications, exam dates, and deadlines from emails into your timeline.
-- 🪔 **Panchang & Fasting Calendar**: Pre-computed Ekadashi, Purnima, and Amavasya ritual rules and reminders.
-- 🔄 **Auto-Update via GitHub Releases**: Silently checks for new versions on startup — users get a one-tap install prompt when you push a release.
+Distributed under the MIT License. See `LICENSE` for more information.

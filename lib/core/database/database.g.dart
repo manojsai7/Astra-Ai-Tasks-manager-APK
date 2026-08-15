@@ -661,6 +661,17 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, TaskEntry> {
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _recurrenceRuleJsonMeta =
+      const VerificationMeta('recurrenceRuleJson');
+  @override
+  late final GeneratedColumn<String> recurrenceRuleJson =
+      GeneratedColumn<String>(
+        'recurrence_rule_json',
+        aliasedName,
+        true,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+      );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -680,6 +691,7 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, TaskEntry> {
     sourceId,
     category,
     organization,
+    recurrenceRuleJson,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -815,6 +827,15 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, TaskEntry> {
         ),
       );
     }
+    if (data.containsKey('recurrence_rule_json')) {
+      context.handle(
+        _recurrenceRuleJsonMeta,
+        recurrenceRuleJson.isAcceptableOrUnknown(
+          data['recurrence_rule_json']!,
+          _recurrenceRuleJsonMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -892,6 +913,10 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, TaskEntry> {
         DriftSqlType.string,
         data['${effectivePrefix}organization'],
       ),
+      recurrenceRuleJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}recurrence_rule_json'],
+      ),
     );
   }
 
@@ -919,6 +944,7 @@ class TaskEntry extends DataClass implements Insertable<TaskEntry> {
   final String? sourceId;
   final String? category;
   final String? organization;
+  final String? recurrenceRuleJson;
   const TaskEntry({
     required this.id,
     this.inboxItemId,
@@ -937,6 +963,7 @@ class TaskEntry extends DataClass implements Insertable<TaskEntry> {
     this.sourceId,
     this.category,
     this.organization,
+    this.recurrenceRuleJson,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -973,6 +1000,9 @@ class TaskEntry extends DataClass implements Insertable<TaskEntry> {
     }
     if (!nullToAbsent || organization != null) {
       map['organization'] = Variable<String>(organization);
+    }
+    if (!nullToAbsent || recurrenceRuleJson != null) {
+      map['recurrence_rule_json'] = Variable<String>(recurrenceRuleJson);
     }
     return map;
   }
@@ -1012,6 +1042,9 @@ class TaskEntry extends DataClass implements Insertable<TaskEntry> {
       organization: organization == null && nullToAbsent
           ? const Value.absent()
           : Value(organization),
+      recurrenceRuleJson: recurrenceRuleJson == null && nullToAbsent
+          ? const Value.absent()
+          : Value(recurrenceRuleJson),
     );
   }
 
@@ -1038,6 +1071,9 @@ class TaskEntry extends DataClass implements Insertable<TaskEntry> {
       sourceId: serializer.fromJson<String?>(json['sourceId']),
       category: serializer.fromJson<String?>(json['category']),
       organization: serializer.fromJson<String?>(json['organization']),
+      recurrenceRuleJson: serializer.fromJson<String?>(
+        json['recurrenceRuleJson'],
+      ),
     );
   }
   @override
@@ -1061,6 +1097,7 @@ class TaskEntry extends DataClass implements Insertable<TaskEntry> {
       'sourceId': serializer.toJson<String?>(sourceId),
       'category': serializer.toJson<String?>(category),
       'organization': serializer.toJson<String?>(organization),
+      'recurrenceRuleJson': serializer.toJson<String?>(recurrenceRuleJson),
     };
   }
 
@@ -1082,6 +1119,7 @@ class TaskEntry extends DataClass implements Insertable<TaskEntry> {
     Value<String?> sourceId = const Value.absent(),
     Value<String?> category = const Value.absent(),
     Value<String?> organization = const Value.absent(),
+    Value<String?> recurrenceRuleJson = const Value.absent(),
   }) => TaskEntry(
     id: id ?? this.id,
     inboxItemId: inboxItemId.present ? inboxItemId.value : this.inboxItemId,
@@ -1100,6 +1138,9 @@ class TaskEntry extends DataClass implements Insertable<TaskEntry> {
     sourceId: sourceId.present ? sourceId.value : this.sourceId,
     category: category.present ? category.value : this.category,
     organization: organization.present ? organization.value : this.organization,
+    recurrenceRuleJson: recurrenceRuleJson.present
+        ? recurrenceRuleJson.value
+        : this.recurrenceRuleJson,
   );
   TaskEntry copyWithCompanion(TasksCompanion data) {
     return TaskEntry(
@@ -1130,6 +1171,9 @@ class TaskEntry extends DataClass implements Insertable<TaskEntry> {
       organization: data.organization.present
           ? data.organization.value
           : this.organization,
+      recurrenceRuleJson: data.recurrenceRuleJson.present
+          ? data.recurrenceRuleJson.value
+          : this.recurrenceRuleJson,
     );
   }
 
@@ -1152,7 +1196,8 @@ class TaskEntry extends DataClass implements Insertable<TaskEntry> {
           ..write('source: $source, ')
           ..write('sourceId: $sourceId, ')
           ..write('category: $category, ')
-          ..write('organization: $organization')
+          ..write('organization: $organization, ')
+          ..write('recurrenceRuleJson: $recurrenceRuleJson')
           ..write(')'))
         .toString();
   }
@@ -1176,6 +1221,7 @@ class TaskEntry extends DataClass implements Insertable<TaskEntry> {
     sourceId,
     category,
     organization,
+    recurrenceRuleJson,
   );
   @override
   bool operator ==(Object other) =>
@@ -1197,7 +1243,8 @@ class TaskEntry extends DataClass implements Insertable<TaskEntry> {
           other.source == this.source &&
           other.sourceId == this.sourceId &&
           other.category == this.category &&
-          other.organization == this.organization);
+          other.organization == this.organization &&
+          other.recurrenceRuleJson == this.recurrenceRuleJson);
 }
 
 class TasksCompanion extends UpdateCompanion<TaskEntry> {
@@ -1218,6 +1265,7 @@ class TasksCompanion extends UpdateCompanion<TaskEntry> {
   final Value<String?> sourceId;
   final Value<String?> category;
   final Value<String?> organization;
+  final Value<String?> recurrenceRuleJson;
   final Value<int> rowid;
   const TasksCompanion({
     this.id = const Value.absent(),
@@ -1237,6 +1285,7 @@ class TasksCompanion extends UpdateCompanion<TaskEntry> {
     this.sourceId = const Value.absent(),
     this.category = const Value.absent(),
     this.organization = const Value.absent(),
+    this.recurrenceRuleJson = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   TasksCompanion.insert({
@@ -1257,6 +1306,7 @@ class TasksCompanion extends UpdateCompanion<TaskEntry> {
     this.sourceId = const Value.absent(),
     this.category = const Value.absent(),
     this.organization = const Value.absent(),
+    this.recurrenceRuleJson = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
        title = Value(title),
@@ -1280,6 +1330,7 @@ class TasksCompanion extends UpdateCompanion<TaskEntry> {
     Expression<String>? sourceId,
     Expression<String>? category,
     Expression<String>? organization,
+    Expression<String>? recurrenceRuleJson,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -1300,6 +1351,8 @@ class TasksCompanion extends UpdateCompanion<TaskEntry> {
       if (sourceId != null) 'source_id': sourceId,
       if (category != null) 'category': category,
       if (organization != null) 'organization': organization,
+      if (recurrenceRuleJson != null)
+        'recurrence_rule_json': recurrenceRuleJson,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -1322,6 +1375,7 @@ class TasksCompanion extends UpdateCompanion<TaskEntry> {
     Value<String?>? sourceId,
     Value<String?>? category,
     Value<String?>? organization,
+    Value<String?>? recurrenceRuleJson,
     Value<int>? rowid,
   }) {
     return TasksCompanion(
@@ -1342,6 +1396,7 @@ class TasksCompanion extends UpdateCompanion<TaskEntry> {
       sourceId: sourceId ?? this.sourceId,
       category: category ?? this.category,
       organization: organization ?? this.organization,
+      recurrenceRuleJson: recurrenceRuleJson ?? this.recurrenceRuleJson,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -1400,6 +1455,9 @@ class TasksCompanion extends UpdateCompanion<TaskEntry> {
     if (organization.present) {
       map['organization'] = Variable<String>(organization.value);
     }
+    if (recurrenceRuleJson.present) {
+      map['recurrence_rule_json'] = Variable<String>(recurrenceRuleJson.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -1426,6 +1484,7 @@ class TasksCompanion extends UpdateCompanion<TaskEntry> {
           ..write('sourceId: $sourceId, ')
           ..write('category: $category, ')
           ..write('organization: $organization, ')
+          ..write('recurrenceRuleJson: $recurrenceRuleJson, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -4855,6 +4914,7 @@ typedef $$TasksTableCreateCompanionBuilder =
       Value<String?> sourceId,
       Value<String?> category,
       Value<String?> organization,
+      Value<String?> recurrenceRuleJson,
       Value<int> rowid,
     });
 typedef $$TasksTableUpdateCompanionBuilder =
@@ -4876,6 +4936,7 @@ typedef $$TasksTableUpdateCompanionBuilder =
       Value<String?> sourceId,
       Value<String?> category,
       Value<String?> organization,
+      Value<String?> recurrenceRuleJson,
       Value<int> rowid,
     });
 
@@ -4992,6 +5053,11 @@ class $$TasksTableFilterComposer extends Composer<_$AppDatabase, $TasksTable> {
 
   ColumnFilters<String> get organization => $composableBuilder(
     column: $table.organization,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get recurrenceRuleJson => $composableBuilder(
+    column: $table.recurrenceRuleJson,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -5114,6 +5180,11 @@ class $$TasksTableOrderingComposer
     column: $table.organization,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<String> get recurrenceRuleJson => $composableBuilder(
+    column: $table.recurrenceRuleJson,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$TasksTableAnnotationComposer
@@ -5183,6 +5254,11 @@ class $$TasksTableAnnotationComposer
 
   GeneratedColumn<String> get organization => $composableBuilder(
     column: $table.organization,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get recurrenceRuleJson => $composableBuilder(
+    column: $table.recurrenceRuleJson,
     builder: (column) => column,
   );
 
@@ -5257,6 +5333,7 @@ class $$TasksTableTableManager
                 Value<String?> sourceId = const Value.absent(),
                 Value<String?> category = const Value.absent(),
                 Value<String?> organization = const Value.absent(),
+                Value<String?> recurrenceRuleJson = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => TasksCompanion(
                 id: id,
@@ -5276,6 +5353,7 @@ class $$TasksTableTableManager
                 sourceId: sourceId,
                 category: category,
                 organization: organization,
+                recurrenceRuleJson: recurrenceRuleJson,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -5297,6 +5375,7 @@ class $$TasksTableTableManager
                 Value<String?> sourceId = const Value.absent(),
                 Value<String?> category = const Value.absent(),
                 Value<String?> organization = const Value.absent(),
+                Value<String?> recurrenceRuleJson = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => TasksCompanion.insert(
                 id: id,
@@ -5316,6 +5395,7 @@ class $$TasksTableTableManager
                 sourceId: sourceId,
                 category: category,
                 organization: organization,
+                recurrenceRuleJson: recurrenceRuleJson,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0

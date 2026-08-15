@@ -1,4 +1,7 @@
+import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
+
+import '../services/assistant/astra_recurrence_engine.dart';
 
 class SubTask {
   final String id;
@@ -60,6 +63,7 @@ class Task {
   final String? sourceId;
   final String? category;
   final String? organization;
+  final RecurrenceRule? recurrenceRule;
 
   Task({
     required this.id,
@@ -77,6 +81,7 @@ class Task {
     this.sourceId,
     this.category,
     this.organization,
+    this.recurrenceRule,
   });
 
   // Backward compatibility getter
@@ -94,6 +99,7 @@ class Task {
     String? sourceId,
     String? category,
     String? organization,
+    RecurrenceRule? recurrenceRule,
   }) {
     final now = DateTime.now();
     return Task(
@@ -112,6 +118,7 @@ class Task {
       sourceId: sourceId,
       category: category,
       organization: organization,
+      recurrenceRule: recurrenceRule,
     );
   }
 
@@ -132,6 +139,8 @@ class Task {
     String? sourceId,
     String? category,
     String? organization,
+    RecurrenceRule? recurrenceRule,
+    bool clearRecurrenceRule = false,
   }) {
     final newStatus = status ?? (isCompleted != null ? (isCompleted ? 'completed' : 'pending') : this.status);
     return Task(
@@ -150,6 +159,7 @@ class Task {
       sourceId: sourceId ?? this.sourceId,
       category: category ?? this.category,
       organization: organization ?? this.organization,
+      recurrenceRule: clearRecurrenceRule ? null : (recurrenceRule ?? this.recurrenceRule),
     );
   }
 
@@ -170,6 +180,7 @@ class Task {
         'sourceId': sourceId,
         'category': category,
         'organization': organization,
+        if (recurrenceRule != null) 'recurrenceRule': recurrenceRule!.toMap(),
       };
 
   factory Task.fromJson(Map<String, dynamic> json) {
@@ -182,6 +193,19 @@ class Task {
 
     final bool legacyCompleted = json['isCompleted'] as bool? ?? false;
     final String parsedStatus = json['status'] as String? ?? (legacyCompleted ? 'completed' : 'pending');
+
+    RecurrenceRule? parsedRecurrence;
+    if (json['recurrenceRule'] != null) {
+      try {
+        if (json['recurrenceRule'] is Map<String, dynamic>) {
+          parsedRecurrence = RecurrenceRule.fromMap(json['recurrenceRule'] as Map<String, dynamic>);
+        } else if (json['recurrenceRule'] is String) {
+          parsedRecurrence = RecurrenceRule.fromJson(json['recurrenceRule'] as String);
+        }
+      } catch (e) {
+        debugPrint('[Task.fromJson] Error parsing recurrenceRule: $e');
+      }
+    }
 
     return Task(
       id: json['id'] as String,
@@ -199,6 +223,7 @@ class Task {
       sourceId: json['sourceId'] as String?,
       category: json['category'] as String?,
       organization: json['organization'] as String?,
+      recurrenceRule: parsedRecurrence,
     );
   }
 }

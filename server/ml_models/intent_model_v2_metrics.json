@@ -1,0 +1,14 @@
+{
+  "model_version": "v2",
+  "accuracy": 0.9697,
+  "macro_f1": 0.9651,
+  "weighted_f1": 0.9693,
+  "train_rows": 4090,
+  "test_rows": 1023,
+  "group_count": 3622,
+  "group_aware_split": true,
+  "hard_case_ml_accuracy": 0.8444,
+  "hard_case_resolver_accuracy": 0.9778,
+  "hard_case_rows": 45,
+  "evaluation_type": "untouched group-aware test set"
+}

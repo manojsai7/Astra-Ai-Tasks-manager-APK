@@ -1,0 +1,66 @@
+{
+  "model_name": "ASTRA Intent Classifier",
+  "model_version": "v2",
+  "model_type": "TFIDF + LogisticRegression",
+  "pipeline": {
+    "type": "sklearn.Pipeline",
+    "tfidf": {
+      "type": "TfidfVectorizer",
+      "lowercase": true,
+      "ngram_range": [
+        1,
+        2
+      ],
+      "min_df": 2,
+      "max_df": 0.98,
+      "sublinear_tf": true
+    },
+    "classifier": {
+      "type": "LogisticRegression",
+      "C": 4.0,
+      "class_weight": "balanced",
+      "max_iter": 3000,
+      "random_state": 42
+    }
+  },
+  "classes": [
+    "CANCEL_TASK",
+    "COMPLETE_TASK",
+    "CREATE_CALENDAR_EVENT",
+    "CREATE_REMINDER",
+    "CREATE_TASK",
+    "GENERAL_CHAT",
+    "GET_CALENDAR",
+    "GET_PANCHANG",
+    "LIST_TASKS",
+    "SEARCH_EMAIL",
+    "SUMMARIZE_EMAIL",
+    "SYNC_EMAIL",
+    "UPDATE_TASK"
+  ],
+  "dataset": {
+    "original_rows": 6377,
+    "clean_rows": 5113,
+    "train_rows": 4090,
+    "test_rows": 1023,
+    "group_aware_split": true,
+    "group_count": 3622
+  },
+  "evaluation": {
+    "test_accuracy": 0.9697,
+    "test_macro_f1": 0.9651,
+    "test_weighted_f1": 0.9693,
+    "hard_case_rows": 45,
+    "hard_case_ml_accuracy": 0.8444,
+    "hard_case_resolver_accuracy": 0.9778
+  },
+  "timezone": "Asia/Kolkata",
+  "notes": [
+    "Set A classifies user operation intent.",
+    "The deterministic intent resolver handles strong lexical/context rules.",
+    "Set A is not the event-type classifier.",
+    "Set B handles event_type separately.",
+    "The temporal engine resolves dates, times and recurrence separately.",
+    "Low-confidence or ambiguous predictions must not blindly execute."
+  ]
+}

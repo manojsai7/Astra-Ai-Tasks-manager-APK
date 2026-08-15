@@ -1,0 +1,15 @@
+{
+  "model_version": "v3",
+  "accuracy": 0.7692,
+  "macro_f1": 0.777,
+  "weighted_f1": 0.7592,
+  "train_rows": 551,
+  "test_rows": 52,
+  "evaluation_type": "untouched_group_aware_test_set",
+  "notes": [
+    "B1 is a coarse event-type classifier.",
+    "It is not the complete ASTRA semantic engine.",
+    "Deterministic semantic rules override weak/conflicting B1 predictions.",
+    "Low-confidence B1 predictions may still execute when deterministic evidence is strong."
+  ]
+}

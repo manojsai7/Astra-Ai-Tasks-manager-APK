@@ -1,14 +1,17 @@
-"""ASTRA's Gemini gateway. Run with: uvicorn main:app --reload --port 8000."""
 import asyncio
 import json
 import os
 from typing import Any
-
 from fastapi import FastAPI, HTTPException
 from google import genai
 # pyrefly: ignore [missing-import]
 from google.genai import types
 from pydantic import BaseModel, Field
+
+from ml_classifier_service import (
+    intent_model,
+    event_model,
+)
 
 app = FastAPI(title="ASTRA AI Gateway", version="1.0.0")
 
@@ -126,3 +129,28 @@ async def extract_task(request: ExtractRequest) -> dict[str, Any]:
         return data
     except (json.JSONDecodeError, ValueError) as exc:
         raise HTTPException(502, "AI provider returned invalid task data.") from exc
+
+class MLTextRequest(BaseModel):
+    text: str
+
+
+@app.post("/ml/classify-intent")
+async def classify_intent(
+    request: MLTextRequest,
+):
+    result = intent_model.classify(
+        request.text
+    )
+
+    return result
+
+
+@app.post("/ml/classify-event")
+async def classify_event(
+    request: MLTextRequest,
+):
+    result = event_model.classify(
+        request.text
+    )
+
+    return result

@@ -15,10 +15,15 @@ class GoogleAuthService {
     );
   }
 
+  GoogleAuthService.mock();
+
   static const List<String> _scopes = [
     'https://www.googleapis.com/auth/gmail.readonly',
     'https://www.googleapis.com/auth/calendar.readonly',
+    'https://www.googleapis.com/auth/calendar.events',
   ];
+
+  static List<String> get scopes => List.unmodifiable(_scopes);
 
   /// 🔑 Web Client ID from Google Cloud Console / google-services.json
   static const String defaultClientIdPlaceholder = "1016085578580-mjpfc4pvte0qvn36n3hlasiltpsefrv4.apps.googleusercontent.com";

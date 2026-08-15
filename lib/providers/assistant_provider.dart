@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'dart:math' as math;
@@ -8,6 +9,7 @@ import '../features/scheduler/domain/services/ai_life_scheduler_service.dart';
 import '../models/task.dart';
 import 'ritual_provider.dart';
 import 'task_provider.dart';
+import 'chat_session_provider.dart';
 import '../services/panchang_service.dart';
 import '../features/scheduler/data/services/gemini_chat_service.dart';
 import '../core/parser/task_parser.dart';
@@ -18,6 +20,17 @@ import '../core/commands/astra_response.dart';
 import '../core/commands/astra_response_builder.dart';
 import 'reminder_provider.dart';
 import 'auth_provider.dart';
+import 'b1_classifier_provider.dart';
+import '../services/ml/b1_event_classifier_client.dart';
+import 'intent_classifier_provider.dart';
+import 'astra_intent_resolver_provider.dart';
+import '../services/assistant/astra_intent_resolver.dart';
+import 'astra_routing_policy_provider.dart';
+import 'astra_execution_gate_provider.dart';
+import 'astra_command_executor_provider.dart';
+import 'astra_semantic_engine_provider.dart';
+import '../services/assistant/astra_command.dart' as semantic;
+import '../services/assistant/astra_update_command.dart';
 
 // ─── Service Providers ───────────────────────────────────────────────────────
 
@@ -157,6 +170,16 @@ class AssistantNotifier extends StateNotifier<AssistantState> {
       messages: [...state.messages, newMsg],
       isLoading: false,
     );
+
+    final currentSessionId = ref.read(currentSessionIdProvider);
+    if (currentSessionId != null) {
+      ref.read(chatSessionProvider.notifier).addMessage(
+        currentSessionId,
+        isUser ? 'user' : 'assistant',
+        displayText,
+        messageType: type.name,
+      );
+    }
   }
 
   void addStructuredResponse(AstraResponse response, {AssistantMessageType? type}) {
@@ -185,16 +208,308 @@ class AssistantNotifier extends StateNotifier<AssistantState> {
     state = state.copyWith(messages: []);
   }
 
+  void setMessages(List<AssistantMessage> messages) {
+    state = state.copyWith(messages: messages, isLoading: false);
+  }
+
+  Future<void> loadSessionMessages(int sessionId) async {
+    final dbMessages = await ref.read(chatSessionProvider.notifier).getMessages(sessionId);
+    final mapped = dbMessages.map((m) {
+      return AssistantMessage(
+        id: m.id.toString(),
+        text: m.content,
+        isUser: m.role == 'user',
+        timestamp: m.timestamp,
+        messageType: m.messageType == 'error'
+            ? AssistantMessageType.error
+            : (m.messageType == 'success' ? AssistantMessageType.success : AssistantMessageType.text),
+      );
+    }).toList();
+    state = state.copyWith(messages: mapped, isLoading: false);
+  }
+
+  Future<B1ClassificationResult?> _classifyWithB1(
+    String text,
+  ) async {
+    try {
+      return await ref
+          .read(b1EventClassifierProvider)
+          .classify(text);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<semantic.AstraCommand?> _understandWithSemanticEngine(
+    String text, {
+    String intent = 'CREATE_TASK',
+    bool requiresEventClassification = true,
+  }) async {
+    try {
+      B1ClassificationResult? b1Result;
+      if (requiresEventClassification) {
+        b1Result = await _classifyWithB1(text);
+      }
+
+      final engine = ref.read(
+        astraSemanticEngineProvider,
+      );
+
+      final now = ref.read(reminderServiceProvider).timeService.nowTZ();
+
+      return engine.resolve(
+        text: text,
+        intent: intent,
+        b1: b1Result,
+        now: now,
+      );
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<AstraResolvedIntent?> _resolveIntentWithSetA(
+    String text,
+  ) async {
+    try {
+      final mlResult = await ref
+          .read(intentClassifierProvider)
+          .classify(text);
+
+      final resolver = ref.read(
+        astraIntentResolverProvider,
+      );
+
+      return resolver.resolve(
+        text: text,
+        ml: mlResult,
+      );
+    } catch (_) {
+      return null;
+    }
+  }
+
+  int _activeRequestGeneration = 0;
+
+  void stopCommand() {
+    _activeRequestGeneration++;
+    state = state.copyWith(isLoading: false);
+    addMessage('Request cancelled.', type: AssistantMessageType.info);
+  }
+
   // ─── Command Router ────────────────────────────────────────────────────────
 
   Future<void> sendCommand(String input) async {
     final trimmed = input.trim();
     if (trimmed.isEmpty) return;
 
+    final requestGen = ++_activeRequestGeneration;
+
+    final resolvedIntent =
+        await _resolveIntentWithSetA(trimmed);
+
+    if (requestGen != _activeRequestGeneration) return;
+
+    if (resolvedIntent != null) {
+      debugPrint(
+        '[ASTRA INTENT] '
+        '${resolvedIntent.intent} '
+        'confidence='
+        '${resolvedIntent.mlConfidence.toStringAsFixed(3)} '
+        'reason=${resolvedIntent.reason}',
+      );
+    }
+
     addMessage(trimmed, isUser: true);
     state = state.copyWith(isLoading: true, error: null);
 
     try {
+      if (resolvedIntent != null) {
+        switch (resolvedIntent.intent) {
+          case 'LIST_TASKS':
+            debugPrint('[ASTRA ROUTER] intent=LIST_TASKS source=set_a_resolver mode=AUTHORITATIVE');
+            await handleListTasks();
+            if (requestGen != _activeRequestGeneration) return;
+            return;
+
+          case 'SYNC_EMAIL':
+            debugPrint('[ASTRA ROUTER] intent=SYNC_EMAIL source=set_a_resolver mode=AUTHORITATIVE');
+            await handleSyncEmails();
+            if (requestGen != _activeRequestGeneration) return;
+            return;
+
+          case 'SEARCH_EMAIL':
+          case 'SUMMARIZE_EMAIL':
+            debugPrint('[ASTRA ROUTER] intent=${resolvedIntent.intent} source=set_a_resolver mode=AUTHORITATIVE');
+            await handleLatestInboxEmail();
+            if (requestGen != _activeRequestGeneration) return;
+            return;
+
+          case 'GET_CALENDAR':
+            debugPrint('[ASTRA ROUTER] intent=GET_CALENDAR source=set_a_resolver mode=AUTHORITATIVE');
+            await handleTodayCalendar();
+            if (requestGen != _activeRequestGeneration) return;
+            return;
+
+          case 'GET_PANCHANG':
+            debugPrint('[ASTRA ROUTER] intent=GET_PANCHANG source=set_a_resolver mode=AUTHORITATIVE');
+            handlePanchangQuery();
+            if (requestGen != _activeRequestGeneration) return;
+            return;
+
+          case 'COMPLETE_TASK':
+            debugPrint('[ASTRA ROUTER] intent=COMPLETE_TASK source=set_a_resolver mode=AUTHORITATIVE');
+            await handleCompleteTask(trimmed);
+            if (requestGen != _activeRequestGeneration) return;
+            return;
+
+          case 'CANCEL_TASK':
+            debugPrint('[ASTRA ROUTER] intent=CANCEL_TASK source=set_a_resolver mode=AUTHORITATIVE');
+            await handleCancelReminder(trimmed);
+            if (requestGen != _activeRequestGeneration) return;
+            return;
+
+          case 'GENERAL_CHAT':
+            debugPrint('[ASTRA ROUTER] intent=GENERAL_CHAT source=set_a_resolver mode=AUTHORITATIVE');
+            await _handleGeneralChat(trimmed);
+            if (requestGen != _activeRequestGeneration) return;
+            return;
+
+          case 'CREATE_TASK':
+          case 'CREATE_REMINDER':
+          case 'CREATE_CALENDAR_EVENT':
+            final policy = ref.read(astraRoutingPolicyProvider);
+            final routingDecision = policy.decide(
+              resolvedIntent.intent,
+              text: trimmed,
+            );
+
+            final semanticCommand = await _understandWithSemanticEngine(
+              trimmed,
+              intent: resolvedIntent.intent,
+              requiresEventClassification: routingDecision.requiresEventClassification,
+            );
+
+            if (requestGen != _activeRequestGeneration) return;
+
+            if (semanticCommand != null) {
+              debugPrint(
+                '[ASTRA SEMANTIC] '
+                'type=${semanticCommand.eventType} '
+                'action=${semanticCommand.action} '
+                'title=${semanticCommand.title} '
+                'route=${semanticCommand.route} '
+                'confidence=${semanticCommand.semanticConfidence.toStringAsFixed(3)}',
+              );
+
+              final gate = ref.read(astraExecutionGateProvider);
+              final gateDecision = gate.check(semanticCommand);
+
+              if (gateDecision.canExecute) {
+                debugPrint('[ASTRA ROUTER] intent=${resolvedIntent.intent} mode=EXECUTING_VIA_ASTRA_COMMAND');
+                final executor = ref.read(astraCommandExecutorProvider);
+                final execResult = await executor.execute(
+                  ref: ref,
+                  command: semanticCommand,
+                );
+
+                if (requestGen != _activeRequestGeneration) return;
+
+                String? calStatus;
+                if (semanticCommand.intent == 'CREATE_CALENDAR_EVENT') {
+                  calStatus = execResult.calendarSynced
+                      ? 'Synced with Google Calendar'
+                      : (execResult.calendarMessage ?? 'Saved locally');
+                }
+
+                addStructuredResponse(AstraResponseBuilder.taskCreated(
+                  title: execResult.title,
+                  dueAt: execResult.scheduledAt,
+                  timezone: semanticCommand.temporal.timezone,
+                  organization: semanticCommand.organization,
+                  priority: semanticCommand.priority,
+                  taskId: execResult.taskId,
+                  calendarStatus: calStatus,
+                ));
+                return;
+              } else if (semanticCommand.route == 'CONFIRM' || gateDecision.reason == 'confirmation_required' || gateDecision.reason == 'temporal_ambiguous' || gateDecision.reason == 'temporal_missing') {
+                debugPrint('[ASTRA ROUTER] intent=${resolvedIntent.intent} mode=CONFIRMATION_REQUIRED reason=${gateDecision.reason}');
+                if (requestGen != _activeRequestGeneration) return;
+                addStructuredResponse(AstraResponseBuilder.info(
+                  'Please confirm details',
+                  lines: [
+                    AstraResponseLine(label: 'Title', value: semanticCommand.title, highlight: true),
+                    if (semanticCommand.temporal.rawTime != null || semanticCommand.temporal.rawDate != null)
+                      AstraResponseLine(
+                        label: 'When',
+                        value: '${semanticCommand.temporal.rawDate ?? ""} ${semanticCommand.temporal.rawTime ?? ""}'.trim(),
+                      ),
+                    if (semanticCommand.organization != null)
+                      AstraResponseLine(label: 'Organization', value: semanticCommand.organization!),
+                    if (semanticCommand.temporal.warnings.isNotEmpty)
+                      AstraResponseLine(label: 'Note', value: semanticCommand.temporal.warnings.join(' ')),
+                  ],
+                ));
+                return;
+              }
+            }
+            break;
+
+          case 'UPDATE_TASK':
+            debugPrint('[ASTRA ROUTER] intent=${resolvedIntent.intent} source=set_a_resolver mode=AUTHORITATIVE');
+            const updateParser = AstraUpdateParser();
+            final now = DateTime.now();
+            final updateCmd = updateParser.parse(text: trimmed, now: now);
+
+            final activeTasks = ref.read(taskNotifierProvider);
+            final executor = ref.read(astraCommandExecutorProvider);
+            final updateResult = await executor.update(
+              ref: ref,
+              command: updateCmd,
+              activeTasks: activeTasks,
+            );
+
+            if (requestGen != _activeRequestGeneration) return;
+
+            if (updateResult.success) {
+              addStructuredResponse(AstraResponseBuilder.info(
+                'Task updated',
+                lines: [
+                  AstraResponseLine(label: 'Task', value: updateResult.title, highlight: true),
+                  if (updateResult.scheduledAt != null)
+                    AstraResponseLine(
+                      label: 'Reminder',
+                      value: DateFormat('EEE, MMM d · h:mm a').format(updateResult.scheduledAt!),
+                    ),
+                  AstraResponseLine(label: 'Status', value: updateResult.message),
+                ],
+              ));
+            } else if (updateResult.requiresConfirmation) {
+              final lines = <AstraResponseLine>[];
+              if (updateCmd.targetQuery.isNotEmpty) {
+                lines.add(AstraResponseLine(label: 'Target', value: updateCmd.targetQuery, highlight: true));
+              }
+              if (updateResult.candidateTitles.isNotEmpty) {
+                lines.add(AstraResponseLine(
+                  label: 'Matches',
+                  value: updateResult.candidateTitles.join(', '),
+                ));
+              }
+              if (updateResult.warnings.isNotEmpty) {
+                lines.add(AstraResponseLine(label: 'Note', value: updateResult.warnings.join(' ')));
+              }
+
+              addStructuredResponse(AstraResponseBuilder.info(
+                updateResult.message.isNotEmpty ? updateResult.message : 'Please clarify update details',
+                lines: lines,
+              ));
+            }
+            return;
+        }
+      }
+
+      if (requestGen != _activeRequestGeneration) return;
+
       final command = ref.read(astraCommandBusProvider).parse(trimmed);
 
       switch (command.intent) {

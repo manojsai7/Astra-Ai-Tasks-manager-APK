@@ -1,8 +1,10 @@
 import 'dart:convert';
 import 'package:drift/drift.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/database/database.dart';
 import '../models/task.dart';
+import '../services/assistant/astra_recurrence_engine.dart';
 import '../services/reminder_service.dart';
 import 'reminder_provider.dart';
 import 'ritual_provider.dart'; // exposes databaseProvider
@@ -55,6 +57,7 @@ class TaskNotifier extends StateNotifier<List<Task>> {
             (t) => OrderingTerm(expression: t.createdAt, mode: OrderingMode.desc),
           ]))
         .get();
+    if (!mounted) return;
     state = rows.map(_rowToTask).toList();
   }
 
@@ -82,8 +85,10 @@ class TaskNotifier extends StateNotifier<List<Task>> {
             sourceId: Value(task.sourceId),
             category: Value(task.category),
             organization: Value(task.organization),
+            recurrenceRuleJson: Value(task.recurrenceRule?.toJson()),
           ),
         );
+    if (!mounted) return;
     await loadTasks();
   }
 
@@ -109,6 +114,7 @@ class TaskNotifier extends StateNotifier<List<Task>> {
         updatedAt: Value(now),
       ),
     );
+    if (!mounted) return;
     await loadTasks();
   }
 
@@ -148,6 +154,7 @@ class TaskNotifier extends StateNotifier<List<Task>> {
         updatedAt: Value(now),
       ),
     );
+    if (!mounted) return;
     await loadTasks();
   }
 
@@ -179,6 +186,7 @@ class TaskNotifier extends StateNotifier<List<Task>> {
   Future<void> deleteTask(String id) async {
     await _reminders.cancelReminderForTask(id);
     await (_db.delete(_db.tasks)..where((t) => t.id.equals(id))).go();
+    if (!mounted) return;
     await loadTasks();
   }
 
@@ -203,8 +211,10 @@ class TaskNotifier extends StateNotifier<List<Task>> {
         sourceId: Value(updated.sourceId),
         category: Value(updated.category),
         organization: Value(updated.organization),
+        recurrenceRuleJson: Value(updated.recurrenceRule?.toJson()),
       ),
     );
+    if (!mounted) return;
     await loadTasks();
   }
 }
@@ -241,6 +251,15 @@ Task _rowToTask(TaskEntry row) {
     } catch (_) {}
   }
 
+  RecurrenceRule? recurrenceRule;
+  if (row.recurrenceRuleJson != null && row.recurrenceRuleJson!.trim().isNotEmpty) {
+    try {
+      recurrenceRule = RecurrenceRule.fromJson(row.recurrenceRuleJson!);
+    } catch (e) {
+      debugPrint('[task_provider] Warning: Failed to parse recurrenceRuleJson for task ${row.id}: $e');
+    }
+  }
+
   return Task(
     id: row.id,
     title: row.title,
@@ -257,5 +276,6 @@ Task _rowToTask(TaskEntry row) {
     sourceId: row.sourceId,
     category: row.category,
     organization: row.organization,
+    recurrenceRule: recurrenceRule,
   );
 }

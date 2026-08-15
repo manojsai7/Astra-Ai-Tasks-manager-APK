@@ -12,6 +12,7 @@ class AstraResponseBuilder {
     String? organization,
     String priority = 'medium',
     ScheduleOutcome? notificationOutcome,
+    String? calendarStatus,
     String? taskId,
     List<String> subtasks = const [],
   }) {
@@ -32,6 +33,10 @@ class AstraResponseBuilder {
       lines.add(AstraResponseLine(label: 'Organization', value: organization));
     }
     lines.add(AstraResponseLine(label: 'Priority', value: priority.toUpperCase()));
+
+    if (calendarStatus != null && calendarStatus.isNotEmpty) {
+      lines.add(AstraResponseLine(label: 'Calendar', value: calendarStatus));
+    }
 
     if (notificationOutcome != null) {
       lines.add(AstraResponseLine(
