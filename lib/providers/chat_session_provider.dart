@@ -115,24 +115,26 @@ class ChatSessionNotifier extends StateNotifier<List<ChatSession>> {
   }
 
   Future<void> addMessage(int sessionId, String role, String content, {String messageType = 'text'}) async {
-    final db = ref.read(databaseProvider);
-    final now = DateTime.now();
-    await db.into(db.chatMessages).insert(
-          ChatMessagesCompanion(
-            sessionId: Value(sessionId),
-            role: Value(role),
-            content: Value(content),
-            messageType: Value(messageType),
-            timestamp: Value(now),
-          ),
-        );
+    try {
+      final db = ref.read(databaseProvider);
+      final now = DateTime.now();
+      await db.into(db.chatMessages).insert(
+            ChatMessagesCompanion(
+              sessionId: Value(sessionId),
+              role: Value(role),
+              content: Value(content),
+              messageType: Value(messageType),
+              timestamp: Value(now),
+            ),
+          );
 
-    await (db.update(db.chatSessions)..where((t) => t.id.equals(sessionId))).write(
-      ChatSessionsCompanion(updatedAt: Value(now)),
-    );
-    if (mounted) {
-      await loadSessions();
-    }
+      await (db.update(db.chatSessions)..where((t) => t.id.equals(sessionId))).write(
+        ChatSessionsCompanion(updatedAt: Value(now)),
+      );
+      if (mounted) {
+        await loadSessions();
+      }
+    } catch (_) {}
   }
 }
 

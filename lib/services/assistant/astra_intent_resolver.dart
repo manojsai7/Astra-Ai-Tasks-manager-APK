@@ -69,6 +69,14 @@ class AstraIntentResolver {
       );
     }
 
+    if (_isTaskUpdate(t)) {
+      return AstraResolvedIntent(
+        intent: 'UPDATE_TASK',
+        mlConfidence: ml?.confidence ?? 0.0,
+        reason: 'deterministic_task_update_rule',
+      );
+    }
+
     if (_isExplicitTaskCreation(t)) {
       return AstraResolvedIntent(
         intent: 'CREATE_TASK',
@@ -93,14 +101,6 @@ class AstraIntentResolver {
       );
     }
 
-    if (_isTaskUpdate(t)) {
-      return AstraResolvedIntent(
-        intent: 'UPDATE_TASK',
-        mlConfidence: ml?.confidence ?? 0.0,
-        reason: 'deterministic_task_update_rule',
-      );
-    }
-
     if (_isPanchang(t)) {
       return AstraResolvedIntent(
         intent: 'GET_PANCHANG',
@@ -109,10 +109,29 @@ class AstraIntentResolver {
       );
     }
 
-    return AstraResolvedIntent(
-      intent: ml?.intent ?? 'GENERAL_CHAT',
-      mlConfidence: ml?.confidence ?? 0.0,
-      reason: 'ml_model',
+    if (ml != null) {
+      return AstraResolvedIntent(
+        intent: ml.intent,
+        mlConfidence: ml.confidence,
+        reason: 'ml_model',
+      );
+    }
+
+    // Offline heuristic fallback when ML client is unavailable:
+    // If text contains an event keyword (interview, exam, meeting, standup, assignment) with date/time, treat as CREATE_TASK.
+    if (RegExp(r'\b(interview|exam|standup|meeting|assignment|session|deadline)\b', caseSensitive: false).hasMatch(t) &&
+        (t.contains(' at ') || t.contains(' on ') || t.contains('tomorrow') || t.contains('today') || t.contains('monday') || t.contains('tuesday') || t.contains('wednesday') || t.contains('thursday') || t.contains('friday') || t.contains('saturday') || t.contains('sunday'))) {
+      return const AstraResolvedIntent(
+        intent: 'CREATE_TASK',
+        mlConfidence: 0.88,
+        reason: 'deterministic_offline_event_statement_rule',
+      );
+    }
+
+    return const AstraResolvedIntent(
+      intent: 'GENERAL_CHAT',
+      mlConfidence: 0.0,
+      reason: 'fallback_default',
     );
   }
 
@@ -234,10 +253,18 @@ class AstraIntentResolver {
       'view',
       'what',
       'which',
+      'get',
     };
 
-    return taskWords.any(t.contains) &&
-        listWords.any(t.contains);
+    if (taskWords.any(t.contains) && listWords.any(t.contains)) {
+      return true;
+    }
+
+    if (t == 'tasks' || t == 'my tasks' || t == 'todos') {
+      return true;
+    }
+
+    return false;
   }
 
   bool _isCalendarQuery(String t) {
@@ -341,8 +368,29 @@ class AstraIntentResolver {
       'change task',
       'edit task',
       'reschedule task',
+      'move task',
     };
 
-    return phrases.any(t.contains);
+    if (phrases.any(t.contains)) return true;
+
+    // "move my ...", "reschedule my ...", "change my ... deadline/time"
+    if (t.startsWith('move ') || t.startsWith('reschedule ') || t.startsWith('postpone ')) {
+      return true;
+    }
+
+    if (t.startsWith('change ') && (t.contains('deadline') || t.contains('time') || t.contains('date') || t.contains('to '))) {
+      return true;
+    }
+
+    if (t.startsWith('rename ')) {
+      return true;
+    }
+
+    // Conversational follow-ups: "make it 11", "make it 2pm", "set it to 11am", "change it to 2pm"
+    if (RegExp(r'^(?:make|set|change|shift|move)\s+(?:it|that|this)\s+(?:to\s+|at\s+)?(\d{1,2}(?::\d{2})?\s*(?:am|pm)?|\d{1,2})$', caseSensitive: false).hasMatch(t)) {
+      return true;
+    }
+
+    return false;
   }
 }

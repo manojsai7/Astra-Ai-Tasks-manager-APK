@@ -783,7 +783,7 @@ void main() {
 
       expect(result.success, isTrue);
       final updated = (await testDb.select(testDb.tasks).get()).firstWhere((t) => t.id == 'interview-1');
-      expect(updated.dueAt, DateTime(2026, 8, 15, 14, 0));
+      expect(updated.dueAt, DateTime(2026, 8, 17, 14, 0));
     });
 
     test('C. Change priority: "make the interview high priority" updates only priority', () async {

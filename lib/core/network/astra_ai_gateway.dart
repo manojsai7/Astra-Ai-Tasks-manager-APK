@@ -49,7 +49,7 @@ class AstraAiGateway {
           headers: const {'Content-Type': 'application/json'},
           body: jsonEncode(payload),
         )
-        .timeout(const Duration(seconds: 25));
+        .timeout(const Duration(seconds: 4));
 
     Map<String, dynamic> body = {};
     try {

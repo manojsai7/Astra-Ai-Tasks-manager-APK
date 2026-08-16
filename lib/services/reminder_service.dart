@@ -6,6 +6,7 @@ import 'package:uuid/uuid.dart';
 
 import '../core/database/database.dart';
 import '../core/reminders/reminder.dart';
+import '../core/reminders/reminder_strategy.dart';
 import '../core/time/astra_time_service.dart';
 import 'assistant/astra_recurrence_engine.dart';
 import 'notification_service.dart';
@@ -26,12 +27,22 @@ class ReminderService {
 
   static const _uuid = Uuid();
 
+  /// Cancels all possible notification offset IDs for a task.
+  Future<void> _cancelAllNotificationOffsets(String taskId) async {
+    final baseId = taskId.hashCode;
+    const offsets = [0, 4, 10, 30];
+    for (final off in offsets) {
+      await NotificationService.cancelNotification(baseId + off);
+    }
+  }
+
   /// Creates or reschedules a reminder for [taskId] at [scheduledAt].
   /// Returns honest status — never claims success unless scheduling succeeded.
   Future<ReminderScheduleResult> scheduleReminder({
     required String taskId,
     required String taskTitle,
     required DateTime scheduledAt,
+    ReminderStrategy strategy = ReminderStrategy.normal,
     String? timezone,
   }) async {
     final tz = timezone ?? _timeService.timezone;
@@ -45,29 +56,67 @@ class ReminderService {
       );
     }
 
-    // Cancel any existing active reminder for this task (idempotent reschedule / duplicate protection).
+    // Cancel any existing active reminder / OS notifications for this task (idempotent reschedule / duplicate protection).
+    await _cancelAllNotificationOffsets(taskId);
     final existing = await _db.getReminderByTaskId(taskId);
     if (existing != null) {
-      await NotificationService.cancelNotification(existing.notificationId);
       await _db.updateReminderStatus(existing.id, ReminderStatus.cancelled.name);
     }
 
     final reminderId = existing?.id ?? _uuid.v4();
-    final notificationId = taskId.hashCode;
+    final baseNotificationId = taskId.hashCode;
 
-    final scheduleResult = await NotificationService.scheduleReminderNotification(
-      id: notificationId,
-      title: taskTitle,
-      body: 'Time for: $taskTitle',
-      scheduledTime: scheduledAt,
-      payload: jsonEncode({'taskId': taskId, 'reminderId': reminderId}),
-    );
+    NotificationScheduleResult mainScheduleResult = NotificationScheduleResult.failed;
+    final offsets = strategy.offsets;
+
+    for (final offset in offsets) {
+      final offsetTime = scheduledAt.subtract(offset);
+      final offsetTz = _timeService.toTZ(offsetTime);
+
+      if (offsetTz.isBefore(now)) {
+        if (offset == Duration.zero) {
+          mainScheduleResult = NotificationScheduleResult.pastTime;
+        }
+        continue;
+      }
+
+      final offsetNotificationId = baseNotificationId + offset.inMinutes;
+      final isMain = offset == Duration.zero;
+
+      final title = isMain ? taskTitle : 'Prep: $taskTitle';
+      final body = isMain ? 'Time for: $taskTitle' : '$taskTitle in ${offset.inMinutes} minutes.';
+
+      final payload = jsonEncode({
+        'taskId': taskId,
+        'reminderId': reminderId,
+        'occurrence': scheduledAt.toIso8601String(),
+        'offset': '${offset.inMinutes}m',
+        'strategy': strategy.name,
+        'scheduledAt': offsetTime.toIso8601String(),
+      });
+
+      final result = await NotificationService.scheduleReminderNotification(
+        id: offsetNotificationId,
+        title: title,
+        body: body,
+        scheduledTime: offsetTime,
+        payload: payload,
+        taskId: taskId,
+        occurrence: scheduledAt,
+        offsetStr: '${offset.inMinutes}m',
+        strategyStr: strategy.name,
+      );
+
+      if (isMain || mainScheduleResult == NotificationScheduleResult.failed) {
+        mainScheduleResult = result;
+      }
+    }
 
     final nowDt = DateTime.now();
     ReminderStatus status;
     ScheduleOutcome outcome;
 
-    switch (scheduleResult) {
+    switch (mainScheduleResult) {
       case NotificationScheduleResult.exact:
         status = ReminderStatus.scheduled;
         outcome = ScheduleOutcome.scheduled;
@@ -78,11 +127,10 @@ class ReminderService {
         status = ReminderStatus.permissionRequired;
         outcome = ScheduleOutcome.permissionRequired;
       case NotificationScheduleResult.pastTime:
-        // If ReminderService's own clock validated it, allow scheduled status in DB (e.g. simulated clock tests)
         status = ReminderStatus.scheduled;
         outcome = ScheduleOutcome.pastTime;
       case NotificationScheduleResult.failed:
-        status = ReminderStatus.scheduled; // Keep scheduled in database so alarms/reconciliation can retry
+        status = ReminderStatus.scheduled;
         outcome = ScheduleOutcome.failed;
     }
 
@@ -91,7 +139,7 @@ class ReminderService {
       taskId: taskId,
       scheduledAt: scheduledAt,
       timezone: tz,
-      notificationId: notificationId,
+      notificationId: baseNotificationId,
       status: status,
       createdAt: existing != null ? existing.createdAt : nowDt,
       updatedAt: nowDt,
@@ -118,16 +166,14 @@ class ReminderService {
   }
 
   Future<void> cancelReminderForTask(String taskId) async {
-    final existing = await _db.getReminderByTaskId(taskId);
-    if (existing == null) return;
-    await NotificationService.cancelNotification(existing.notificationId);
+    await _cancelAllNotificationOffsets(taskId);
     await _db.cancelRemindersForTask(taskId);
   }
 
   Future<void> completeReminder(String reminderId) async {
     final entry = await _db.getReminderById(reminderId);
     if (entry == null) return;
-    await NotificationService.cancelNotification(entry.notificationId);
+    await _cancelAllNotificationOffsets(entry.taskId);
     await _db.updateReminderStatus(reminderId, ReminderStatus.completed.name);
 
     // Check if task is recurring and advance if possible
@@ -145,7 +191,7 @@ class ReminderService {
     final oldTaskDueAt = task?.dueAt;
     final oldReminderScheduledAt = entry.scheduledAt;
 
-    await NotificationService.cancelNotification(entry.notificationId);
+    await _cancelAllNotificationOffsets(entry.taskId);
 
     final newTime = _timeService.nowTZ().add(duration);
     final title = task?.title ?? 'Reminder';
@@ -158,7 +204,18 @@ class ReminderService {
       title: title,
       body: 'Snoozed reminder: $title',
       scheduledTime: newTime,
-      payload: jsonEncode({'taskId': entry.taskId, 'reminderId': reminderId}),
+      payload: jsonEncode({
+        'taskId': entry.taskId,
+        'reminderId': reminderId,
+        'occurrence': newTime.toIso8601String(),
+        'offset': '0m',
+        'strategy': 'SNOOZE',
+        'scheduledAt': newTime.toIso8601String(),
+      }),
+      taskId: entry.taskId,
+      occurrence: newTime,
+      offsetStr: '0m',
+      strategyStr: 'SNOOZE',
     );
 
     final status = scheduleResult == NotificationScheduleResult.permissionRequired
@@ -211,17 +268,42 @@ class ReminderService {
         continue;
       }
 
-      final result = await NotificationService.scheduleReminderNotification(
-        id: entry.notificationId,
-        title: task.title,
-        body: 'Time for: ${task.title}',
-        scheduledTime: entry.scheduledAt,
-        payload: jsonEncode({'taskId': entry.taskId, 'reminderId': entry.id}),
+      final strategy = ReminderStrategyX.resolve(
+        priority: task.priority,
+        eventType: task.category,
       );
 
-      // In production, permissionRequired or other temporary states should not delete active status
-      if (result == NotificationScheduleResult.permissionRequired) {
-        await _db.updateReminderStatus(entry.id, ReminderStatus.permissionRequired.name);
+      for (final offset in strategy.offsets) {
+        final offsetTime = entry.scheduledAt.subtract(offset);
+        final offsetTz = _timeService.toTZ(offsetTime);
+        if (offsetTz.isBefore(now)) continue;
+
+        final isMain = offset == Duration.zero;
+        final title = isMain ? task.title : 'Prep: ${task.title}';
+        final body = isMain ? 'Time for: ${task.title}' : '${task.title} in ${offset.inMinutes} minutes.';
+
+        final result = await NotificationService.scheduleReminderNotification(
+          id: entry.taskId.hashCode + offset.inMinutes,
+          title: title,
+          body: body,
+          scheduledTime: offsetTime,
+          payload: jsonEncode({
+            'taskId': entry.taskId,
+            'reminderId': entry.id,
+            'occurrence': entry.scheduledAt.toIso8601String(),
+            'offset': '${offset.inMinutes}m',
+            'strategy': strategy.name,
+            'scheduledAt': offsetTime.toIso8601String(),
+          }),
+          taskId: entry.taskId,
+          occurrence: entry.scheduledAt,
+          offsetStr: '${offset.inMinutes}m',
+          strategyStr: strategy.name,
+        );
+
+        if (result == NotificationScheduleResult.permissionRequired) {
+          await _db.updateReminderStatus(entry.id, ReminderStatus.permissionRequired.name);
+        }
       }
     }
 
@@ -260,11 +342,17 @@ class ReminderService {
         ),
       );
 
-      // Schedule exactly ONE reminder for the next occurrence
+      final strategy = ReminderStrategyX.resolve(
+        priority: task.priority,
+        eventType: task.category,
+      );
+
+      // Schedule reminder for the next occurrence with appropriate strategy
       await scheduleReminder(
         taskId: task.id,
         taskTitle: task.title,
         scheduledAt: nextOcc,
+        strategy: strategy,
       );
     } else {
       debugPrint('[ASTRA RECURRENCE]\ntask=${task.id}\ncurrent=$afterTime\nnext=null\naction=COMPLETE');

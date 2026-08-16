@@ -399,12 +399,11 @@ class AstraSemanticEngine {
       RegExp(r'\s+daily\b.*$', caseSensitive: false),
       RegExp(r'\s+weekly\b.*$', caseSensitive: false),
       RegExp(r'\s+monthly\b.*$', caseSensitive: false),
-      RegExp(r'\s+in\s+the\s+next\s+\d+\s*(?:mins?|minutes?|hours?|days?|secs?|seconds?)\b.*$', caseSensitive: false),
-      RegExp(r'\s+in\s+\d+\s*(?:mins?|minutes?|hours?|days?|secs?|seconds?)\b.*$', caseSensitive: false),
-      RegExp(r'\s+at\s+\d{1,2}(?:\s*:\s*\d{2})?\s*(?:am|pm)\b.*$', caseSensitive: false),
-      RegExp(r'\s+by\s+\d{1,2}(?:\s*:\s*\d{2})?\s*(?:am|pm)\b.*$', caseSensitive: false),
-      RegExp(r'\s+before\s+\d{1,2}(?:\s*:\s*\d{2})?\s*(?:am|pm)\b.*$', caseSensitive: false),
-      RegExp(r'\s+(?:today|tomorrow|day after tomorrow)\s*(?:at\s+\d{1,2}(?:\s*:\s*\d{2})?\s*(?:am|pm))?.*$', caseSensitive: false),
+      RegExp(r'\s+(?:in|after|next)?\s*(?:the\s+)?(?:next|one|\d+)?\s*(?:mins?|minutes?|hours?|hrs?|days?|secs?|seconds?)(?:\s+from\s+now)?\b.*$', caseSensitive: false),
+      RegExp(r'\s+at\s+\d{1,2}(?:(?:\s*:\s*|\s+)\d{2})?\s*(?:am|pm)?\b.*$', caseSensitive: false),
+      RegExp(r'\s+by\s+\d{1,2}(?:(?:\s*:\s*|\s+)\d{2})?\s*(?:am|pm)?\b.*$', caseSensitive: false),
+      RegExp(r'\s+before\s+\d{1,2}(?:(?:\s*:\s*|\s+)\d{2})?\s*(?:am|pm)?\b.*$', caseSensitive: false),
+      RegExp(r'\s+(?:today|tomorrow|day after tomorrow)\s*(?:at\s+\d{1,2}(?:(?:\s*:\s*|\s+)\d{2})?\s*(?:am|pm))?.*$', caseSensitive: false),
       RegExp(r'\s+on\s+(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b.*$', caseSensitive: false),
     ];
 

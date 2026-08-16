@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
+import 'i_intent_classifier.dart';
 
 class IntentClassificationResult {
   final String intent;
@@ -52,7 +53,7 @@ class IntentPrediction {
   }
 }
 
-class IntentClassifierClient {
+class IntentClassifierClient implements IIntentClassifier {
   IntentClassifierClient({
     required String baseUrl,
     http.Client? client,
@@ -64,6 +65,7 @@ class IntentClassifierClient {
   final http.Client _client;
   final Duration timeout;
 
+  @override
   Future<IntentClassificationResult?> classify(
     String text,
   ) async {

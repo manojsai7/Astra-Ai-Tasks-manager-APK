@@ -142,15 +142,6 @@ class AstraTemporalEngine {
     if (isDeadline) {
       final deadlineDate = date;
 
-      if (deadlineDate != null && times.isNotEmpty) {
-        deadline = _mergeDateAndTime(
-          deadlineDate,
-          times.first,
-        );
-      } else if (deadlineDate != null) {
-        deadline = deadlineDate;
-      }
-
       final bareTime = _extractAmbiguousBareTime(
         lower,
       );
@@ -158,10 +149,18 @@ class AstraTemporalEngine {
       if (bareTime != null &&
           !lower.contains('am') &&
           !lower.contains('pm')) {
+        deadline = deadlineDate;
         ambiguous = true;
         warnings.add(
           'Bare deadline time "$bareTime" is ambiguous.',
         );
+      } else if (deadlineDate != null && times.isNotEmpty) {
+        deadline = _mergeDateAndTime(
+          deadlineDate,
+          times.first,
+        );
+      } else if (deadlineDate != null) {
+        deadline = deadlineDate;
       }
     }
 
@@ -207,8 +206,50 @@ class AstraTemporalEngine {
     String lower,
     DateTime now,
   ) {
+    // 1. "next minute", "in next minute", "in the next minute", "in a minute", "after a minute"
+    if (RegExp(r'\b(?:in\s+|after\s+)?(?:the\s+)?next\s+minute\b', caseSensitive: false).hasMatch(lower) ||
+        RegExp(r'\b(?:in\s+|after\s+)a\s+minute\b', caseSensitive: false).hasMatch(lower) ||
+        RegExp(r'\b1\s+minute\s+from\s+now\b', caseSensitive: false).hasMatch(lower) ||
+        RegExp(r'\bone\s+minute\s+from\s+now\b', caseSensitive: false).hasMatch(lower)) {
+      return now.add(const Duration(minutes: 1));
+    }
+
+    // 2. Numeric word variants: "in one minute", "next one minute", "after one minute", "in two minutes", "next two minutes"
+    final wordMatch = RegExp(
+      r'\b(?:in\s+|after\s+|next\s+)?(?:the\s+)?(one|two|three|four|five|ten|fifteen|twenty|thirty)\s*(mins?|minutes?|hours?|hrs?|days?|secs?|seconds?)(?:\s+from\s+now)?\b',
+      caseSensitive: false,
+    ).firstMatch(lower);
+
+    if (wordMatch != null) {
+      final wordMap = {
+        'one': 1,
+        'two': 2,
+        'three': 3,
+        'four': 4,
+        'five': 5,
+        'ten': 10,
+        'fifteen': 15,
+        'twenty': 20,
+        'thirty': 30,
+      };
+      final amount = wordMap[wordMatch.group(1)!.toLowerCase()];
+      if (amount != null) {
+        final unit = wordMatch.group(2)!.toLowerCase();
+        if (unit.startsWith('min')) {
+          return now.add(Duration(minutes: amount));
+        } else if (unit.startsWith('hour') || unit.startsWith('hr')) {
+          return now.add(Duration(hours: amount));
+        } else if (unit.startsWith('day')) {
+          return now.add(Duration(days: amount));
+        } else if (unit.startsWith('sec')) {
+          return now.add(Duration(seconds: amount));
+        }
+      }
+    }
+
+    // 3. Digit variants: "in 1 minute", "next 1 minute", "after 1 minute", "1 minute from now", "in 2 mins", "2 mins from now"
     final match = RegExp(
-      r'\bin\s+(?:the\s+next\s+)?(\d+)\s*(mins?|minutes?|hours?|hrs?|days?|secs?|seconds?)\b',
+      r'\b(?:in\s+|after\s+|next\s+)?(?:the\s+)?(\d+)\s*(mins?|minutes?|hours?|hrs?|days?|secs?|seconds?)(?:\s+from\s+now)?\b',
       caseSensitive: false,
     ).firstMatch(lower);
 
@@ -462,30 +503,22 @@ class AstraTemporalEngine {
   ) {
     final values = <_TimeValue>[];
 
-    final explicitPattern = RegExp(
+    // Pattern 1: Explicit 12-hour with colon or space separator: "6:20pm", "6:20 pm", "6 20pm", "6 20 pm", "7pm", "7 pm"
+    final explicit12Pattern = RegExp(
       r'(?<!\d)'
       r'(\d{1,2})'
-      r'(?:\s*:\s*(\d{2}))?'
+      r'(?:(?:\s*:\s*|\s+)(\d{2}))?'
       r'\s*(am|pm)'
       r'\b',
       caseSensitive: false,
     );
 
-    for (final match
-        in explicitPattern.allMatches(text)) {
-      var hour = int.parse(
-        match.group(1)!,
-      );
+    for (final match in explicit12Pattern.allMatches(text)) {
+      var hour = int.parse(match.group(1)!);
+      final minute = int.tryParse(match.group(2) ?? '') ?? 0;
+      final ampm = match.group(3)!.toLowerCase();
 
-      final minute = int.tryParse(
-            match.group(2) ?? '',
-          ) ??
-          0;
-
-      final ampm =
-          match.group(3)!.toLowerCase();
-
-      if (hour < 1 || hour > 12) {
+      if (hour < 1 || hour > 12 || minute < 0 || minute > 59) {
         continue;
       }
 
@@ -497,12 +530,43 @@ class AstraTemporalEngine {
         hour = 0;
       }
 
-      values.add(
-        _TimeValue(
-          hour: hour,
-          minute: minute,
-        ),
-      );
+      values.add(_TimeValue(hour: hour, minute: minute));
+    }
+
+    if (values.isNotEmpty) {
+      return values;
+    }
+
+    // Pattern 2: 24-hour time with colon or space: "18:20", "18 20", "09:30" (when preceded by at/from/by or standalone)
+    final explicit24Pattern = RegExp(
+      r'(?:\b(?:at|by|from|until|to)\s+|\b)'
+      r'([01]?\d|2[0-3])(?:\s*:\s*|\s+)([0-5]\d)\b',
+      caseSensitive: false,
+    );
+
+    for (final match in explicit24Pattern.allMatches(text)) {
+      final hour = int.parse(match.group(1)!);
+      final minute = int.parse(match.group(2)!);
+      values.add(_TimeValue(hour: hour, minute: minute));
+    }
+
+    if (values.isNotEmpty) {
+      return values;
+    }
+
+    // Pattern 3: Preceded bare hour: "at 10", "at 11", "at 9", "at 2"
+    final precededBarePattern = RegExp(
+      r'\b(?:at|by|from|until|to)\s+([1-9]|1[0-2])\b',
+      caseSensitive: false,
+    );
+
+    for (final match in precededBarePattern.allMatches(text)) {
+      var hour = int.parse(match.group(1)!);
+      // If hour is 1..7 without am/pm, default to PM for daytime tasks unless 8..11 which defaults to AM
+      if (hour >= 1 && hour <= 7) {
+        hour += 12;
+      }
+      values.add(_TimeValue(hour: hour, minute: 0));
     }
 
     return values;

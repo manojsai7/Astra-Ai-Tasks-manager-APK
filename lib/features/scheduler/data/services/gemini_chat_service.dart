@@ -21,10 +21,8 @@ class GeminiChatService {
   String? _apiKey;
 
   static const List<String> _modelsToTry = [
-    'gemini-2.5-flash',
     'gemini-2.0-flash',
     'gemini-1.5-flash',
-    'gemini-1.5-pro',
   ];
 
   Future<void> _loadApiKey() async {
@@ -131,7 +129,9 @@ INSTRUCTIONS:
           // Add the current user query ONCE (no duplicate)
           contents.add(Content.text(userMessage));
 
-          final response = await model.generateContent(contents);
+          final response = await model
+              .generateContent(contents)
+              .timeout(const Duration(seconds: 4));
           final reply = response.text?.trim();
           if (reply != null && reply.isNotEmpty) {
             return reply;

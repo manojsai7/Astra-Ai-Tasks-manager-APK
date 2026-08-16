@@ -127,10 +127,13 @@ class AstraUpdateParser {
     }
 
     // 4. Check for Reschedule / Move / Deadline changes:
-    // e.g. "move my exam to tomorrow at 7pm", "reschedule my Microsoft interview to 2pm", "change my assignment deadline to Friday"
+    // e.g. "move my exam to tomorrow at 7pm", "reschedule my Microsoft interview to 2pm", "make it 11", "make it 2pm"
     if (newTitle == null && newPriority == null && newOrganization == null) {
       final moveMatch = RegExp(
-        r'^(?:move|reschedule|postpone|delay|shift|change|set)\s+(?:the\s+)?(?:my\s+)?(?:deadline\s+(?:of\s+|for\s+)?)?(.+?)(?:\s+deadline)?\s+(?:to|for|at|on)\s+(.+)$',
+        r'^(?:move|reschedule|postpone|delay|shift|change|set)\s+(?:the\s+)?(?:my\s+)?(?:deadline\s+(?:of\s+|for\s+)?)?(.+?)(?:\s+deadline)?\s+(?:to|for|at|on|by|before|around)\s+(\d{1,2}(?::\d{2})?\s*(?:am|pm)?|\d{1,2}|.+)$',
+        caseSensitive: false,
+      ).firstMatch(trimmed) ?? RegExp(
+        r'^(?:make|set|change|shift|move)\s+(it|that|this)\s+(?:to\s+|at\s+)?(\d{1,2}(?::\d{2})?\s*(?:am|pm)?|\d{1,2}|.+)$',
         caseSensitive: false,
       ).firstMatch(trimmed);
 
@@ -167,13 +170,24 @@ class AstraUpdateParser {
           explicitConfirmationRequired = true;
           warnings.add('Time "${bareAmbiguousMatch.group(0)}" is ambiguous (specify am/pm).');
         } else {
+          // Normalize bare hour numbers like "11" or "10" -> "11:00" / "11am"
+          var effectiveTemporal = temporalPortion;
+          if (RegExp(r'^\d{1,2}$').hasMatch(effectiveTemporal)) {
+            final hr = int.parse(effectiveTemporal);
+            if (hr >= 1 && hr <= 12) {
+              // Default to AM/PM based on typical daytime context (9-11 AM, 1-8 PM) or AM if >= 8
+              final suffix = (hr >= 8 && hr <= 11) ? 'am' : 'pm';
+              effectiveTemporal = '$hr$suffix';
+            }
+          }
+
           // Parse temporal portion with AstraTemporalEngine
-          // If only time is given (e.g. "2pm"), prefix with today or evaluate with now
-          final containsDateWord = RegExp(r'\b(?:today|tomorrow|tmrw|monday|tuesday|wednesday|thursday|friday|saturday|sunday|jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\b', caseSensitive: false).hasMatch(temporalPortion);
-          final parseInput = containsDateWord ? temporalPortion : 'today at $temporalPortion';
-          // Check if temporalPortion has an explicit time (e.g. "7pm", "10:30am", "14:00")
-          final hasExplicitTime = RegExp(r'\b(?:\d{1,2}:\d{2}|\d{1,2}\s*(?:am|pm))\b', caseSensitive: false).hasMatch(temporalPortion);
-          final isPureRelativeDay = RegExp(r'^(?:today|tomorrow|tmrw)$', caseSensitive: false).hasMatch(temporalPortion.trim());
+          final isContextualPronoun = targetQuery == 'it' || targetQuery == 'that' || targetQuery == 'this' || targetQuery.isEmpty;
+          final containsDateWord = RegExp(r'\b(?:today|tomorrow|tmrw|monday|tuesday|wednesday|thursday|friday|saturday|sunday|jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\b', caseSensitive: false).hasMatch(effectiveTemporal);
+          final parseInput = containsDateWord ? effectiveTemporal : 'today at $effectiveTemporal';
+          // Check if effectiveTemporal has an explicit time (e.g. "7pm", "7 pm", "10:30am", "6 20pm", "14:00", "18 20")
+          final hasExplicitTime = RegExp(r'\b(?:\d{1,2}(?:\s*:\s*|\s+)\d{2}\s*(?:am|pm)?|\d{1,2}\s*(?:am|pm))\b', caseSensitive: false).hasMatch(effectiveTemporal);
+          final isPureRelativeDay = RegExp(r'^(?:today|tomorrow|tmrw)$', caseSensitive: false).hasMatch(effectiveTemporal.trim());
 
           if (isPureRelativeDay && !hasExplicitTime) {
             explicitConfirmationRequired = true;
@@ -181,7 +195,7 @@ class AstraUpdateParser {
           } else {
             final temporalResult = _temporalEngine.parse(parseInput, now: now);
 
-            if (temporalResult.ambiguous) {
+            if (temporalResult.ambiguous && (!isContextualPronoun || containsDateWord)) {
               explicitConfirmationRequired = true;
               warnings.addAll(temporalResult.warnings.isNotEmpty
                   ? temporalResult.warnings
@@ -189,15 +203,20 @@ class AstraUpdateParser {
             } else {
               newDueAt = temporalResult.eventStart ?? temporalResult.deadline;
               if (newDueAt == null) {
-                explicitConfirmationRequired = true;
-                warnings.add('Could not determine new time from "$temporalPortion".');
+                if (temporalResult.ambiguous) {
+                  explicitConfirmationRequired = true;
+                  warnings.addAll(temporalResult.warnings);
+                } else {
+                  explicitConfirmationRequired = true;
+                  warnings.add('Could not determine new time from "$temporalPortion".');
+                }
               }
             }
           }
         }
       } else {
         // Incomplete / Bare update without time:
-        // e.g. "move my exam", "reschedule the interview", "change my assignment"
+        // e.g. "move my exam", "reschedule the interview", "change my assignment", "move my exam"
         final bareMatch = RegExp(
           r'^(?:move|reschedule|postpone|delay|shift|change|update)\s+(?:the\s+)?(?:my\s+)?(.+)$',
           caseSensitive: false,
@@ -210,6 +229,9 @@ class AstraUpdateParser {
         }
       }
     }
+
+    // Strip trailing prepositions from targetQuery (e.g. "my exam to" -> "my exam")
+    targetQuery = targetQuery.replaceAll(RegExp(r'\s+(?:to|at|on|for)$', caseSensitive: false), '').trim();
 
     // 5. Final Target Validation
     if (targetQuery.isEmpty || targetQuery == 'task' || targetQuery == 'item') {

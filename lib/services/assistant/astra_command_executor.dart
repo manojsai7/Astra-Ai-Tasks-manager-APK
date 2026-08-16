@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:drift/drift.dart';
 
 import '../../core/database/database.dart';
+import '../../core/reminders/reminder_strategy.dart';
 import '../../models/task.dart';
 import '../../features/scheduler/data/services/google_auth_service.dart';
 import '../../features/scheduler/data/services/google_calendar_writer_service.dart';
@@ -149,7 +150,21 @@ class AstraCommandExecutor {
       case TaskResolutionOutcome.exact:
         final existing = resolution.task!;
         final newTitle = command.newTitle ?? existing.title;
-        final newDueAt = command.newDueAt ?? existing.dueDate;
+        DateTime? newDueAt = command.newDueAt ?? existing.dueDate;
+
+        // If user changed only the time (e.g. "make it 2pm" / "make it 11") and existing task has a due date on a specific day (e.g. Monday),
+        // preserve the existing date day/month/year while updating hour/minute.
+        final originalHasDate = RegExp(r'\b(today|tomorrow|tmrw|monday|tuesday|wednesday|thursday|friday|saturday|sunday|jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\b', caseSensitive: false).hasMatch(command.originalText);
+        if (command.newDueAt != null && existing.dueDate != null && !originalHasDate) {
+          newDueAt = DateTime(
+            existing.dueDate!.year,
+            existing.dueDate!.month,
+            existing.dueDate!.day,
+            command.newDueAt!.hour,
+            command.newDueAt!.minute,
+          );
+        }
+
         final newPriority = command.newPriority != null
             ? _normalizePriority(command.newPriority!)
             : existing.priority;
@@ -169,12 +184,18 @@ class AstraCommandExecutor {
         await ref.read(taskNotifierProvider.notifier).updateTask(updatedTask);
         ref.invalidate(taskListProvider);
 
+        final strategy = ReminderStrategyX.resolve(
+          priority: updatedTask.priority,
+          eventType: updatedTask.category,
+        );
+
         // If dueDate changed, reschedule reminder via ReminderService (idempotent: cancels old reminder)
         if (command.newDueAt != null) {
           await ref.read(reminderServiceProvider).scheduleReminder(
                 taskId: updatedTask.id,
                 taskTitle: updatedTask.title,
                 scheduledAt: updatedTask.dueDate!,
+                strategy: strategy,
               );
         } else if (command.newTitle != null && existing.dueDate != null) {
           // If only title changed and task had a reminder, update reminder title
@@ -182,6 +203,7 @@ class AstraCommandExecutor {
                 taskId: updatedTask.id,
                 taskTitle: updatedTask.title,
                 scheduledAt: existing.dueDate!,
+                strategy: strategy,
               );
         }
 
@@ -279,13 +301,21 @@ class AstraCommandExecutor {
         ),
       );
 
+      final strategy = ReminderStrategyX.resolve(
+        eventType: command.eventType,
+        action: command.action,
+        priority: command.priority,
+        isDeadline: command.temporal.deadline != null,
+      );
+
       try {
         await ref
-            .read(reminderServiceProvider)
+            ?.read(reminderServiceProvider)
             .scheduleReminder(
               taskId: task.id,
               taskTitle: task.title,
               scheduledAt: scheduledAt,
+              strategy: strategy,
             );
       } catch (_) {
         // Safe fallback in headless/test environments where platform channel is not active

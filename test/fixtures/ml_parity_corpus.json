@@ -1,0 +1,4760 @@
+[
+  {
+    "text": "remind me to drink water in 2 mins",
+    "set_a": {
+      "prediction": "CREATE_REMINDER",
+      "confidence": 0.9968190764549866,
+      "top_predictions": [
+        {
+          "label": "CREATE_REMINDER",
+          "confidence": 0.9968190764549866
+        },
+        {
+          "label": "UPDATE_TASK",
+          "confidence": 0.0018248242463404138
+        },
+        {
+          "label": "CREATE_TASK",
+          "confidence": 0.00023189126330988281
+        }
+      ]
+    },
+    "set_b": {
+      "prediction": "OTHER",
+      "confidence": 0.19362223748328544,
+      "top_predictions": [
+        {
+          "label": "OTHER",
+          "confidence": 0.19362223748328544
+        },
+        {
+          "label": "EXAM",
+          "confidence": 0.1058396457740852
+        },
+        {
+          "label": "EVENT",
+          "confidence": 0.09643150821939395
+        }
+      ]
+    }
+  },
+  {
+    "text": "remind me to call Mom tomorrow at 6pm",
+    "set_a": {
+      "prediction": "CREATE_REMINDER",
+      "confidence": 0.9558311999426988,
+      "top_predictions": [
+        {
+          "label": "CREATE_REMINDER",
+          "confidence": 0.9558311999426988
+        },
+        {
+          "label": "CREATE_CALENDAR_EVENT",
+          "confidence": 0.012964175074667541
+        },
+        {
+          "label": "CREATE_TASK",
+          "confidence": 0.00825251111537718
+        }
+      ]
+    },
+    "set_b": {
+      "prediction": "OTHER",
+      "confidence": 0.14736959788145382,
+      "top_predictions": [
+        {
+          "label": "OTHER",
+          "confidence": 0.14736959788145382
+        },
+        {
+          "label": "MEETING",
+          "confidence": 0.14649013990062804
+        },
+        {
+          "label": "INTERVIEW",
+          "confidence": 0.11890946572106965
+        }
+      ]
+    }
+  },
+  {
+    "text": "set a reminder for my assignment deadline on Friday",
+    "set_a": {
+      "prediction": "CREATE_REMINDER",
+      "confidence": 0.7076394980009861,
+      "top_predictions": [
+        {
+          "label": "CREATE_REMINDER",
+          "confidence": 0.7076394980009861
+        },
+        {
+          "label": "CREATE_CALENDAR_EVENT",
+          "confidence": 0.07538547757848969
+        },
+        {
+          "label": "UPDATE_TASK",
+          "confidence": 0.06659672231259192
+        }
+      ]
+    },
+    "set_b": {
+      "prediction": "ASSIGNMENT",
+      "confidence": 0.34275033807800054,
+      "top_predictions": [
+        {
+          "label": "ASSIGNMENT",
+          "confidence": 0.34275033807800054
+        },
+        {
+          "label": "OTHER",
+          "confidence": 0.08590266590091744
+        },
+        {
+          "label": "MEETING",
+          "confidence": 0.0733469467285533
+        }
+      ]
+    }
+  },
+  {
+    "text": "reminder to take medicine in 1 hour",
+    "set_a": {
+      "prediction": "CREATE_REMINDER",
+      "confidence": 0.8062539455372028,
+      "top_predictions": [
+        {
+          "label": "CREATE_REMINDER",
+          "confidence": 0.8062539455372028
+        },
+        {
+          "label": "UPDATE_TASK",
+          "confidence": 0.09519576571019299
+        },
+        {
+          "label": "CREATE_CALENDAR_EVENT",
+          "confidence": 0.021758218568442456
+        }
+      ]
+    },
+    "set_b": {
+      "prediction": "EVENT",
+      "confidence": 0.16774344681749334,
+      "top_predictions": [
+        {
+          "label": "EVENT",
+          "confidence": 0.16774344681749334
+        },
+        {
+          "label": "OTHER",
+          "confidence": 0.10930242549388912
+        },
+        {
+          "label": "EXAM",
+          "confidence": 0.09004944684937996
+        }
+      ]
+    }
+  },
+  {
+    "text": "create a task to finish the physics report",
+    "set_a": {
+      "prediction": "CREATE_TASK",
+      "confidence": 0.6507581811412705,
+      "top_predictions": [
+        {
+          "label": "CREATE_TASK",
+          "confidence": 0.6507581811412705
+        },
+        {
+          "label": "COMPLETE_TASK",
+          "confidence": 0.2582544608806022
+        },
+        {
+          "label": "UPDATE_TASK",
+          "confidence": 0.031548124924381006
+        }
+      ]
+    },
+    "set_b": {
+      "prediction": "ASSIGNMENT",
+      "confidence": 0.2286858143343384,
+      "top_predictions": [
+        {
+          "label": "ASSIGNMENT",
+          "confidence": 0.2286858143343384
+        },
+        {
+          "label": "OTHER",
+          "confidence": 0.12111524607635367
+        },
+        {
+          "label": "EVENT",
+          "confidence": 0.0905437134602433
+        }
+      ]
+    }
+  },
+  {
+    "text": "add task submit internship application by 5pm",
+    "set_a": {
+      "prediction": "CREATE_TASK",
+      "confidence": 0.9470875843057881,
+      "top_predictions": [
+        {
+          "label": "CREATE_TASK",
+          "confidence": 0.9470875843057881
+        },
+        {
+          "label": "CANCEL_TASK",
+          "confidence": 0.011177794531112315
+        },
+        {
+          "label": "COMPLETE_TASK",
+          "confidence": 0.008961731196060014
+        }
+      ]
+    },
+    "set_b": {
+      "prediction": "APPLICATION",
+      "confidence": 0.44772145263688873,
+      "top_predictions": [
+        {
+          "label": "APPLICATION",
+          "confidence": 0.44772145263688873
+        },
+        {
+          "label": "ASSIGNMENT",
+          "confidence": 0.13752261000291507
+        },
+        {
+          "label": "FORM",
+          "confidence": 0.08902067252426885
+        }
+      ]
+    }
+  },
+  {
+    "text": "water plants every morning at 7am",
+    "set_a": {
+      "prediction": "CREATE_CALENDAR_EVENT",
+      "confidence": 0.5931304643169355,
+      "top_predictions": [
+        {
+          "label": "CREATE_CALENDAR_EVENT",
+          "confidence": 0.5931304643169355
+        },
+        {
+          "label": "CREATE_REMINDER",
+          "confidence": 0.06898874486587246
+        },
+        {
+          "label": "GENERAL_CHAT",
+          "confidence": 0.06572259414830577
+        }
+      ]
+    },
+    "set_b": {
+      "prediction": "OTHER",
+      "confidence": 0.18597710045553345,
+      "top_predictions": [
+        {
+          "label": "OTHER",
+          "confidence": 0.18597710045553345
+        },
+        {
+          "label": "MEETING",
+          "confidence": 0.10793054223839865
+        },
+        {
+          "label": "INTERVIEW",
+          "confidence": 0.08771162723649308
+        }
+      ]
+    }
+  },
+  {
+    "text": "standup every weekday at 10am",
+    "set_a": {
+      "prediction": "CREATE_CALENDAR_EVENT",
+      "confidence": 0.38522586369897216,
+      "top_predictions": [
+        {
+          "label": "CREATE_CALENDAR_EVENT",
+          "confidence": 0.38522586369897216
+        },
+        {
+          "label": "CREATE_REMINDER",
+          "confidence": 0.15383404243169552
+        },
+        {
+          "label": "GENERAL_CHAT",
+          "confidence": 0.09923865210394794
+        }
+      ]
+    },
+    "set_b": {
+      "prediction": "MEETING",
+      "confidence": 0.13736041985234518,
+      "top_predictions": [
+        {
+          "label": "MEETING",
+          "confidence": 0.13736041985234518
+        },
+        {
+          "label": "INTERVIEW",
+          "confidence": 0.108461428734033
+        },
+        {
+          "label": "OTHER",
+          "confidence": 0.10477838869600603
+        }
+      ]
+    }
+  },
+  {
+    "text": "walk the dog daily at 8pm",
+    "set_a": {
+      "prediction": "CREATE_CALENDAR_EVENT",
+      "confidence": 0.7650160296237966,
+      "top_predictions": [
+        {
+          "label": "CREATE_CALENDAR_EVENT",
+          "confidence": 0.7650160296237966
+        },
+        {
+          "label": "SEARCH_EMAIL",
+          "confidence": 0.04907952933926638
+        },
+        {
+          "label": "CANCEL_TASK",
+          "confidence": 0.04078021664701445
+        }
+      ]
+    },
+    "set_b": {
+      "prediction": "OTHER",
+      "confidence": 0.20424626877318428,
+      "top_predictions": [
+        {
+          "label": "OTHER",
+          "confidence": 0.20424626877318428
+        },
+        {
+          "label": "MEETING",
+          "confidence": 0.13285141605594536
+        },
+        {
+          "label": "TRAINING",
+          "confidence": 0.11038603497624988
+        }
+      ]
+    }
+  },
+  {
+    "text": "team sync weekly on Monday at 3pm",
+    "set_a": {
+      "prediction": "CREATE_CALENDAR_EVENT",
+      "confidence": 0.7578093447838535,
+      "top_predictions": [
+        {
+          "label": "CREATE_CALENDAR_EVENT",
+          "confidence": 0.7578093447838535
+        },
+        {
+          "label": "SYNC_EMAIL",
+          "confidence": 0.08538054306516661
+        },
+        {
+          "label": "CREATE_REMINDER",
+          "confidence": 0.034338748559012366
+        }
+      ]
+    },
+    "set_b": {
+      "prediction": "INTERVIEW",
+      "confidence": 0.29607857798506,
+      "top_predictions": [
+        {
+          "label": "INTERVIEW",
+          "confidence": 0.29607857798506
+        },
+        {
+          "label": "MEETING",
+          "confidence": 0.1152303802708914
+        },
+        {
+          "label": "ASSIGNMENT",
+          "confidence": 0.07111392963849697
+        }
+      ]
+    }
+  },
+  {
+    "text": "pay electric bill monthly on 1st",
+    "set_a": {
+      "prediction": "CREATE_CALENDAR_EVENT",
+      "confidence": 0.8883525067863587,
+      "top_predictions": [
+        {
+          "label": "CREATE_CALENDAR_EVENT",
+          "confidence": 0.8883525067863587
+        },
+        {
+          "label": "CREATE_REMINDER",
+          "confidence": 0.02754065928841702
+        },
+        {
+          "label": "CREATE_TASK",
+          "confidence": 0.017907364874298816
+        }
+      ]
+    },
+    "set_b": {
+      "prediction": "FEE",
+      "confidence": 0.1921467667802875,
+      "top_predictions": [
+        {
+          "label": "FEE",
+          "confidence": 0.1921467667802875
+        },
+        {
+          "label": "WORKSHOP",
+          "confidence": 0.15167916731844752
+        },
+        {
+          "label": "TRAINING",
+          "confidence": 0.13421138568112884
+        }
+      ]
+    }
+  },
+  {
+    "text": "schedule a meeting with John tomorrow at 2pm",
+    "set_a": {
+      "prediction": "CREATE_CALENDAR_EVENT",
+      "confidence": 0.805803925629181,
+      "top_predictions": [
+        {
+          "label": "CREATE_CALENDAR_EVENT",
+          "confidence": 0.805803925629181
+        },
+        {
+          "label": "CREATE_TASK",
+          "confidence": 0.052302110104296855
+        },
+        {
+          "label": "GET_CALENDAR",
+          "confidence": 0.022400074825727884
+        }
+      ]
+    },
+    "set_b": {
+      "prediction": "MEETING",
+      "confidence": 0.4485180590251202,
+      "top_predictions": [
+        {
+          "label": "MEETING",
+          "confidence": 0.4485180590251202
+        },
+        {
+          "label": "OTHER",
+          "confidence": 0.09009604698527675
+        },
+        {
+          "label": "APPLICATION",
+          "confidence": 0.0681570631537943
+        }
+      ]
+    }
+  },
+  {
+    "text": "put the design review on my calendar for Tuesday at 4pm",
+    "set_a": {
+      "prediction": "CREATE_CALENDAR_EVENT",
+      "confidence": 0.857790948592209,
+      "top_predictions": [
+        {
+          "label": "CREATE_CALENDAR_EVENT",
+          "confidence": 0.857790948592209
+        },
+        {
+          "label": "GET_CALENDAR",
+          "confidence": 0.07532223588194357
+        },
+        {
+          "label": "CREATE_TASK",
+          "confidence": 0.01869039542252389
+        }
+      ]
+    },
+    "set_b": {
+      "prediction": "MEETING",
+      "confidence": 0.18193990176918076,
+      "top_predictions": [
+        {
+          "label": "MEETING",
+          "confidence": 0.18193990176918076
+        },
+        {
+          "label": "INTERVIEW",
+          "confidence": 0.1567872368961184
+        },
+        {
+          "label": "OTHER",
+          "confidence": 0.10643399146072824
+        }
+      ]
+    }
+  },
+  {
+    "text": "add it to my calendar next Wednesday at 11am",
+    "set_a": {
+      "prediction": "CREATE_CALENDAR_EVENT",
+      "confidence": 0.8401223905075229,
+      "top_predictions": [
+        {
+          "label": "CREATE_CALENDAR_EVENT",
+          "confidence": 0.8401223905075229
+        },
+        {
+          "label": "CREATE_TASK",
+          "confidence": 0.06012786413294274
+        },
+        {
+          "label": "GET_CALENDAR",
+          "confidence": 0.03608940222417374
+        }
+      ]
+    },
+    "set_b": {
+      "prediction": "INTERVIEW",
+      "confidence": 0.15295028410948153,
+      "top_predictions": [
+        {
+          "label": "INTERVIEW",
+          "confidence": 0.15295028410948153
+        },
+        {
+          "label": "MEETING",
+          "confidence": 0.10932605904744547
+        },
+        {
+          "label": "OTHER",
+          "confidence": 0.09982994551839945
+        }
+      ]
+    }
+  },
+  {
+    "text": "schedule a call with Sarah on Friday at 10am",
+    "set_a": {
+      "prediction": "CREATE_CALENDAR_EVENT",
+      "confidence": 0.6997906957123897,
+      "top_predictions": [
+        {
+          "label": "CREATE_CALENDAR_EVENT",
+          "confidence": 0.6997906957123897
+        },
+        {
+          "label": "CREATE_TASK",
+          "confidence": 0.06863325663404854
+        },
+        {
+          "label": "CREATE_REMINDER",
+          "confidence": 0.0638976716744741
+        }
+      ]
+    },
+    "set_b": {
+      "prediction": "MEETING",
+      "confidence": 0.16126428146858554,
+      "top_predictions": [
+        {
+          "label": "MEETING",
+          "confidence": 0.16126428146858554
+        },
+        {
+          "label": "OTHER",
+          "confidence": 0.113178000931698
+        },
+        {
+          "label": "INTERVIEW",
+          "confidence": 0.11151505304962256
+        }
+      ]
+    }
+  },
+  {
+    "text": "create calendar event project kickoff Thursday 9am",
+    "set_a": {
+      "prediction": "CREATE_CALENDAR_EVENT",
+      "confidence": 0.899145750285057,
+      "top_predictions": [
+        {
+          "label": "CREATE_CALENDAR_EVENT",
+          "confidence": 0.899145750285057
+        },
+        {
+          "label": "CREATE_TASK",
+          "confidence": 0.026271060759852492
+        },
+        {
+          "label": "GET_CALENDAR",
+          "confidence": 0.014312127157395046
+        }
+      ]
+    },
+    "set_b": {
+      "prediction": "ASSIGNMENT",
+      "confidence": 0.15575154067645072,
+      "top_predictions": [
+        {
+          "label": "ASSIGNMENT",
+          "confidence": 0.15575154067645072
+        },
+        {
+          "label": "OTHER",
+          "confidence": 0.09738278742272023
+        },
+        {
+          "label": "EVENT",
+          "confidence": 0.09047835158170824
+        }
+      ]
+    }
+  },
+  {
+    "text": "move my exam to tomorrow at 7pm",
+    "set_a": {
+      "prediction": "UPDATE_TASK",
+      "confidence": 0.7375025100995742,
+      "top_predictions": [
+        {
+          "label": "UPDATE_TASK",
+          "confidence": 0.7375025100995742
+        },
+        {
+          "label": "CREATE_CALENDAR_EVENT",
+          "confidence": 0.12164529951258898
+        },
+        {
+          "label": "CREATE_TASK",
+          "confidence": 0.03673042354055731
+        }
+      ]
+    },
+    "set_b": {
+      "prediction": "EXAM",
+      "confidence": 0.1427775788869557,
+      "top_predictions": [
+        {
+          "label": "EXAM",
+          "confidence": 0.1427775788869557
+        },
+        {
+          "label": "MEETING",
+          "confidence": 0.11953781997414344
+        },
+        {
+          "label": "OTHER",
+          "confidence": 0.11325932353487765
+        }
+      ]
+    }
+  },
+  {
+    "text": "reschedule my Microsoft interview to 2pm",
+    "set_a": {
+      "prediction": "UPDATE_TASK",
+      "confidence": 0.8990518720088061,
+      "top_predictions": [
+        {
+          "label": "UPDATE_TASK",
+          "confidence": 0.8990518720088061
+        },
+        {
+          "label": "CREATE_TASK",
+          "confidence": 0.016084178343012515
+        },
+        {
+          "label": "CREATE_CALENDAR_EVENT",
+          "confidence": 0.01457515542130262
+        }
+      ]
+    },
+    "set_b": {
+      "prediction": "APPLICATION",
+      "confidence": 0.25147162282264934,
+      "top_predictions": [
+        {
+          "label": "APPLICATION",
+          "confidence": 0.25147162282264934
+        },
+        {
+          "label": "INTERVIEW",
+          "confidence": 0.23988801100266338
+        },
+        {
+          "label": "OTHER",
+          "confidence": 0.102615946467861
+        }
+      ]
+    }
+  },
+  {
+    "text": "postpone the standup to 11am",
+    "set_a": {
+      "prediction": "UPDATE_TASK",
+      "confidence": 0.6663710119880004,
+      "top_predictions": [
+        {
+          "label": "UPDATE_TASK",
+          "confidence": 0.6663710119880004
+        },
+        {
+          "label": "GENERAL_CHAT",
+          "confidence": 0.044198321547270415
+        },
+        {
+          "label": "COMPLETE_TASK",
+          "confidence": 0.04234647151639184
+        }
+      ]
+    },
+    "set_b": {
+      "prediction": "OTHER",
+      "confidence": 0.1540986111404644,
+      "top_predictions": [
+        {
+          "label": "OTHER",
+          "confidence": 0.1540986111404644
+        },
+        {
+          "label": "EXAM",
+          "confidence": 0.11625031034747452
+        },
+        {
+          "label": "FEE",
+          "confidence": 0.0859190752847
+        }
+      ]
+    }
+  },
+  {
+    "text": "change my assignment deadline to Friday",
+    "set_a": {
+      "prediction": "UPDATE_TASK",
+      "confidence": 0.9417379201212593,
+      "top_predictions": [
+        {
+          "label": "UPDATE_TASK",
+          "confidence": 0.9417379201212593
+        },
+        {
+          "label": "CREATE_TASK",
+          "confidence": 0.020142177651039428
+        },
+        {
+          "label": "CREATE_CALENDAR_EVENT",
+          "confidence": 0.008596024875221098
+        }
+      ]
+    },
+    "set_b": {
+      "prediction": "ASSIGNMENT",
+      "confidence": 0.4481778268666594,
+      "top_predictions": [
+        {
+          "label": "ASSIGNMENT",
+          "confidence": 0.4481778268666594
+        },
+        {
+          "label": "OTHER",
+          "confidence": 0.08438917746232864
+        },
+        {
+          "label": "FEE",
+          "confidence": 0.05818853894517302
+        }
+      ]
+    }
+  },
+  {
+    "text": "rename my exam to Physics Final Exam",
+    "set_a": {
+      "prediction": "UPDATE_TASK",
+      "confidence": 0.8270428946310436,
+      "top_predictions": [
+        {
+          "label": "UPDATE_TASK",
+          "confidence": 0.8270428946310436
+        },
+        {
+          "label": "CREATE_CALENDAR_EVENT",
+          "confidence": 0.044222835088960376
+        },
+        {
+          "label": "CREATE_TASK",
+          "confidence": 0.02244880591511914
+        }
+      ]
+    },
+    "set_b": {
+      "prediction": "EXAM",
+      "confidence": 0.38484334254375363,
+      "top_predictions": [
+        {
+          "label": "EXAM",
+          "confidence": 0.38484334254375363
+        },
+        {
+          "label": "INTERVIEW",
+          "confidence": 0.11286258308057569
+        },
+        {
+          "label": "FORM",
+          "confidence": 0.0788019953062031
+        }
+      ]
+    }
+  },
+  {
+    "text": "cancel my reminder for tomorrow",
+    "set_a": {
+      "prediction": "CANCEL_TASK",
+      "confidence": 0.87743221988128,
+      "top_predictions": [
+        {
+          "label": "CANCEL_TASK",
+          "confidence": 0.87743221988128
+        },
+        {
+          "label": "CREATE_REMINDER",
+          "confidence": 0.06535892805608226
+        },
+        {
+          "label": "CREATE_CALENDAR_EVENT",
+          "confidence": 0.010599897044889409
+        }
+      ]
+    },
+    "set_b": {
+      "prediction": "OTHER",
+      "confidence": 0.13381484509841188,
+      "top_predictions": [
+        {
+          "label": "OTHER",
+          "confidence": 0.13381484509841188
+        },
+        {
+          "label": "INTERVIEW",
+          "confidence": 0.1331808548052995
+        },
+        {
+          "label": "APPLICATION",
+          "confidence": 0.08949933365845801
+        }
+      ]
+    }
+  },
+  {
+    "text": "delete task buy groceries",
+    "set_a": {
+      "prediction": "CANCEL_TASK",
+      "confidence": 0.9847949280800756,
+      "top_predictions": [
+        {
+          "label": "CANCEL_TASK",
+          "confidence": 0.9847949280800756
+        },
+        {
+          "label": "CREATE_TASK",
+          "confidence": 0.0036452365381750202
+        },
+        {
+          "label": "COMPLETE_TASK",
+          "confidence": 0.0020047257570150207
+        }
+      ]
+    },
+    "set_b": {
+      "prediction": "OTHER",
+      "confidence": 0.12987490146678457,
+      "top_predictions": [
+        {
+          "label": "OTHER",
+          "confidence": 0.12987490146678457
+        },
+        {
+          "label": "APPLICATION",
+          "confidence": 0.09099317972911543
+        },
+        {
+          "label": "TRAINING",
+          "confidence": 0.08005159118851592
+        }
+      ]
+    }
+  },
+  {
+    "text": "mark my physics homework as done",
+    "set_a": {
+      "prediction": "COMPLETE_TASK",
+      "confidence": 0.9655490030166248,
+      "top_predictions": [
+        {
+          "label": "COMPLETE_TASK",
+          "confidence": 0.9655490030166248
+        },
+        {
+          "label": "CREATE_TASK",
+          "confidence": 0.005916057082724753
+        },
+        {
+          "label": "UPDATE_TASK",
+          "confidence": 0.005194348722390368
+        }
+      ]
+    },
+    "set_b": {
+      "prediction": "ASSIGNMENT",
+      "confidence": 0.2605450852223278,
+      "top_predictions": [
+        {
+          "label": "ASSIGNMENT",
+          "confidence": 0.2605450852223278
+        },
+        {
+          "label": "EXAM",
+          "confidence": 0.1051416579088527
+        },
+        {
+          "label": "OTHER",
+          "confidence": 0.09265995853518616
+        }
+      ]
+    }
+  },
+  {
+    "text": "i have finished my chemistry assignment",
+    "set_a": {
+      "prediction": "COMPLETE_TASK",
+      "confidence": 0.6564201518157894,
+      "top_predictions": [
+        {
+          "label": "COMPLETE_TASK",
+          "confidence": 0.6564201518157894
+        },
+        {
+          "label": "CREATE_TASK",
+          "confidence": 0.2243768042531838
+        },
+        {
+          "label": "LIST_TASKS",
+          "confidence": 0.028824031860018282
+        }
+      ]
+    },
+    "set_b": {
+      "prediction": "ASSIGNMENT",
+      "confidence": 0.3624024887665635,
+      "top_predictions": [
+        {
+          "label": "ASSIGNMENT",
+          "confidence": 0.3624024887665635
+        },
+        {
+          "label": "OTHER",
+          "confidence": 0.09059222241272755
+        },
+        {
+          "label": "TRAINING",
+          "confidence": 0.0811083855899468
+        }
+      ]
+    }
+  },
+  {
+    "text": "done with my morning workout",
+    "set_a": {
+      "prediction": "COMPLETE_TASK",
+      "confidence": 0.9577099327244376,
+      "top_predictions": [
+        {
+          "label": "COMPLETE_TASK",
+          "confidence": 0.9577099327244376
+        },
+        {
+          "label": "CREATE_TASK",
+          "confidence": 0.006250156202586394
+        },
+        {
+          "label": "GENERAL_CHAT",
+          "confidence": 0.0058340075374451895
+        }
+      ]
+    },
+    "set_b": {
+      "prediction": "WORKSHOP",
+      "confidence": 0.12306052162216191,
+      "top_predictions": [
+        {
+          "label": "WORKSHOP",
+          "confidence": 0.12306052162216191
+        },
+        {
+          "label": "APPLICATION",
+          "confidence": 0.11787599478929203
+        },
+        {
+          "label": "OTHER",
+          "confidence": 0.10318065479017278
+        }
+      ]
+    }
+  },
+  {
+    "text": "show my tasks",
+    "set_a": {
+      "prediction": "LIST_TASKS",
+      "confidence": 0.9878938722352486,
+      "top_predictions": [
+        {
+          "label": "LIST_TASKS",
+          "confidence": 0.9878938722352486
+        },
+        {
+          "label": "GET_CALENDAR",
+          "confidence": 0.0069803630797685414
+        },
+        {
+          "label": "SEARCH_EMAIL",
+          "confidence": 0.0011463698131526704
+        }
+      ]
+    },
+    "set_b": {
+      "prediction": "OTHER",
+      "confidence": 0.12987490146678457,
+      "top_predictions": [
+        {
+          "label": "OTHER",
+          "confidence": 0.12987490146678457
+        },
+        {
+          "label": "APPLICATION",
+          "confidence": 0.09099317972911543
+        },
+        {
+          "label": "TRAINING",
+          "confidence": 0.08005159118851592
+        }
+      ]
+    }
+  },
+  {
+    "text": "list my todos",
+    "set_a": {
+      "prediction": "LIST_TASKS",
+      "confidence": 0.9643684238529686,
+      "top_predictions": [
+        {
+          "label": "LIST_TASKS",
+          "confidence": 0.9643684238529686
+        },
+        {
+          "label": "CREATE_TASK",
+          "confidence": 0.006533716435489907
+        },
+        {
+          "label": "CANCEL_TASK",
+          "confidence": 0.004856553751951987
+        }
+      ]
+    },
+    "set_b": {
+      "prediction": "EVENT",
+      "confidence": 0.13966254922402857,
+      "top_predictions": [
+        {
+          "label": "EVENT",
+          "confidence": 0.13966254922402857
+        },
+        {
+          "label": "OTHER",
+          "confidence": 0.1165853820049335
+        },
+        {
+          "label": "TRAINING",
+          "confidence": 0.10033565375841141
+        }
+      ]
+    }
+  },
+  {
+    "text": "what are my pending tasks for today",
+    "set_a": {
+      "prediction": "LIST_TASKS",
+      "confidence": 0.8565524871555035,
+      "top_predictions": [
+        {
+          "label": "LIST_TASKS",
+          "confidence": 0.8565524871555035
+        },
+        {
+          "label": "GET_CALENDAR",
+          "confidence": 0.05297497357391569
+        },
+        {
+          "label": "SUMMARIZE_EMAIL",
+          "confidence": 0.02087113667512527
+        }
+      ]
+    },
+    "set_b": {
+      "prediction": "OTHER",
+      "confidence": 0.14397091545475746,
+      "top_predictions": [
+        {
+          "label": "OTHER",
+          "confidence": 0.14397091545475746
+        },
+        {
+          "label": "FEE",
+          "confidence": 0.13092408593721172
+        },
+        {
+          "label": "APPLICATION",
+          "confidence": 0.1113811103823236
+        }
+      ]
+    }
+  },
+  {
+    "text": "view all my tasks",
+    "set_a": {
+      "prediction": "LIST_TASKS",
+      "confidence": 0.941388712683299,
+      "top_predictions": [
+        {
+          "label": "LIST_TASKS",
+          "confidence": 0.941388712683299
+        },
+        {
+          "label": "CREATE_TASK",
+          "confidence": 0.012049753160234438
+        },
+        {
+          "label": "CANCEL_TASK",
+          "confidence": 0.009020068781109123
+        }
+      ]
+    },
+    "set_b": {
+      "prediction": "OTHER",
+      "confidence": 0.1370640589339491,
+      "top_predictions": [
+        {
+          "label": "OTHER",
+          "confidence": 0.1370640589339491
+        },
+        {
+          "label": "EXAM",
+          "confidence": 0.11315462728123996
+        },
+        {
+          "label": "APPLICATION",
+          "confidence": 0.08205924911295243
+        }
+      ]
+    }
+  },
+  {
+    "text": "what is on my calendar today",
+    "set_a": {
+      "prediction": "GET_CALENDAR",
+      "confidence": 0.8729984615230926,
+      "top_predictions": [
+        {
+          "label": "GET_CALENDAR",
+          "confidence": 0.8729984615230926
+        },
+        {
+          "label": "GET_PANCHANG",
+          "confidence": 0.03656499286784435
+        },
+        {
+          "label": "LIST_TASKS",
+          "confidence": 0.033862622403136144
+        }
+      ]
+    },
+    "set_b": {
+      "prediction": "INTERVIEW",
+      "confidence": 0.11948590163148232,
+      "top_predictions": [
+        {
+          "label": "INTERVIEW",
+          "confidence": 0.11948590163148232
+        },
+        {
+          "label": "OTHER",
+          "confidence": 0.10901384005107213
+        },
+        {
+          "label": "FEEDBACK",
+          "confidence": 0.10533898014157286
+        }
+      ]
+    }
+  },
+  {
+    "text": "show my upcoming meetings",
+    "set_a": {
+      "prediction": "GET_CALENDAR",
+      "confidence": 0.9281391119023629,
+      "top_predictions": [
+        {
+          "label": "GET_CALENDAR",
+          "confidence": 0.9281391119023629
+        },
+        {
+          "label": "LIST_TASKS",
+          "confidence": 0.03099931006462928
+        },
+        {
+          "label": "GET_PANCHANG",
+          "confidence": 0.008712013790182617
+        }
+      ]
+    },
+    "set_b": {
+      "prediction": "OTHER",
+      "confidence": 0.1772770487000909,
+      "top_predictions": [
+        {
+          "label": "OTHER",
+          "confidence": 0.1772770487000909
+        },
+        {
+          "label": "MEETING",
+          "confidence": 0.11588824525170591
+        },
+        {
+          "label": "APPLICATION",
+          "confidence": 0.0812549370632335
+        }
+      ]
+    }
+  },
+  {
+    "text": "when is my next interview",
+    "set_a": {
+      "prediction": "GET_PANCHANG",
+      "confidence": 0.6608219370678408,
+      "top_predictions": [
+        {
+          "label": "GET_PANCHANG",
+          "confidence": 0.6608219370678408
+        },
+        {
+          "label": "GET_CALENDAR",
+          "confidence": 0.09512852606564208
+        },
+        {
+          "label": "CREATE_TASK",
+          "confidence": 0.07306552520548433
+        }
+      ]
+    },
+    "set_b": {
+      "prediction": "INTERVIEW",
+      "confidence": 0.564037817359226,
+      "top_predictions": [
+        {
+          "label": "INTERVIEW",
+          "confidence": 0.564037817359226
+        },
+        {
+          "label": "ASSIGNMENT",
+          "confidence": 0.05427987922457602
+        },
+        {
+          "label": "OTHER",
+          "confidence": 0.052434343074541735
+        }
+      ]
+    }
+  },
+  {
+    "text": "sync my emails",
+    "set_a": {
+      "prediction": "SYNC_EMAIL",
+      "confidence": 0.9718307288464898,
+      "top_predictions": [
+        {
+          "label": "SYNC_EMAIL",
+          "confidence": 0.9718307288464898
+        },
+        {
+          "label": "SUMMARIZE_EMAIL",
+          "confidence": 0.023803173014915906
+        },
+        {
+          "label": "SEARCH_EMAIL",
+          "confidence": 0.0008565539988016394
+        }
+      ]
+    },
+    "set_b": {
+      "prediction": "OTHER",
+      "confidence": 0.2294226877357378,
+      "top_predictions": [
+        {
+          "label": "OTHER",
+          "confidence": 0.2294226877357378
+        },
+        {
+          "label": "APPLICATION",
+          "confidence": 0.07985325835593261
+        },
+        {
+          "label": "FEE",
+          "confidence": 0.07100699589945936
+        }
+      ]
+    }
+  },
+  {
+    "text": "refresh inbox",
+    "set_a": {
+      "prediction": "SYNC_EMAIL",
+      "confidence": 0.7441526610174477,
+      "top_predictions": [
+        {
+          "label": "SYNC_EMAIL",
+          "confidence": 0.7441526610174477
+        },
+        {
+          "label": "SUMMARIZE_EMAIL",
+          "confidence": 0.04161199770161484
+        },
+        {
+          "label": "GENERAL_CHAT",
+          "confidence": 0.037839860232913594
+        }
+      ]
+    },
+    "set_b": {
+      "prediction": "OTHER",
+      "confidence": 0.12987490146678457,
+      "top_predictions": [
+        {
+          "label": "OTHER",
+          "confidence": 0.12987490146678457
+        },
+        {
+          "label": "APPLICATION",
+          "confidence": 0.09099317972911543
+        },
+        {
+          "label": "TRAINING",
+          "confidence": 0.08005159118851592
+        }
+      ]
+    }
+  },
+  {
+    "text": "summarize my latest email from Google",
+    "set_a": {
+      "prediction": "SUMMARIZE_EMAIL",
+      "confidence": 0.6772925372657954,
+      "top_predictions": [
+        {
+          "label": "SUMMARIZE_EMAIL",
+          "confidence": 0.6772925372657954
+        },
+        {
+          "label": "SEARCH_EMAIL",
+          "confidence": 0.2505102596461405
+        },
+        {
+          "label": "CANCEL_TASK",
+          "confidence": 0.01582174009214441
+        }
+      ]
+    },
+    "set_b": {
+      "prediction": "EVENT",
+      "confidence": 0.1373085998610605,
+      "top_predictions": [
+        {
+          "label": "EVENT",
+          "confidence": 0.1373085998610605
+        },
+        {
+          "label": "INTERVIEW",
+          "confidence": 0.1258947224228575
+        },
+        {
+          "label": "TRAINING",
+          "confidence": 0.10486562281138477
+        }
+      ]
+    }
+  },
+  {
+    "text": "search email about offer letter",
+    "set_a": {
+      "prediction": "SEARCH_EMAIL",
+      "confidence": 0.980836765000558,
+      "top_predictions": [
+        {
+          "label": "SEARCH_EMAIL",
+          "confidence": 0.980836765000558
+        },
+        {
+          "label": "SUMMARIZE_EMAIL",
+          "confidence": 0.004087668207950092
+        },
+        {
+          "label": "CREATE_REMINDER",
+          "confidence": 0.0030926326912657726
+        }
+      ]
+    },
+    "set_b": {
+      "prediction": "OTHER",
+      "confidence": 0.16125899308460698,
+      "top_predictions": [
+        {
+          "label": "OTHER",
+          "confidence": 0.16125899308460698
+        },
+        {
+          "label": "INTERVIEW",
+          "confidence": 0.11031322933723509
+        },
+        {
+          "label": "MEETING",
+          "confidence": 0.09485644029852588
+        }
+      ]
+    }
+  },
+  {
+    "text": "check new mails from college",
+    "set_a": {
+      "prediction": "SYNC_EMAIL",
+      "confidence": 0.5809730565218038,
+      "top_predictions": [
+        {
+          "label": "SYNC_EMAIL",
+          "confidence": 0.5809730565218038
+        },
+        {
+          "label": "SEARCH_EMAIL",
+          "confidence": 0.08336586250065413
+        },
+        {
+          "label": "GENERAL_CHAT",
+          "confidence": 0.06386499611810187
+        }
+      ]
+    },
+    "set_b": {
+      "prediction": "OTHER",
+      "confidence": 0.31799146987216176,
+      "top_predictions": [
+        {
+          "label": "OTHER",
+          "confidence": 0.31799146987216176
+        },
+        {
+          "label": "TRAINING",
+          "confidence": 0.10765482504321909
+        },
+        {
+          "label": "WORKSHOP",
+          "confidence": 0.08094065771965502
+        }
+      ]
+    }
+  },
+  {
+    "text": "what is today's tithi",
+    "set_a": {
+      "prediction": "GET_PANCHANG",
+      "confidence": 0.9740855990822378,
+      "top_predictions": [
+        {
+          "label": "GET_PANCHANG",
+          "confidence": 0.9740855990822378
+        },
+        {
+          "label": "GENERAL_CHAT",
+          "confidence": 0.00797359428054511
+        },
+        {
+          "label": "GET_CALENDAR",
+          "confidence": 0.006494056451034458
+        }
+      ]
+    },
+    "set_b": {
+      "prediction": "MEETING",
+      "confidence": 0.13012750546290433,
+      "top_predictions": [
+        {
+          "label": "MEETING",
+          "confidence": 0.13012750546290433
+        },
+        {
+          "label": "OTHER",
+          "confidence": 0.12730700089550412
+        },
+        {
+          "label": "FEEDBACK",
+          "confidence": 0.12516986075039072
+        }
+      ]
+    }
+  },
+  {
+    "text": "when is the next ekadashi",
+    "set_a": {
+      "prediction": "GET_PANCHANG",
+      "confidence": 0.9850976825970176,
+      "top_predictions": [
+        {
+          "label": "GET_PANCHANG",
+          "confidence": 0.9850976825970176
+        },
+        {
+          "label": "CREATE_TASK",
+          "confidence": 0.002138244323836424
+        },
+        {
+          "label": "CREATE_REMINDER",
+          "confidence": 0.0019470675848674496
+        }
+      ]
+    },
+    "set_b": {
+      "prediction": "INTERVIEW",
+      "confidence": 0.15305630936211626,
+      "top_predictions": [
+        {
+          "label": "INTERVIEW",
+          "confidence": 0.15305630936211626
+        },
+        {
+          "label": "MEETING",
+          "confidence": 0.09467394944152796
+        },
+        {
+          "label": "OTHER",
+          "confidence": 0.09180693419926181
+        }
+      ]
+    }
+  },
+  {
+    "text": "check rahu kalam for tomorrow",
+    "set_a": {
+      "prediction": "CREATE_CALENDAR_EVENT",
+      "confidence": 0.2183721875757212,
+      "top_predictions": [
+        {
+          "label": "CREATE_CALENDAR_EVENT",
+          "confidence": 0.2183721875757212
+        },
+        {
+          "label": "SYNC_EMAIL",
+          "confidence": 0.21554531140994537
+        },
+        {
+          "label": "CREATE_TASK",
+          "confidence": 0.1849482330105102
+        }
+      ]
+    },
+    "set_b": {
+      "prediction": "OTHER",
+      "confidence": 0.24651682877968636,
+      "top_predictions": [
+        {
+          "label": "OTHER",
+          "confidence": 0.24651682877968636
+        },
+        {
+          "label": "INTERVIEW",
+          "confidence": 0.11630824454206774
+        },
+        {
+          "label": "TRAINING",
+          "confidence": 0.08450254885091606
+        }
+      ]
+    }
+  },
+  {
+    "text": "is today purnima or amavasya",
+    "set_a": {
+      "prediction": "GET_PANCHANG",
+      "confidence": 0.9663129966146927,
+      "top_predictions": [
+        {
+          "label": "GET_PANCHANG",
+          "confidence": 0.9663129966146927
+        },
+        {
+          "label": "CREATE_TASK",
+          "confidence": 0.007652556696400274
+        },
+        {
+          "label": "GENERAL_CHAT",
+          "confidence": 0.005234500004213136
+        }
+      ]
+    },
+    "set_b": {
+      "prediction": "OTHER",
+      "confidence": 0.15705460997436213,
+      "top_predictions": [
+        {
+          "label": "OTHER",
+          "confidence": 0.15705460997436213
+        },
+        {
+          "label": "MEETING",
+          "confidence": 0.10073022038582073
+        },
+        {
+          "label": "FEE",
+          "confidence": 0.09460446441822595
+        }
+      ]
+    }
+  },
+  {
+    "text": "hello there",
+    "set_a": {
+      "prediction": "GENERAL_CHAT",
+      "confidence": 0.8472336354615665,
+      "top_predictions": [
+        {
+          "label": "GENERAL_CHAT",
+          "confidence": 0.8472336354615665
+        },
+        {
+          "label": "UPDATE_TASK",
+          "confidence": 0.02007154865716128
+        },
+        {
+          "label": "CREATE_TASK",
+          "confidence": 0.01811559359593261
+        }
+      ]
+    },
+    "set_b": {
+      "prediction": "OTHER",
+      "confidence": 0.15438783119283958,
+      "top_predictions": [
+        {
+          "label": "OTHER",
+          "confidence": 0.15438783119283958
+        },
+        {
+          "label": "WORKSHOP",
+          "confidence": 0.09772246156098201
+        },
+        {
+          "label": "APPLICATION",
+          "confidence": 0.08329407085884617
+        }
+      ]
+    }
+  },
+  {
+    "text": "good morning",
+    "set_a": {
+      "prediction": "GENERAL_CHAT",
+      "confidence": 0.9245914987080409,
+      "top_predictions": [
+        {
+          "label": "GENERAL_CHAT",
+          "confidence": 0.9245914987080409
+        },
+        {
+          "label": "CREATE_CALENDAR_EVENT",
+          "confidence": 0.009224186015627306
+        },
+        {
+          "label": "UPDATE_TASK",
+          "confidence": 0.009122263478616473
+        }
+      ]
+    },
+    "set_b": {
+      "prediction": "OTHER",
+      "confidence": 0.1189065295226728,
+      "top_predictions": [
+        {
+          "label": "OTHER",
+          "confidence": 0.1189065295226728
+        },
+        {
+          "label": "WORKSHOP",
+          "confidence": 0.11565507017003354
+        },
+        {
+          "label": "EXAM",
+          "confidence": 0.086433809203443
+        }
+      ]
+    }
+  },
+  {
+    "text": "how are you doing",
+    "set_a": {
+      "prediction": "GENERAL_CHAT",
+      "confidence": 0.9689368683025872,
+      "top_predictions": [
+        {
+          "label": "GENERAL_CHAT",
+          "confidence": 0.9689368683025872
+        },
+        {
+          "label": "CREATE_TASK",
+          "confidence": 0.0035698885545068213
+        },
+        {
+          "label": "UPDATE_TASK",
+          "confidence": 0.003563998738905357
+        }
+      ]
+    },
+    "set_b": {
+      "prediction": "OTHER",
+      "confidence": 0.13777837229595677,
+      "top_predictions": [
+        {
+          "label": "OTHER",
+          "confidence": 0.13777837229595677
+        },
+        {
+          "label": "EVENT",
+          "confidence": 0.13704736673409829
+        },
+        {
+          "label": "EXAM",
+          "confidence": 0.13431223143815132
+        }
+      ]
+    }
+  },
+  {
+    "text": "what can you do for me",
+    "set_a": {
+      "prediction": "GENERAL_CHAT",
+      "confidence": 0.8213176037538213,
+      "top_predictions": [
+        {
+          "label": "GENERAL_CHAT",
+          "confidence": 0.8213176037538213
+        },
+        {
+          "label": "CREATE_REMINDER",
+          "confidence": 0.11130294365458017
+        },
+        {
+          "label": "LIST_TASKS",
+          "confidence": 0.015455558718627218
+        }
+      ]
+    },
+    "set_b": {
+      "prediction": "OTHER",
+      "confidence": 0.1564028446317817,
+      "top_predictions": [
+        {
+          "label": "OTHER",
+          "confidence": 0.1564028446317817
+        },
+        {
+          "label": "INTERVIEW",
+          "confidence": 0.09902555232364185
+        },
+        {
+          "label": "EVENT",
+          "confidence": 0.09188139142198712
+        }
+      ]
+    }
+  },
+  {
+    "text": "tell me a joke",
+    "set_a": {
+      "prediction": "GENERAL_CHAT",
+      "confidence": 0.940196097535634,
+      "top_predictions": [
+        {
+          "label": "GENERAL_CHAT",
+          "confidence": 0.940196097535634
+        },
+        {
+          "label": "CREATE_REMINDER",
+          "confidence": 0.01930649933373961
+        },
+        {
+          "label": "SUMMARIZE_EMAIL",
+          "confidence": 0.00741451970490206
+        }
+      ]
+    },
+    "set_b": {
+      "prediction": "OTHER",
+      "confidence": 0.12987490146678457,
+      "top_predictions": [
+        {
+          "label": "OTHER",
+          "confidence": 0.12987490146678457
+        },
+        {
+          "label": "APPLICATION",
+          "confidence": 0.09099317972911543
+        },
+        {
+          "label": "TRAINING",
+          "confidence": 0.08005159118851592
+        }
+      ]
+    }
+  },
+  {
+    "text": "Microsoft interview Monday at 11am",
+    "set_a": {
+      "prediction": "CREATE_CALENDAR_EVENT",
+      "confidence": 0.47837494010391113,
+      "top_predictions": [
+        {
+          "label": "CREATE_CALENDAR_EVENT",
+          "confidence": 0.47837494010391113
+        },
+        {
+          "label": "UPDATE_TASK",
+          "confidence": 0.09699297300954408
+        },
+        {
+          "label": "CREATE_TASK",
+          "confidence": 0.07923806714345179
+        }
+      ]
+    },
+    "set_b": {
+      "prediction": "INTERVIEW",
+      "confidence": 0.3359639202858789,
+      "top_predictions": [
+        {
+          "label": "INTERVIEW",
+          "confidence": 0.3359639202858789
+        },
+        {
+          "label": "APPLICATION",
+          "confidence": 0.13048845794269034
+        },
+        {
+          "label": "MEETING",
+          "confidence": 0.08532857813967655
+        }
+      ]
+    }
+  },
+  {
+    "text": "Google software engineer technical interview round 2",
+    "set_a": {
+      "prediction": "CANCEL_TASK",
+      "confidence": 0.2377381198310946,
+      "top_predictions": [
+        {
+          "label": "CANCEL_TASK",
+          "confidence": 0.2377381198310946
+        },
+        {
+          "label": "COMPLETE_TASK",
+          "confidence": 0.18102014638208272
+        },
+        {
+          "label": "UPDATE_TASK",
+          "confidence": 0.14028205216112483
+        }
+      ]
+    },
+    "set_b": {
+      "prediction": "INTERVIEW",
+      "confidence": 0.44916616358685874,
+      "top_predictions": [
+        {
+          "label": "INTERVIEW",
+          "confidence": 0.44916616358685874
+        },
+        {
+          "label": "APPLICATION",
+          "confidence": 0.11544138866615603
+        },
+        {
+          "label": "OTHER",
+          "confidence": 0.06045933975318245
+        }
+      ]
+    }
+  },
+  {
+    "text": "Amazon bar raiser interview on Friday at 3pm",
+    "set_a": {
+      "prediction": "CREATE_CALENDAR_EVENT",
+      "confidence": 0.7859322811584025,
+      "top_predictions": [
+        {
+          "label": "CREATE_CALENDAR_EVENT",
+          "confidence": 0.7859322811584025
+        },
+        {
+          "label": "CREATE_REMINDER",
+          "confidence": 0.03675548066353494
+        },
+        {
+          "label": "UPDATE_TASK",
+          "confidence": 0.031449051693411376
+        }
+      ]
+    },
+    "set_b": {
+      "prediction": "INTERVIEW",
+      "confidence": 0.34936931651183745,
+      "top_predictions": [
+        {
+          "label": "INTERVIEW",
+          "confidence": 0.34936931651183745
+        },
+        {
+          "label": "MEETING",
+          "confidence": 0.09414736912153066
+        },
+        {
+          "label": "APPLICATION",
+          "confidence": 0.09208027045925841
+        }
+      ]
+    }
+  },
+  {
+    "text": "physics mid semester examination hall ticket",
+    "set_a": {
+      "prediction": "GENERAL_CHAT",
+      "confidence": 0.21549730678548845,
+      "top_predictions": [
+        {
+          "label": "GENERAL_CHAT",
+          "confidence": 0.21549730678548845
+        },
+        {
+          "label": "UPDATE_TASK",
+          "confidence": 0.11303058716022929
+        },
+        {
+          "label": "CREATE_TASK",
+          "confidence": 0.10938009113621562
+        }
+      ]
+    },
+    "set_b": {
+      "prediction": "FEE",
+      "confidence": 0.20354498717133088,
+      "top_predictions": [
+        {
+          "label": "FEE",
+          "confidence": 0.20354498717133088
+        },
+        {
+          "label": "MEETING",
+          "confidence": 0.09795569786560224
+        },
+        {
+          "label": "OTHER",
+          "confidence": 0.09119392444812409
+        }
+      ]
+    }
+  },
+  {
+    "text": "maths final exam paper submission on 25th May",
+    "set_a": {
+      "prediction": "CREATE_CALENDAR_EVENT",
+      "confidence": 0.6741353524859516,
+      "top_predictions": [
+        {
+          "label": "CREATE_CALENDAR_EVENT",
+          "confidence": 0.6741353524859516
+        },
+        {
+          "label": "CREATE_TASK",
+          "confidence": 0.09366650541269775
+        },
+        {
+          "label": "COMPLETE_TASK",
+          "confidence": 0.061862013467359964
+        }
+      ]
+    },
+    "set_b": {
+      "prediction": "EVENT",
+      "confidence": 0.16210310585311472,
+      "top_predictions": [
+        {
+          "label": "EVENT",
+          "confidence": 0.16210310585311472
+        },
+        {
+          "label": "EXAM",
+          "confidence": 0.15239072746007487
+        },
+        {
+          "label": "INTERVIEW",
+          "confidence": 0.11241288698724246
+        }
+      ]
+    }
+  },
+  {
+    "text": "checkpoint test for algorithms course",
+    "set_a": {
+      "prediction": "CREATE_TASK",
+      "confidence": 0.3772020644376772,
+      "top_predictions": [
+        {
+          "label": "CREATE_TASK",
+          "confidence": 0.3772020644376772
+        },
+        {
+          "label": "CREATE_REMINDER",
+          "confidence": 0.19898999909456425
+        },
+        {
+          "label": "CREATE_CALENDAR_EVENT",
+          "confidence": 0.1323731410696148
+        }
+      ]
+    },
+    "set_b": {
+      "prediction": "EXAM",
+      "confidence": 0.13096988923859285,
+      "top_predictions": [
+        {
+          "label": "EXAM",
+          "confidence": 0.13096988923859285
+        },
+        {
+          "label": "OTHER",
+          "confidence": 0.11503049685531752
+        },
+        {
+          "label": "INTERVIEW",
+          "confidence": 0.09835237576721764
+        }
+      ]
+    }
+  },
+  {
+    "text": "machine learning assignment 3 deadline is midnight",
+    "set_a": {
+      "prediction": "GENERAL_CHAT",
+      "confidence": 0.405937611603344,
+      "top_predictions": [
+        {
+          "label": "GENERAL_CHAT",
+          "confidence": 0.405937611603344
+        },
+        {
+          "label": "CREATE_TASK",
+          "confidence": 0.27520596990494395
+        },
+        {
+          "label": "UPDATE_TASK",
+          "confidence": 0.09768189479119073
+        }
+      ]
+    },
+    "set_b": {
+      "prediction": "ASSIGNMENT",
+      "confidence": 0.4799092620583621,
+      "top_predictions": [
+        {
+          "label": "ASSIGNMENT",
+          "confidence": 0.4799092620583621
+        },
+        {
+          "label": "FEE",
+          "confidence": 0.06328139663766626
+        },
+        {
+          "label": "OTHER",
+          "confidence": 0.0589995413163933
+        }
+      ]
+    }
+  },
+  {
+    "text": "chemistry lab report homework due Tuesday",
+    "set_a": {
+      "prediction": "CREATE_TASK",
+      "confidence": 0.8905358306930188,
+      "top_predictions": [
+        {
+          "label": "CREATE_TASK",
+          "confidence": 0.8905358306930188
+        },
+        {
+          "label": "UPDATE_TASK",
+          "confidence": 0.028177406759568046
+        },
+        {
+          "label": "CANCEL_TASK",
+          "confidence": 0.017794940118977195
+        }
+      ]
+    },
+    "set_b": {
+      "prediction": "ASSIGNMENT",
+      "confidence": 0.5508753073056879,
+      "top_predictions": [
+        {
+          "label": "ASSIGNMENT",
+          "confidence": 0.5508753073056879
+        },
+        {
+          "label": "OTHER",
+          "confidence": 0.08490038989622606
+        },
+        {
+          "label": "EXAM",
+          "confidence": 0.04761730568688523
+        }
+      ]
+    }
+  },
+  {
+    "text": "ai and robotics workshop registration opens tomorrow",
+    "set_a": {
+      "prediction": "CREATE_CALENDAR_EVENT",
+      "confidence": 0.2122836915808243,
+      "top_predictions": [
+        {
+          "label": "CREATE_CALENDAR_EVENT",
+          "confidence": 0.2122836915808243
+        },
+        {
+          "label": "CREATE_TASK",
+          "confidence": 0.1725946636730282
+        },
+        {
+          "label": "GENERAL_CHAT",
+          "confidence": 0.16253200724537747
+        }
+      ]
+    },
+    "set_b": {
+      "prediction": "WORKSHOP",
+      "confidence": 0.7165084274667456,
+      "top_predictions": [
+        {
+          "label": "WORKSHOP",
+          "confidence": 0.7165084274667456
+        },
+        {
+          "label": "FORM",
+          "confidence": 0.03641411062801161
+        },
+        {
+          "label": "OTHER",
+          "confidence": 0.033117315624255496
+        }
+      ]
+    }
+  },
+  {
+    "text": "cyber security training session by Cisco next week",
+    "set_a": {
+      "prediction": "CREATE_TASK",
+      "confidence": 0.7173996448233413,
+      "top_predictions": [
+        {
+          "label": "CREATE_TASK",
+          "confidence": 0.7173996448233413
+        },
+        {
+          "label": "CREATE_CALENDAR_EVENT",
+          "confidence": 0.049758887878892225
+        },
+        {
+          "label": "GET_CALENDAR",
+          "confidence": 0.046173384493194566
+        }
+      ]
+    },
+    "set_b": {
+      "prediction": "TRAINING",
+      "confidence": 0.20703385710386626,
+      "top_predictions": [
+        {
+          "label": "TRAINING",
+          "confidence": 0.20703385710386626
+        },
+        {
+          "label": "INTERVIEW",
+          "confidence": 0.10215235641869819
+        },
+        {
+          "label": "ASSIGNMENT",
+          "confidence": 0.09084584307320562
+        }
+      ]
+    }
+  },
+  {
+    "text": "pay college semester tuition fee before deadline",
+    "set_a": {
+      "prediction": "CREATE_TASK",
+      "confidence": 0.338689719924267,
+      "top_predictions": [
+        {
+          "label": "CREATE_TASK",
+          "confidence": 0.338689719924267
+        },
+        {
+          "label": "UPDATE_TASK",
+          "confidence": 0.18544577092842737
+        },
+        {
+          "label": "CREATE_CALENDAR_EVENT",
+          "confidence": 0.09617330577050395
+        }
+      ]
+    },
+    "set_b": {
+      "prediction": "FEE",
+      "confidence": 0.7412194749192177,
+      "top_predictions": [
+        {
+          "label": "FEE",
+          "confidence": 0.7412194749192177
+        },
+        {
+          "label": "OTHER",
+          "confidence": 0.03945117179427079
+        },
+        {
+          "label": "ASSIGNMENT",
+          "confidence": 0.03144968403343959
+        }
+      ]
+    }
+  },
+  {
+    "text": "exam fee payment portal closes tonight",
+    "set_a": {
+      "prediction": "CREATE_CALENDAR_EVENT",
+      "confidence": 0.2208763838451261,
+      "top_predictions": [
+        {
+          "label": "CREATE_CALENDAR_EVENT",
+          "confidence": 0.2208763838451261
+        },
+        {
+          "label": "CANCEL_TASK",
+          "confidence": 0.1891265310109074
+        },
+        {
+          "label": "UPDATE_TASK",
+          "confidence": 0.1664095987676384
+        }
+      ]
+    },
+    "set_b": {
+      "prediction": "FEE",
+      "confidence": 0.6172564372134229,
+      "top_predictions": [
+        {
+          "label": "FEE",
+          "confidence": 0.6172564372134229
+        },
+        {
+          "label": "APPLICATION",
+          "confidence": 0.07186904869228802
+        },
+        {
+          "label": "EXAM",
+          "confidence": 0.048484432560729505
+        }
+      ]
+    }
+  },
+  {
+    "text": "fill the student feedback form for semester 4",
+    "set_a": {
+      "prediction": "CREATE_TASK",
+      "confidence": 0.4649528470353137,
+      "top_predictions": [
+        {
+          "label": "CREATE_TASK",
+          "confidence": 0.4649528470353137
+        },
+        {
+          "label": "CREATE_REMINDER",
+          "confidence": 0.14004996259440844
+        },
+        {
+          "label": "CANCEL_TASK",
+          "confidence": 0.0873100934122075
+        }
+      ]
+    },
+    "set_b": {
+      "prediction": "FORM",
+      "confidence": 0.55583101212526,
+      "top_predictions": [
+        {
+          "label": "FORM",
+          "confidence": 0.55583101212526
+        },
+        {
+          "label": "FEEDBACK",
+          "confidence": 0.30822316178575737
+        },
+        {
+          "label": "OTHER",
+          "confidence": 0.02004966849817421
+        }
+      ]
+    }
+  },
+  {
+    "text": "submit course feedback survey",
+    "set_a": {
+      "prediction": "CREATE_TASK",
+      "confidence": 0.39809725700060256,
+      "top_predictions": [
+        {
+          "label": "CREATE_TASK",
+          "confidence": 0.39809725700060256
+        },
+        {
+          "label": "CREATE_REMINDER",
+          "confidence": 0.1433005559763301
+        },
+        {
+          "label": "GENERAL_CHAT",
+          "confidence": 0.12389335303417648
+        }
+      ]
+    },
+    "set_b": {
+      "prediction": "FEEDBACK",
+      "confidence": 0.7007943547342556,
+      "top_predictions": [
+        {
+          "label": "FEEDBACK",
+          "confidence": 0.7007943547342556
+        },
+        {
+          "label": "ASSIGNMENT",
+          "confidence": 0.061964207417379055
+        },
+        {
+          "label": "OTHER",
+          "confidence": 0.03332642030974966
+        }
+      ]
+    }
+  },
+  {
+    "text": "scholarship application for national merit scheme",
+    "set_a": {
+      "prediction": "CREATE_TASK",
+      "confidence": 0.45529641627404266,
+      "top_predictions": [
+        {
+          "label": "CREATE_TASK",
+          "confidence": 0.45529641627404266
+        },
+        {
+          "label": "CREATE_REMINDER",
+          "confidence": 0.15880512737238928
+        },
+        {
+          "label": "SEARCH_EMAIL",
+          "confidence": 0.12528481043820863
+        }
+      ]
+    },
+    "set_b": {
+      "prediction": "APPLICATION",
+      "confidence": 0.26972814197182043,
+      "top_predictions": [
+        {
+          "label": "APPLICATION",
+          "confidence": 0.26972814197182043
+        },
+        {
+          "label": "OTHER",
+          "confidence": 0.1059331426231621
+        },
+        {
+          "label": "FORM",
+          "confidence": 0.08964696345610114
+        }
+      ]
+    }
+  },
+  {
+    "text": "internship application for software developer role",
+    "set_a": {
+      "prediction": "CREATE_TASK",
+      "confidence": 0.529152453264817,
+      "top_predictions": [
+        {
+          "label": "CREATE_TASK",
+          "confidence": 0.529152453264817
+        },
+        {
+          "label": "CREATE_REMINDER",
+          "confidence": 0.13677551405822452
+        },
+        {
+          "label": "CANCEL_TASK",
+          "confidence": 0.0779855029383179
+        }
+      ]
+    },
+    "set_b": {
+      "prediction": "APPLICATION",
+      "confidence": 0.6522281724959277,
+      "top_predictions": [
+        {
+          "label": "APPLICATION",
+          "confidence": 0.6522281724959277
+        },
+        {
+          "label": "FORM",
+          "confidence": 0.053272691041851124
+        },
+        {
+          "label": "OTHER",
+          "confidence": 0.04418922918157698
+        }
+      ]
+    }
+  },
+  {
+    "text": "collect hall ticket from administrative block",
+    "set_a": {
+      "prediction": "SEARCH_EMAIL",
+      "confidence": 0.49876942022579696,
+      "top_predictions": [
+        {
+          "label": "SEARCH_EMAIL",
+          "confidence": 0.49876942022579696
+        },
+        {
+          "label": "CREATE_CALENDAR_EVENT",
+          "confidence": 0.11275259666236825
+        },
+        {
+          "label": "CANCEL_TASK",
+          "confidence": 0.1037161927207228
+        }
+      ]
+    },
+    "set_b": {
+      "prediction": "TRAINING",
+      "confidence": 0.12073397566329405,
+      "top_predictions": [
+        {
+          "label": "TRAINING",
+          "confidence": 0.12073397566329405
+        },
+        {
+          "label": "MEETING",
+          "confidence": 0.11655816985133204
+        },
+        {
+          "label": "INTERVIEW",
+          "confidence": 0.10748311256419583
+        }
+      ]
+    }
+  },
+  {
+    "text": "download admit card for entrance exam",
+    "set_a": {
+      "prediction": "CREATE_CALENDAR_EVENT",
+      "confidence": 0.5134381636480424,
+      "top_predictions": [
+        {
+          "label": "CREATE_CALENDAR_EVENT",
+          "confidence": 0.5134381636480424
+        },
+        {
+          "label": "CREATE_TASK",
+          "confidence": 0.2072092219279953
+        },
+        {
+          "label": "CREATE_REMINDER",
+          "confidence": 0.1470296132004931
+        }
+      ]
+    },
+    "set_b": {
+      "prediction": "EXAM",
+      "confidence": 0.215996759371473,
+      "top_predictions": [
+        {
+          "label": "EXAM",
+          "confidence": 0.215996759371473
+        },
+        {
+          "label": "OTHER",
+          "confidence": 0.10312336336127904
+        },
+        {
+          "label": "FORM",
+          "confidence": 0.10051861473678453
+        }
+      ]
+    }
+  },
+  {
+    "text": "data structures lecture Monday 9am",
+    "set_a": {
+      "prediction": "CREATE_TASK",
+      "confidence": 0.1758454827195713,
+      "top_predictions": [
+        {
+          "label": "CREATE_TASK",
+          "confidence": 0.1758454827195713
+        },
+        {
+          "label": "UPDATE_TASK",
+          "confidence": 0.1642415966373053
+        },
+        {
+          "label": "GENERAL_CHAT",
+          "confidence": 0.1498732533195709
+        }
+      ]
+    },
+    "set_b": {
+      "prediction": "OTHER",
+      "confidence": 0.18747875317691456,
+      "top_predictions": [
+        {
+          "label": "OTHER",
+          "confidence": 0.18747875317691456
+        },
+        {
+          "label": "INTERVIEW",
+          "confidence": 0.08464753053992666
+        },
+        {
+          "label": "CLASS",
+          "confidence": 0.07638541990915511
+        }
+      ]
+    }
+  },
+  {
+    "text": "physics class rescheduled to classroom 302",
+    "set_a": {
+      "prediction": "UPDATE_TASK",
+      "confidence": 0.9846368683367168,
+      "top_predictions": [
+        {
+          "label": "UPDATE_TASK",
+          "confidence": 0.9846368683367168
+        },
+        {
+          "label": "CREATE_REMINDER",
+          "confidence": 0.006004662151763188
+        },
+        {
+          "label": "CREATE_TASK",
+          "confidence": 0.005917867864910225
+        }
+      ]
+    },
+    "set_b": {
+      "prediction": "OTHER",
+      "confidence": 0.11696966690976167,
+      "top_predictions": [
+        {
+          "label": "OTHER",
+          "confidence": 0.11696966690976167
+        },
+        {
+          "label": "EVENT",
+          "confidence": 0.10763372970655442
+        },
+        {
+          "label": "EXAM",
+          "confidence": 0.10701173301761487
+        }
+      ]
+    }
+  },
+  {
+    "text": "annual alumni meet 2026",
+    "set_a": {
+      "prediction": "GENERAL_CHAT",
+      "confidence": 0.18952616779934947,
+      "top_predictions": [
+        {
+          "label": "GENERAL_CHAT",
+          "confidence": 0.18952616779934947
+        },
+        {
+          "label": "SEARCH_EMAIL",
+          "confidence": 0.14921254664326036
+        },
+        {
+          "label": "UPDATE_TASK",
+          "confidence": 0.10274518636840467
+        }
+      ]
+    },
+    "set_b": {
+      "prediction": "EVENT",
+      "confidence": 0.1384210087352704,
+      "top_predictions": [
+        {
+          "label": "EVENT",
+          "confidence": 0.1384210087352704
+        },
+        {
+          "label": "TRAINING",
+          "confidence": 0.10564386638627161
+        },
+        {
+          "label": "APPLICATION",
+          "confidence": 0.0934507902807134
+        }
+      ]
+    }
+  },
+  {
+    "text": "cultural festival inauguration evening",
+    "set_a": {
+      "prediction": "GENERAL_CHAT",
+      "confidence": 0.23550268745769162,
+      "top_predictions": [
+        {
+          "label": "GENERAL_CHAT",
+          "confidence": 0.23550268745769162
+        },
+        {
+          "label": "GET_PANCHANG",
+          "confidence": 0.216180799275128
+        },
+        {
+          "label": "CREATE_CALENDAR_EVENT",
+          "confidence": 0.08103808720053453
+        }
+      ]
+    },
+    "set_b": {
+      "prediction": "EVENT",
+      "confidence": 0.14892894814239288,
+      "top_predictions": [
+        {
+          "label": "EVENT",
+          "confidence": 0.14892894814239288
+        },
+        {
+          "label": "OTHER",
+          "confidence": 0.13276826805746825
+        },
+        {
+          "label": "MEETING",
+          "confidence": 0.08221683161208378
+        }
+      ]
+    }
+  },
+  {
+    "text": "weekly badminton game with friends",
+    "set_a": {
+      "prediction": "COMPLETE_TASK",
+      "confidence": 0.3576632613523851,
+      "top_predictions": [
+        {
+          "label": "COMPLETE_TASK",
+          "confidence": 0.3576632613523851
+        },
+        {
+          "label": "GENERAL_CHAT",
+          "confidence": 0.18100208564003295
+        },
+        {
+          "label": "SEARCH_EMAIL",
+          "confidence": 0.16448905074035763
+        }
+      ]
+    },
+    "set_b": {
+      "prediction": "APPLICATION",
+      "confidence": 0.15413572755539864,
+      "top_predictions": [
+        {
+          "label": "APPLICATION",
+          "confidence": 0.15413572755539864
+        },
+        {
+          "label": "WORKSHOP",
+          "confidence": 0.12079678769254623
+        },
+        {
+          "label": "EXAM",
+          "confidence": 0.10445673757538064
+        }
+      ]
+    }
+  },
+  {
+    "text": "buy milk and bread on the way home",
+    "set_a": {
+      "prediction": "CREATE_CALENDAR_EVENT",
+      "confidence": 0.2523912624801488,
+      "top_predictions": [
+        {
+          "label": "CREATE_CALENDAR_EVENT",
+          "confidence": 0.2523912624801488
+        },
+        {
+          "label": "CREATE_TASK",
+          "confidence": 0.14354117636991925
+        },
+        {
+          "label": "CANCEL_TASK",
+          "confidence": 0.08911829760377113
+        }
+      ]
+    },
+    "set_b": {
+      "prediction": "FEEDBACK",
+      "confidence": 0.23274500858074665,
+      "top_predictions": [
+        {
+          "label": "FEEDBACK",
+          "confidence": 0.23274500858074665
+        },
+        {
+          "label": "OTHER",
+          "confidence": 0.11590512495491885
+        },
+        {
+          "label": "WORKSHOP",
+          "confidence": 0.11241267100630475
+        }
+      ]
+    }
+  },
+  {
+    "text": "clean the bedroom desk",
+    "set_a": {
+      "prediction": "SEARCH_EMAIL",
+      "confidence": 0.2913693278928048,
+      "top_predictions": [
+        {
+          "label": "SEARCH_EMAIL",
+          "confidence": 0.2913693278928048
+        },
+        {
+          "label": "CANCEL_TASK",
+          "confidence": 0.22526595505474023
+        },
+        {
+          "label": "COMPLETE_TASK",
+          "confidence": 0.1900597828527141
+        }
+      ]
+    },
+    "set_b": {
+      "prediction": "OTHER",
+      "confidence": 0.17715171600019267,
+      "top_predictions": [
+        {
+          "label": "OTHER",
+          "confidence": 0.17715171600019267
+        },
+        {
+          "label": "MEETING",
+          "confidence": 0.1091716515155114
+        },
+        {
+          "label": "FORM",
+          "confidence": 0.10596233401023213
+        }
+      ]
+    }
+  },
+  {
+    "text": "car service appointment Saturday morning",
+    "set_a": {
+      "prediction": "GENERAL_CHAT",
+      "confidence": 0.2363551498018796,
+      "top_predictions": [
+        {
+          "label": "GENERAL_CHAT",
+          "confidence": 0.2363551498018796
+        },
+        {
+          "label": "CREATE_CALENDAR_EVENT",
+          "confidence": 0.16445849318275074
+        },
+        {
+          "label": "UPDATE_TASK",
+          "confidence": 0.13646362819921648
+        }
+      ]
+    },
+    "set_b": {
+      "prediction": "OTHER",
+      "confidence": 0.17905944606820634,
+      "top_predictions": [
+        {
+          "label": "OTHER",
+          "confidence": 0.17905944606820634
+        },
+        {
+          "label": "INTERVIEW",
+          "confidence": 0.09646861191388396
+        },
+        {
+          "label": "APPLICATION",
+          "confidence": 0.08222421606701238
+        }
+      ]
+    }
+  },
+  {
+    "text": "dentist checkup next Tuesday at 5pm",
+    "set_a": {
+      "prediction": "CREATE_CALENDAR_EVENT",
+      "confidence": 0.4806597203635909,
+      "top_predictions": [
+        {
+          "label": "CREATE_CALENDAR_EVENT",
+          "confidence": 0.4806597203635909
+        },
+        {
+          "label": "CREATE_TASK",
+          "confidence": 0.10698411514768602
+        },
+        {
+          "label": "CREATE_REMINDER",
+          "confidence": 0.06929095927927995
+        }
+      ]
+    },
+    "set_b": {
+      "prediction": "INTERVIEW",
+      "confidence": 0.17223248990500006,
+      "top_predictions": [
+        {
+          "label": "INTERVIEW",
+          "confidence": 0.17223248990500006
+        },
+        {
+          "label": "ASSIGNMENT",
+          "confidence": 0.13694456772568486
+        },
+        {
+          "label": "MEETING",
+          "confidence": 0.12116797456408841
+        }
+      ]
+    }
+  },
+  {
+    "text": "flight to Bangalore departure at 6:30am",
+    "set_a": {
+      "prediction": "CREATE_CALENDAR_EVENT",
+      "confidence": 0.7115577153289815,
+      "top_predictions": [
+        {
+          "label": "CREATE_CALENDAR_EVENT",
+          "confidence": 0.7115577153289815
+        },
+        {
+          "label": "UPDATE_TASK",
+          "confidence": 0.20593053933718622
+        },
+        {
+          "label": "CREATE_REMINDER",
+          "confidence": 0.058910208096116246
+        }
+      ]
+    },
+    "set_b": {
+      "prediction": "OTHER",
+      "confidence": 0.11890028114041994,
+      "top_predictions": [
+        {
+          "label": "OTHER",
+          "confidence": 0.11890028114041994
+        },
+        {
+          "label": "INTERVIEW",
+          "confidence": 0.11820128654657538
+        },
+        {
+          "label": "MEETING",
+          "confidence": 0.09638505936874067
+        }
+      ]
+    }
+  },
+  {
+    "text": "hotel reservation confirmation details",
+    "set_a": {
+      "prediction": "GENERAL_CHAT",
+      "confidence": 0.21549730678548845,
+      "top_predictions": [
+        {
+          "label": "GENERAL_CHAT",
+          "confidence": 0.21549730678548845
+        },
+        {
+          "label": "UPDATE_TASK",
+          "confidence": 0.11303058716022929
+        },
+        {
+          "label": "CREATE_TASK",
+          "confidence": 0.10938009113621562
+        }
+      ]
+    },
+    "set_b": {
+      "prediction": "OTHER",
+      "confidence": 0.12203955874298728,
+      "top_predictions": [
+        {
+          "label": "OTHER",
+          "confidence": 0.12203955874298728
+        },
+        {
+          "label": "TRAINING",
+          "confidence": 0.10427268536757052
+        },
+        {
+          "label": "MEETING",
+          "confidence": 0.09633340553236906
+        }
+      ]
+    }
+  },
+  {
+    "text": "read 20 pages of clean code",
+    "set_a": {
+      "prediction": "UPDATE_TASK",
+      "confidence": 0.34684757752925227,
+      "top_predictions": [
+        {
+          "label": "UPDATE_TASK",
+          "confidence": 0.34684757752925227
+        },
+        {
+          "label": "GENERAL_CHAT",
+          "confidence": 0.14181682202809032
+        },
+        {
+          "label": "CREATE_TASK",
+          "confidence": 0.06309246499607528
+        }
+      ]
+    },
+    "set_b": {
+      "prediction": "EXAM",
+      "confidence": 0.1128940466305137,
+      "top_predictions": [
+        {
+          "label": "EXAM",
+          "confidence": 0.1128940466305137
+        },
+        {
+          "label": "OTHER",
+          "confidence": 0.11250160236865411
+        },
+        {
+          "label": "EVENT",
+          "confidence": 0.10017787551830616
+        }
+      ]
+    }
+  },
+  {
+    "text": "meditation for 15 minutes before sleep",
+    "set_a": {
+      "prediction": "CREATE_REMINDER",
+      "confidence": 0.3294513920441929,
+      "top_predictions": [
+        {
+          "label": "CREATE_REMINDER",
+          "confidence": 0.3294513920441929
+        },
+        {
+          "label": "CREATE_TASK",
+          "confidence": 0.17854764227972864
+        },
+        {
+          "label": "GENERAL_CHAT",
+          "confidence": 0.07445815762190018
+        }
+      ]
+    },
+    "set_b": {
+      "prediction": "APPLICATION",
+      "confidence": 0.12547693541041396,
+      "top_predictions": [
+        {
+          "label": "APPLICATION",
+          "confidence": 0.12547693541041396
+        },
+        {
+          "label": "OTHER",
+          "confidence": 0.0960147536325999
+        },
+        {
+          "label": "FEEDBACK",
+          "confidence": 0.08757833789846399
+        }
+      ]
+    }
+  },
+  {
+    "text": "gym leg workout at 6pm",
+    "set_a": {
+      "prediction": "CREATE_CALENDAR_EVENT",
+      "confidence": 0.247386344826682,
+      "top_predictions": [
+        {
+          "label": "CREATE_CALENDAR_EVENT",
+          "confidence": 0.247386344826682
+        },
+        {
+          "label": "UPDATE_TASK",
+          "confidence": 0.12722774388807287
+        },
+        {
+          "label": "CREATE_TASK",
+          "confidence": 0.1194973047349502
+        }
+      ]
+    },
+    "set_b": {
+      "prediction": "MEETING",
+      "confidence": 0.2652303600329365,
+      "top_predictions": [
+        {
+          "label": "MEETING",
+          "confidence": 0.2652303600329365
+        },
+        {
+          "label": "INTERVIEW",
+          "confidence": 0.16212084953612008
+        },
+        {
+          "label": "OTHER",
+          "confidence": 0.07486717861805377
+        }
+      ]
+    }
+  },
+  {
+    "text": "morning yoga session at sunrise",
+    "set_a": {
+      "prediction": "CREATE_CALENDAR_EVENT",
+      "confidence": 0.5865484385216314,
+      "top_predictions": [
+        {
+          "label": "CREATE_CALENDAR_EVENT",
+          "confidence": 0.5865484385216314
+        },
+        {
+          "label": "CREATE_REMINDER",
+          "confidence": 0.0685954156595081
+        },
+        {
+          "label": "UPDATE_TASK",
+          "confidence": 0.061986336085366446
+        }
+      ]
+    },
+    "set_b": {
+      "prediction": "MEETING",
+      "confidence": 0.17048966928484446,
+      "top_predictions": [
+        {
+          "label": "MEETING",
+          "confidence": 0.17048966928484446
+        },
+        {
+          "label": "OTHER",
+          "confidence": 0.12297867446529472
+        },
+        {
+          "label": "INTERVIEW",
+          "confidence": 0.08576482151339668
+        }
+      ]
+    }
+  },
+  {
+    "text": "renew passport document application",
+    "set_a": {
+      "prediction": "UPDATE_TASK",
+      "confidence": 0.23327746453712075,
+      "top_predictions": [
+        {
+          "label": "UPDATE_TASK",
+          "confidence": 0.23327746453712075
+        },
+        {
+          "label": "CREATE_TASK",
+          "confidence": 0.2122076752906715
+        },
+        {
+          "label": "COMPLETE_TASK",
+          "confidence": 0.16608535368346036
+        }
+      ]
+    },
+    "set_b": {
+      "prediction": "APPLICATION",
+      "confidence": 0.29168370906226904,
+      "top_predictions": [
+        {
+          "label": "APPLICATION",
+          "confidence": 0.29168370906226904
+        },
+        {
+          "label": "FORM",
+          "confidence": 0.1187372455932609
+        },
+        {
+          "label": "OTHER",
+          "confidence": 0.0852488538302228
+        }
+      ]
+    }
+  },
+  {
+    "text": "submit tax return documents before July 31st",
+    "set_a": {
+      "prediction": "CREATE_REMINDER",
+      "confidence": 0.22473168879032407,
+      "top_predictions": [
+        {
+          "label": "CREATE_REMINDER",
+          "confidence": 0.22473168879032407
+        },
+        {
+          "label": "CREATE_TASK",
+          "confidence": 0.22042212031765096
+        },
+        {
+          "label": "GENERAL_CHAT",
+          "confidence": 0.14325164119719644
+        }
+      ]
+    },
+    "set_b": {
+      "prediction": "ASSIGNMENT",
+      "confidence": 0.22344146154943167,
+      "top_predictions": [
+        {
+          "label": "ASSIGNMENT",
+          "confidence": 0.22344146154943167
+        },
+        {
+          "label": "APPLICATION",
+          "confidence": 0.13094492120433965
+        },
+        {
+          "label": "OTHER",
+          "confidence": 0.10707056248855656
+        }
+      ]
+    }
+  },
+  {
+    "text": "review pull request for authentication service",
+    "set_a": {
+      "prediction": "CREATE_CALENDAR_EVENT",
+      "confidence": 0.4112567424326262,
+      "top_predictions": [
+        {
+          "label": "CREATE_CALENDAR_EVENT",
+          "confidence": 0.4112567424326262
+        },
+        {
+          "label": "CREATE_REMINDER",
+          "confidence": 0.16813523109692194
+        },
+        {
+          "label": "CREATE_TASK",
+          "confidence": 0.1447887711222379
+        }
+      ]
+    },
+    "set_b": {
+      "prediction": "OTHER",
+      "confidence": 0.209453409321755,
+      "top_predictions": [
+        {
+          "label": "OTHER",
+          "confidence": 0.209453409321755
+        },
+        {
+          "label": "MEETING",
+          "confidence": 0.109503897332153
+        },
+        {
+          "label": "APPLICATION",
+          "confidence": 0.08875367360833022
+        }
+      ]
+    }
+  },
+  {
+    "text": "deploy new release to staging environment",
+    "set_a": {
+      "prediction": "UPDATE_TASK",
+      "confidence": 0.3645609830495597,
+      "top_predictions": [
+        {
+          "label": "UPDATE_TASK",
+          "confidence": 0.3645609830495597
+        },
+        {
+          "label": "CREATE_TASK",
+          "confidence": 0.3494586060202952
+        },
+        {
+          "label": "SYNC_EMAIL",
+          "confidence": 0.1780024325331683
+        }
+      ]
+    },
+    "set_b": {
+      "prediction": "OTHER",
+      "confidence": 0.13704613705377988,
+      "top_predictions": [
+        {
+          "label": "OTHER",
+          "confidence": 0.13704613705377988
+        },
+        {
+          "label": "WORKSHOP",
+          "confidence": 0.12816154175082908
+        },
+        {
+          "label": "EXAM",
+          "confidence": 0.08596111968806819
+        }
+      ]
+    }
+  },
+  {
+    "text": "quarterly business review presentation prep",
+    "set_a": {
+      "prediction": "CREATE_CALENDAR_EVENT",
+      "confidence": 0.5683995342418029,
+      "top_predictions": [
+        {
+          "label": "CREATE_CALENDAR_EVENT",
+          "confidence": 0.5683995342418029
+        },
+        {
+          "label": "CREATE_TASK",
+          "confidence": 0.1367290373562946
+        },
+        {
+          "label": "CANCEL_TASK",
+          "confidence": 0.05159396258681228
+        }
+      ]
+    },
+    "set_b": {
+      "prediction": "MEETING",
+      "confidence": 0.1446094158220213,
+      "top_predictions": [
+        {
+          "label": "MEETING",
+          "confidence": 0.1446094158220213
+        },
+        {
+          "label": "OTHER",
+          "confidence": 0.11668084878774931
+        },
+        {
+          "label": "APPLICATION",
+          "confidence": 0.08342772080752704
+        }
+      ]
+    }
+  },
+  {
+    "text": "client product demo on Thursday at 2pm",
+    "set_a": {
+      "prediction": "CREATE_CALENDAR_EVENT",
+      "confidence": 0.6767944141214965,
+      "top_predictions": [
+        {
+          "label": "CREATE_CALENDAR_EVENT",
+          "confidence": 0.6767944141214965
+        },
+        {
+          "label": "CREATE_REMINDER",
+          "confidence": 0.06961965578359218
+        },
+        {
+          "label": "GENERAL_CHAT",
+          "confidence": 0.04510363241043113
+        }
+      ]
+    },
+    "set_b": {
+      "prediction": "INTERVIEW",
+      "confidence": 0.21355883633845052,
+      "top_predictions": [
+        {
+          "label": "INTERVIEW",
+          "confidence": 0.21355883633845052
+        },
+        {
+          "label": "WORKSHOP",
+          "confidence": 0.08757326918970566
+        },
+        {
+          "label": "OTHER",
+          "confidence": 0.08384968744762604
+        }
+      ]
+    }
+  },
+  {
+    "text": "prepare slides for conference speech",
+    "set_a": {
+      "prediction": "CREATE_TASK",
+      "confidence": 0.6605327961211115,
+      "top_predictions": [
+        {
+          "label": "CREATE_TASK",
+          "confidence": 0.6605327961211115
+        },
+        {
+          "label": "CREATE_REMINDER",
+          "confidence": 0.17377897336038528
+        },
+        {
+          "label": "CREATE_CALENDAR_EVENT",
+          "confidence": 0.0485706110537894
+        }
+      ]
+    },
+    "set_b": {
+      "prediction": "INTERVIEW",
+      "confidence": 0.18060763419425202,
+      "top_predictions": [
+        {
+          "label": "INTERVIEW",
+          "confidence": 0.18060763419425202
+        },
+        {
+          "label": "OTHER",
+          "confidence": 0.1712141334732689
+        },
+        {
+          "label": "APPLICATION",
+          "confidence": 0.13637991049661907
+        }
+      ]
+    }
+  },
+  {
+    "text": "attend blockchain webinar on Zoom",
+    "set_a": {
+      "prediction": "CREATE_CALENDAR_EVENT",
+      "confidence": 0.34606271948369,
+      "top_predictions": [
+        {
+          "label": "CREATE_CALENDAR_EVENT",
+          "confidence": 0.34606271948369
+        },
+        {
+          "label": "CREATE_REMINDER",
+          "confidence": 0.17406031001516456
+        },
+        {
+          "label": "CREATE_TASK",
+          "confidence": 0.10392047904914464
+        }
+      ]
+    },
+    "set_b": {
+      "prediction": "MEETING",
+      "confidence": 0.1413872136447964,
+      "top_predictions": [
+        {
+          "label": "MEETING",
+          "confidence": 0.1413872136447964
+        },
+        {
+          "label": "INTERVIEW",
+          "confidence": 0.13170408768388556
+        },
+        {
+          "label": "WORKSHOP",
+          "confidence": 0.10681254940296114
+        }
+      ]
+    }
+  },
+  {
+    "text": "parent teacher meeting Friday 10am",
+    "set_a": {
+      "prediction": "CREATE_CALENDAR_EVENT",
+      "confidence": 0.19031252755005595,
+      "top_predictions": [
+        {
+          "label": "CREATE_CALENDAR_EVENT",
+          "confidence": 0.19031252755005595
+        },
+        {
+          "label": "UPDATE_TASK",
+          "confidence": 0.13693809853728867
+        },
+        {
+          "label": "CREATE_TASK",
+          "confidence": 0.13193042730592713
+        }
+      ]
+    },
+    "set_b": {
+      "prediction": "MEETING",
+      "confidence": 0.22657605144845375,
+      "top_predictions": [
+        {
+          "label": "MEETING",
+          "confidence": 0.22657605144845375
+        },
+        {
+          "label": "OTHER",
+          "confidence": 0.17795026553028634
+        },
+        {
+          "label": "APPLICATION",
+          "confidence": 0.08261041823677394
+        }
+      ]
+    }
+  },
+  {
+    "text": "blood donation camp registration",
+    "set_a": {
+      "prediction": "GENERAL_CHAT",
+      "confidence": 0.21549730678548845,
+      "top_predictions": [
+        {
+          "label": "GENERAL_CHAT",
+          "confidence": 0.21549730678548845
+        },
+        {
+          "label": "UPDATE_TASK",
+          "confidence": 0.11303058716022929
+        },
+        {
+          "label": "CREATE_TASK",
+          "confidence": 0.10938009113621562
+        }
+      ]
+    },
+    "set_b": {
+      "prediction": "FORM",
+      "confidence": 0.20842930855456357,
+      "top_predictions": [
+        {
+          "label": "FORM",
+          "confidence": 0.20842930855456357
+        },
+        {
+          "label": "WORKSHOP",
+          "confidence": 0.13163446654435937
+        },
+        {
+          "label": "EVENT",
+          "confidence": 0.09205898883624114
+        }
+      ]
+    }
+  },
+  {
+    "text": "order new laptop charger from Amazon",
+    "set_a": {
+      "prediction": "SEARCH_EMAIL",
+      "confidence": 0.4219742063886072,
+      "top_predictions": [
+        {
+          "label": "SEARCH_EMAIL",
+          "confidence": 0.4219742063886072
+        },
+        {
+          "label": "CREATE_TASK",
+          "confidence": 0.11957441232511026
+        },
+        {
+          "label": "GENERAL_CHAT",
+          "confidence": 0.11476714525981897
+        }
+      ]
+    },
+    "set_b": {
+      "prediction": "APPLICATION",
+      "confidence": 0.16240386574518778,
+      "top_predictions": [
+        {
+          "label": "APPLICATION",
+          "confidence": 0.16240386574518778
+        },
+        {
+          "label": "WORKSHOP",
+          "confidence": 0.10785542389749952
+        },
+        {
+          "label": "OTHER",
+          "confidence": 0.10578124735812494
+        }
+      ]
+    }
+  },
+  {
+    "text": "pay electricity bill before due date",
+    "set_a": {
+      "prediction": "UPDATE_TASK",
+      "confidence": 0.26853074267792687,
+      "top_predictions": [
+        {
+          "label": "UPDATE_TASK",
+          "confidence": 0.26853074267792687
+        },
+        {
+          "label": "CREATE_TASK",
+          "confidence": 0.2519491820015985
+        },
+        {
+          "label": "GET_PANCHANG",
+          "confidence": 0.14332794154040152
+        }
+      ]
+    },
+    "set_b": {
+      "prediction": "FEE",
+      "confidence": 0.33543033245571513,
+      "top_predictions": [
+        {
+          "label": "FEE",
+          "confidence": 0.33543033245571513
+        },
+        {
+          "label": "OTHER",
+          "confidence": 0.17884328607465305
+        },
+        {
+          "label": "ASSIGNMENT",
+          "confidence": 0.0716322651033497
+        }
+      ]
+    }
+  },
+  {
+    "text": "renew car insurance policy online",
+    "set_a": {
+      "prediction": "GENERAL_CHAT",
+      "confidence": 0.21549730678548845,
+      "top_predictions": [
+        {
+          "label": "GENERAL_CHAT",
+          "confidence": 0.21549730678548845
+        },
+        {
+          "label": "UPDATE_TASK",
+          "confidence": 0.11303058716022929
+        },
+        {
+          "label": "CREATE_TASK",
+          "confidence": 0.10938009113621562
+        }
+      ]
+    },
+    "set_b": {
+      "prediction": "TRAINING",
+      "confidence": 0.17270278275466652,
+      "top_predictions": [
+        {
+          "label": "TRAINING",
+          "confidence": 0.17270278275466652
+        },
+        {
+          "label": "OTHER",
+          "confidence": 0.10846784043807779
+        },
+        {
+          "label": "FORM",
+          "confidence": 0.09555676344553246
+        }
+      ]
+    }
+  },
+  {
+    "text": "return library books before fine accumulates",
+    "set_a": {
+      "prediction": "GENERAL_CHAT",
+      "confidence": 0.18510765056453768,
+      "top_predictions": [
+        {
+          "label": "GENERAL_CHAT",
+          "confidence": 0.18510765056453768
+        },
+        {
+          "label": "CREATE_REMINDER",
+          "confidence": 0.16890476205868618
+        },
+        {
+          "label": "UPDATE_TASK",
+          "confidence": 0.0985515582621019
+        }
+      ]
+    },
+    "set_b": {
+      "prediction": "OTHER",
+      "confidence": 0.3195347976447696,
+      "top_predictions": [
+        {
+          "label": "OTHER",
+          "confidence": 0.3195347976447696
+        },
+        {
+          "label": "FEE",
+          "confidence": 0.10374774178867902
+        },
+        {
+          "label": "APPLICATION",
+          "confidence": 0.07346454724993418
+        }
+      ]
+    }
+  },
+  {
+    "text": "submit expense reimbursement form",
+    "set_a": {
+      "prediction": "CREATE_TASK",
+      "confidence": 0.674016312382576,
+      "top_predictions": [
+        {
+          "label": "CREATE_TASK",
+          "confidence": 0.674016312382576
+        },
+        {
+          "label": "CREATE_REMINDER",
+          "confidence": 0.08234949658072901
+        },
+        {
+          "label": "COMPLETE_TASK",
+          "confidence": 0.06060620588300825
+        }
+      ]
+    },
+    "set_b": {
+      "prediction": "FORM",
+      "confidence": 0.26075134493255353,
+      "top_predictions": [
+        {
+          "label": "FORM",
+          "confidence": 0.26075134493255353
+        },
+        {
+          "label": "ASSIGNMENT",
+          "confidence": 0.1906356517775666
+        },
+        {
+          "label": "FEEDBACK",
+          "confidence": 0.12547354160781907
+        }
+      ]
+    }
+  },
+  {
+    "text": "update resume with latest project details",
+    "set_a": {
+      "prediction": "UPDATE_TASK",
+      "confidence": 0.606346100066317,
+      "top_predictions": [
+        {
+          "label": "UPDATE_TASK",
+          "confidence": 0.606346100066317
+        },
+        {
+          "label": "COMPLETE_TASK",
+          "confidence": 0.09395197241265967
+        },
+        {
+          "label": "SYNC_EMAIL",
+          "confidence": 0.06429345345564508
+        }
+      ]
+    },
+    "set_b": {
+      "prediction": "APPLICATION",
+      "confidence": 0.13655862622430437,
+      "top_predictions": [
+        {
+          "label": "APPLICATION",
+          "confidence": 0.13655862622430437
+        },
+        {
+          "label": "ASSIGNMENT",
+          "confidence": 0.12028598602464732
+        },
+        {
+          "label": "MEETING",
+          "confidence": 0.1072199434339739
+        }
+      ]
+    }
+  },
+  {
+    "text": "solve 3 leetcode problems on graphs",
+    "set_a": {
+      "prediction": "CREATE_CALENDAR_EVENT",
+      "confidence": 0.8883525067863587,
+      "top_predictions": [
+        {
+          "label": "CREATE_CALENDAR_EVENT",
+          "confidence": 0.8883525067863587
+        },
+        {
+          "label": "CREATE_REMINDER",
+          "confidence": 0.02754065928841702
+        },
+        {
+          "label": "CREATE_TASK",
+          "confidence": 0.017907364874298816
+        }
+      ]
+    },
+    "set_b": {
+      "prediction": "WORKSHOP",
+      "confidence": 0.11273434754393524,
+      "top_predictions": [
+        {
+          "label": "WORKSHOP",
+          "confidence": 0.11273434754393524
+        },
+        {
+          "label": "OTHER",
+          "confidence": 0.10774259750873534
+        },
+        {
+          "label": "EVENT",
+          "confidence": 0.09580365100518196
+        }
+      ]
+    }
+  },
+  {
+    "text": "practice mock interview on system design",
+    "set_a": {
+      "prediction": "CREATE_CALENDAR_EVENT",
+      "confidence": 0.795349035478882,
+      "top_predictions": [
+        {
+          "label": "CREATE_CALENDAR_EVENT",
+          "confidence": 0.795349035478882
+        },
+        {
+          "label": "CREATE_TASK",
+          "confidence": 0.03318475835430834
+        },
+        {
+          "label": "CREATE_REMINDER",
+          "confidence": 0.027774044413939866
+        }
+      ]
+    },
+    "set_b": {
+      "prediction": "INTERVIEW",
+      "confidence": 0.25351820532820524,
+      "top_predictions": [
+        {
+          "label": "INTERVIEW",
+          "confidence": 0.25351820532820524
+        },
+        {
+          "label": "OTHER",
+          "confidence": 0.24585523414201096
+        },
+        {
+          "label": "WORKSHOP",
+          "confidence": 0.05850978472060808
+        }
+      ]
+    }
+  },
+  {
+    "text": "biology lab experiment record submission",
+    "set_a": {
+      "prediction": "CREATE_CALENDAR_EVENT",
+      "confidence": 0.3757632193891332,
+      "top_predictions": [
+        {
+          "label": "CREATE_CALENDAR_EVENT",
+          "confidence": 0.3757632193891332
+        },
+        {
+          "label": "COMPLETE_TASK",
+          "confidence": 0.12986184052823815
+        },
+        {
+          "label": "CANCEL_TASK",
+          "confidence": 0.12258711776344343
+        }
+      ]
+    },
+    "set_b": {
+      "prediction": "ASSIGNMENT",
+      "confidence": 0.3204117799680169,
+      "top_predictions": [
+        {
+          "label": "ASSIGNMENT",
+          "confidence": 0.3204117799680169
+        },
+        {
+          "label": "OTHER",
+          "confidence": 0.08236250936466188
+        },
+        {
+          "label": "EXAM",
+          "confidence": 0.07958583867349497
+        }
+      ]
+    }
+  },
+  {
+    "text": "english essay drafting on artificial intelligence",
+    "set_a": {
+      "prediction": "CREATE_CALENDAR_EVENT",
+      "confidence": 0.8883525067863587,
+      "top_predictions": [
+        {
+          "label": "CREATE_CALENDAR_EVENT",
+          "confidence": 0.8883525067863587
+        },
+        {
+          "label": "CREATE_REMINDER",
+          "confidence": 0.02754065928841702
+        },
+        {
+          "label": "CREATE_TASK",
+          "confidence": 0.017907364874298816
+        }
+      ]
+    },
+    "set_b": {
+      "prediction": "WORKSHOP",
+      "confidence": 0.24341715055086235,
+      "top_predictions": [
+        {
+          "label": "WORKSHOP",
+          "confidence": 0.24341715055086235
+        },
+        {
+          "label": "INTERVIEW",
+          "confidence": 0.13965213946489816
+        },
+        {
+          "label": "EVENT",
+          "confidence": 0.11831037384714957
+        }
+      ]
+    }
+  },
+  {
+    "text": "attend virtual job fair on Saturday",
+    "set_a": {
+      "prediction": "CREATE_CALENDAR_EVENT",
+      "confidence": 0.316627832936638,
+      "top_predictions": [
+        {
+          "label": "CREATE_CALENDAR_EVENT",
+          "confidence": 0.316627832936638
+        },
+        {
+          "label": "CREATE_TASK",
+          "confidence": 0.15764210847369733
+        },
+        {
+          "label": "CREATE_REMINDER",
+          "confidence": 0.11349130729257174
+        }
+      ]
+    },
+    "set_b": {
+      "prediction": "INTERVIEW",
+      "confidence": 0.21069665404805948,
+      "top_predictions": [
+        {
+          "label": "INTERVIEW",
+          "confidence": 0.21069665404805948
+        },
+        {
+          "label": "WORKSHOP",
+          "confidence": 0.0969980397668586
+        },
+        {
+          "label": "MEETING",
+          "confidence": 0.09619169678447738
+        }
+      ]
+    }
+  },
+  {
+    "text": "orientation ceremony for new students",
+    "set_a": {
+      "prediction": "CREATE_TASK",
+      "confidence": 0.366287635241984,
+      "top_predictions": [
+        {
+          "label": "CREATE_TASK",
+          "confidence": 0.366287635241984
+        },
+        {
+          "label": "SYNC_EMAIL",
+          "confidence": 0.2542193863968677
+        },
+        {
+          "label": "GENERAL_CHAT",
+          "confidence": 0.0941085867389312
+        }
+      ]
+    },
+    "set_b": {
+      "prediction": "WORKSHOP",
+      "confidence": 0.2786928002884174,
+      "top_predictions": [
+        {
+          "label": "WORKSHOP",
+          "confidence": 0.2786928002884174
+        },
+        {
+          "label": "OTHER",
+          "confidence": 0.10160089049924359
+        },
+        {
+          "label": "APPLICATION",
+          "confidence": 0.07738561909445613
+        }
+      ]
+    }
+  },
+  {
+    "text": "hackathon team registration deadline",
+    "set_a": {
+      "prediction": "CREATE_TASK",
+      "confidence": 0.5441433691036196,
+      "top_predictions": [
+        {
+          "label": "CREATE_TASK",
+          "confidence": 0.5441433691036196
+        },
+        {
+          "label": "CREATE_CALENDAR_EVENT",
+          "confidence": 0.20253372082667534
+        },
+        {
+          "label": "UPDATE_TASK",
+          "confidence": 0.14325783857939253
+        }
+      ]
+    },
+    "set_b": {
+      "prediction": "EVENT",
+      "confidence": 0.24459389010081567,
+      "top_predictions": [
+        {
+          "label": "EVENT",
+          "confidence": 0.24459389010081567
+        },
+        {
+          "label": "ASSIGNMENT",
+          "confidence": 0.1219227974847875
+        },
+        {
+          "label": "FORM",
+          "confidence": 0.08942747279676592
+        }
+      ]
+    }
+  },
+  {
+    "text": "hostel room fee payment receipt download",
+    "set_a": {
+      "prediction": "GENERAL_CHAT",
+      "confidence": 0.21549730678548845,
+      "top_predictions": [
+        {
+          "label": "GENERAL_CHAT",
+          "confidence": 0.21549730678548845
+        },
+        {
+          "label": "UPDATE_TASK",
+          "confidence": 0.11303058716022929
+        },
+        {
+          "label": "CREATE_TASK",
+          "confidence": 0.10938009113621562
+        }
+      ]
+    },
+    "set_b": {
+      "prediction": "FEE",
+      "confidence": 0.7940050734200405,
+      "top_predictions": [
+        {
+          "label": "FEE",
+          "confidence": 0.7940050734200405
+        },
+        {
+          "label": "EXAM",
+          "confidence": 0.02558541809867678
+        },
+        {
+          "label": "OTHER",
+          "confidence": 0.023955371928696876
+        }
+      ]
+    }
+  },
+  {
+    "text": "submit project synopsis to guide",
+    "set_a": {
+      "prediction": "CREATE_TASK",
+      "confidence": 0.5295742979982809,
+      "top_predictions": [
+        {
+          "label": "CREATE_TASK",
+          "confidence": 0.5295742979982809
+        },
+        {
+          "label": "UPDATE_TASK",
+          "confidence": 0.2547227200987069
+        },
+        {
+          "label": "CREATE_REMINDER",
+          "confidence": 0.07973288442949589
+        }
+      ]
+    },
+    "set_b": {
+      "prediction": "ASSIGNMENT",
+      "confidence": 0.6363870028863539,
+      "top_predictions": [
+        {
+          "label": "ASSIGNMENT",
+          "confidence": 0.6363870028863539
+        },
+        {
+          "label": "OTHER",
+          "confidence": 0.05182056020468657
+        },
+        {
+          "label": "FEEDBACK",
+          "confidence": 0.04279247386689588
+        }
+      ]
+    }
+  },
+  {
+    "text": "final semester project viva presentation",
+    "set_a": {
+      "prediction": "CREATE_TASK",
+      "confidence": 0.44682477064716924,
+      "top_predictions": [
+        {
+          "label": "CREATE_TASK",
+          "confidence": 0.44682477064716924
+        },
+        {
+          "label": "CANCEL_TASK",
+          "confidence": 0.1321334219643777
+        },
+        {
+          "label": "CREATE_CALENDAR_EVENT",
+          "confidence": 0.12008555566366623
+        }
+      ]
+    },
+    "set_b": {
+      "prediction": "INTERVIEW",
+      "confidence": 0.15616863987415533,
+      "top_predictions": [
+        {
+          "label": "INTERVIEW",
+          "confidence": 0.15616863987415533
+        },
+        {
+          "label": "ASSIGNMENT",
+          "confidence": 0.1457508145377252
+        },
+        {
+          "label": "FEE",
+          "confidence": 0.09882288177892573
+        }
+      ]
+    }
+  },
+  {
+    "text": "graduate degree certificate collection",
+    "set_a": {
+      "prediction": "GENERAL_CHAT",
+      "confidence": 0.21549730678548845,
+      "top_predictions": [
+        {
+          "label": "GENERAL_CHAT",
+          "confidence": 0.21549730678548845
+        },
+        {
+          "label": "UPDATE_TASK",
+          "confidence": 0.11303058716022929
+        },
+        {
+          "label": "CREATE_TASK",
+          "confidence": 0.10938009113621562
+        }
+      ]
+    },
+    "set_b": {
+      "prediction": "WORKSHOP",
+      "confidence": 0.12749585019947876,
+      "top_predictions": [
+        {
+          "label": "WORKSHOP",
+          "confidence": 0.12749585019947876
+        },
+        {
+          "label": "OTHER",
+          "confidence": 0.1193403707542108
+        },
+        {
+          "label": "APPLICATION",
+          "confidence": 0.08404910079379675
+        }
+      ]
+    }
+  },
+  {
+    "text": "internship joining letter verification",
+    "set_a": {
+      "prediction": "CREATE_TASK",
+      "confidence": 0.2484045671114892,
+      "top_predictions": [
+        {
+          "label": "CREATE_TASK",
+          "confidence": 0.2484045671114892
+        },
+        {
+          "label": "UPDATE_TASK",
+          "confidence": 0.12981883503429237
+        },
+        {
+          "label": "COMPLETE_TASK",
+          "confidence": 0.12460582502870178
+        }
+      ]
+    },
+    "set_b": {
+      "prediction": "APPLICATION",
+      "confidence": 0.31854269887217135,
+      "top_predictions": [
+        {
+          "label": "APPLICATION",
+          "confidence": 0.31854269887217135
+        },
+        {
+          "label": "OTHER",
+          "confidence": 0.1399122491528115
+        },
+        {
+          "label": "FORM",
+          "confidence": 0.0658094119312868
+        }
+      ]
+    }
+  },
+  {
+    "text": "onboarding session for new joiners",
+    "set_a": {
+      "prediction": "CREATE_TASK",
+      "confidence": 0.366287635241984,
+      "top_predictions": [
+        {
+          "label": "CREATE_TASK",
+          "confidence": 0.366287635241984
+        },
+        {
+          "label": "SYNC_EMAIL",
+          "confidence": 0.2542193863968677
+        },
+        {
+          "label": "GENERAL_CHAT",
+          "confidence": 0.0941085867389312
+        }
+      ]
+    },
+    "set_b": {
+      "prediction": "WORKSHOP",
+      "confidence": 0.16902299125296913,
+      "top_predictions": [
+        {
+          "label": "WORKSHOP",
+          "confidence": 0.16902299125296913
+        },
+        {
+          "label": "OTHER",
+          "confidence": 0.14054109971456297
+        },
+        {
+          "label": "MEETING",
+          "confidence": 0.08871136515751984
+        }
+      ]
+    }
+  },
+  {
+    "text": "weekly team retrospective meeting",
+    "set_a": {
+      "prediction": "CREATE_CALENDAR_EVENT",
+      "confidence": 0.479340268506718,
+      "top_predictions": [
+        {
+          "label": "CREATE_CALENDAR_EVENT",
+          "confidence": 0.479340268506718
+        },
+        {
+          "label": "CANCEL_TASK",
+          "confidence": 0.09469657205401145
+        },
+        {
+          "label": "COMPLETE_TASK",
+          "confidence": 0.09432167043850066
+        }
+      ]
+    },
+    "set_b": {
+      "prediction": "MEETING",
+      "confidence": 0.8110990163948194,
+      "top_predictions": [
+        {
+          "label": "MEETING",
+          "confidence": 0.8110990163948194
+        },
+        {
+          "label": "OTHER",
+          "confidence": 0.03637682121730724
+        },
+        {
+          "label": "TRAINING",
+          "confidence": 0.02188188102212555
+        }
+      ]
+    }
+  },
+  {
+    "text": "one on one sync with engineering manager",
+    "set_a": {
+      "prediction": "SYNC_EMAIL",
+      "confidence": 0.3771108995643996,
+      "top_predictions": [
+        {
+          "label": "SYNC_EMAIL",
+          "confidence": 0.3771108995643996
+        },
+        {
+          "label": "CREATE_CALENDAR_EVENT",
+          "confidence": 0.15479193919056458
+        },
+        {
+          "label": "SEARCH_EMAIL",
+          "confidence": 0.0810178988200623
+        }
+      ]
+    },
+    "set_b": {
+      "prediction": "APPLICATION",
+      "confidence": 0.17892929051665654,
+      "top_predictions": [
+        {
+          "label": "APPLICATION",
+          "confidence": 0.17892929051665654
+        },
+        {
+          "label": "OTHER",
+          "confidence": 0.11661831905364804
+        },
+        {
+          "label": "WORKSHOP",
+          "confidence": 0.10317122499853305
+        }
+      ]
+    }
+  },
+  {
+    "text": "all hands meeting on company roadmap",
+    "set_a": {
+      "prediction": "CREATE_CALENDAR_EVENT",
+      "confidence": 0.6881417349519172,
+      "top_predictions": [
+        {
+          "label": "CREATE_CALENDAR_EVENT",
+          "confidence": 0.6881417349519172
+        },
+        {
+          "label": "LIST_TASKS",
+          "confidence": 0.044541873282736316
+        },
+        {
+          "label": "CREATE_TASK",
+          "confidence": 0.0385425633534734
+        }
+      ]
+    },
+    "set_b": {
+      "prediction": "MEETING",
+      "confidence": 0.2932424122343113,
+      "top_predictions": [
+        {
+          "label": "MEETING",
+          "confidence": 0.2932424122343113
+        },
+        {
+          "label": "WORKSHOP",
+          "confidence": 0.14214426932920865
+        },
+        {
+          "label": "OTHER",
+          "confidence": 0.09307508390943028
+        }
+      ]
+    }
+  },
+  {
+    "text": "monthly financial budget review",
+    "set_a": {
+      "prediction": "CREATE_CALENDAR_EVENT",
+      "confidence": 0.4574131886088143,
+      "top_predictions": [
+        {
+          "label": "CREATE_CALENDAR_EVENT",
+          "confidence": 0.4574131886088143
+        },
+        {
+          "label": "GENERAL_CHAT",
+          "confidence": 0.09628907466513581
+        },
+        {
+          "label": "CREATE_TASK",
+          "confidence": 0.09530680775226391
+        }
+      ]
+    },
+    "set_b": {
+      "prediction": "MEETING",
+      "confidence": 0.1446094158220213,
+      "top_predictions": [
+        {
+          "label": "MEETING",
+          "confidence": 0.1446094158220213
+        },
+        {
+          "label": "OTHER",
+          "confidence": 0.11668084878774931
+        },
+        {
+          "label": "APPLICATION",
+          "confidence": 0.08342772080752704
+        }
+      ]
+    }
+  },
+  {
+    "text": "grocery shopping list for the weekend",
+    "set_a": {
+      "prediction": "LIST_TASKS",
+      "confidence": 0.26022065921765597,
+      "top_predictions": [
+        {
+          "label": "LIST_TASKS",
+          "confidence": 0.26022065921765597
+        },
+        {
+          "label": "CREATE_TASK",
+          "confidence": 0.23607288315267766
+        },
+        {
+          "label": "SEARCH_EMAIL",
+          "confidence": 0.10213654317023553
+        }
+      ]
+    },
+    "set_b": {
+      "prediction": "EVENT",
+      "confidence": 0.14604241287174202,
+      "top_predictions": [
+        {
+          "label": "EVENT",
+          "confidence": 0.14604241287174202
+        },
+        {
+          "label": "OTHER",
+          "confidence": 0.12491117807695536
+        },
+        {
+          "label": "APPLICATION",
+          "confidence": 0.09789874640067732
+        }
+      ]
+    }
+  },
+  {
+    "text": "plan birthday party celebration dinner",
+    "set_a": {
+      "prediction": "CREATE_TASK",
+      "confidence": 0.4815557829488539,
+      "top_predictions": [
+        {
+          "label": "CREATE_TASK",
+          "confidence": 0.4815557829488539
+        },
+        {
+          "label": "CREATE_CALENDAR_EVENT",
+          "confidence": 0.22281997111401455
+        },
+        {
+          "label": "GENERAL_CHAT",
+          "confidence": 0.06804785314955851
+        }
+      ]
+    },
+    "set_b": {
+      "prediction": "EVENT",
+      "confidence": 0.12073837283780238,
+      "top_predictions": [
+        {
+          "label": "EVENT",
+          "confidence": 0.12073837283780238
+        },
+        {
+          "label": "OTHER",
+          "confidence": 0.11553145284615993
+        },
+        {
+          "label": "MEETING",
+          "confidence": 0.09535839541972828
+        }
+      ]
+    }
+  },
+  {
+    "text": "call insurance agent regarding claim",
+    "set_a": {
+      "prediction": "CREATE_TASK",
+      "confidence": 0.32638161001601856,
+      "top_predictions": [
+        {
+          "label": "CREATE_TASK",
+          "confidence": 0.32638161001601856
+        },
+        {
+          "label": "CREATE_REMINDER",
+          "confidence": 0.1926188866969732
+        },
+        {
+          "label": "GENERAL_CHAT",
+          "confidence": 0.11687390249579475
+        }
+      ]
+    },
+    "set_b": {
+      "prediction": "MEETING",
+      "confidence": 0.12468242280997269,
+      "top_predictions": [
+        {
+          "label": "MEETING",
+          "confidence": 0.12468242280997269
+        },
+        {
+          "label": "OTHER",
+          "confidence": 0.11428434966050834
+        },
+        {
+          "label": "WORKSHOP",
+          "confidence": 0.10074476549480989
+        }
+      ]
+    }
+  },
+  {
+    "text": "schedule plumbing repair for kitchen sink",
+    "set_a": {
+      "prediction": "CREATE_CALENDAR_EVENT",
+      "confidence": 0.7196201008789304,
+      "top_predictions": [
+        {
+          "label": "CREATE_CALENDAR_EVENT",
+          "confidence": 0.7196201008789304
+        },
+        {
+          "label": "GET_CALENDAR",
+          "confidence": 0.1777696504401134
+        },
+        {
+          "label": "CREATE_TASK",
+          "confidence": 0.08404982954637484
+        }
+      ]
+    },
+    "set_b": {
+      "prediction": "OTHER",
+      "confidence": 0.18375855966419816,
+      "top_predictions": [
+        {
+          "label": "OTHER",
+          "confidence": 0.18375855966419816
+        },
+        {
+          "label": "TRAINING",
+          "confidence": 0.12231247802237882
+        },
+        {
+          "label": "INTERVIEW",
+          "confidence": 0.11674261899647874
+        }
+      ]
+    }
+  },
+  {
+    "text": "water indoor plants every 3 days",
+    "set_a": {
+      "prediction": "CREATE_TASK",
+      "confidence": 0.2586476065242522,
+      "top_predictions": [
+        {
+          "label": "CREATE_TASK",
+          "confidence": 0.2586476065242522
+        },
+        {
+          "label": "UPDATE_TASK",
+          "confidence": 0.239270666311549
+        },
+        {
+          "label": "CANCEL_TASK",
+          "confidence": 0.11900144831372796
+        }
+      ]
+    },
+    "set_b": {
+      "prediction": "OTHER",
+      "confidence": 0.2909246717644819,
+      "top_predictions": [
+        {
+          "label": "OTHER",
+          "confidence": 0.2909246717644819
+        },
+        {
+          "label": "APPLICATION",
+          "confidence": 0.07541686900651152
+        },
+        {
+          "label": "FEE",
+          "confidence": 0.06481577430259611
+        }
+      ]
+    }
+  },
+  {
+    "text": "evening run 5km in the park",
+    "set_a": {
+      "prediction": "SEARCH_EMAIL",
+      "confidence": 0.2115034433277993,
+      "top_predictions": [
+        {
+          "label": "SEARCH_EMAIL",
+          "confidence": 0.2115034433277993
+        },
+        {
+          "label": "GENERAL_CHAT",
+          "confidence": 0.12612384029913518
+        },
+        {
+          "label": "UPDATE_TASK",
+          "confidence": 0.09928308559013509
+        }
+      ]
+    },
+    "set_b": {
+      "prediction": "EVENT",
+      "confidence": 0.1367741578959946,
+      "top_predictions": [
+        {
+          "label": "EVENT",
+          "confidence": 0.1367741578959946
+        },
+        {
+          "label": "EXAM",
+          "confidence": 0.09676689030415002
+        },
+        {
+          "label": "WORKSHOP",
+          "confidence": 0.09662543819854302
+        }
+      ]
+    }
+  },
+  {
+    "text": "listen to tech podcast episode on LLMs",
+    "set_a": {
+      "prediction": "CREATE_CALENDAR_EVENT",
+      "confidence": 0.4623867739235263,
+      "top_predictions": [
+        {
+          "label": "CREATE_CALENDAR_EVENT",
+          "confidence": 0.4623867739235263
+        },
+        {
+          "label": "UPDATE_TASK",
+          "confidence": 0.3891192024979286
+        },
+        {
+          "label": "CREATE_REMINDER",
+          "confidence": 0.07250064108762018
+        }
+      ]
+    },
+    "set_b": {
+      "prediction": "EVENT",
+      "confidence": 0.15687753577647456,
+      "top_predictions": [
+        {
+          "label": "EVENT",
+          "confidence": 0.15687753577647456
+        },
+        {
+          "label": "OTHER",
+          "confidence": 0.11016054812235786
+        },
+        {
+          "label": "WORKSHOP",
+          "confidence": 0.10906617802063759
+        }
+      ]
+    }
+  },
+  {
+    "text": "study compiler design chapter 4",
+    "set_a": {
+      "prediction": "CREATE_TASK",
+      "confidence": 0.3362751839841005,
+      "top_predictions": [
+        {
+          "label": "CREATE_TASK",
+          "confidence": 0.3362751839841005
+        },
+        {
+          "label": "CANCEL_TASK",
+          "confidence": 0.18298967596130036
+        },
+        {
+          "label": "UPDATE_TASK",
+          "confidence": 0.13470470451842131
+        }
+      ]
+    },
+    "set_b": {
+      "prediction": "OTHER",
+      "confidence": 0.12987490146678457,
+      "top_predictions": [
+        {
+          "label": "OTHER",
+          "confidence": 0.12987490146678457
+        },
+        {
+          "label": "APPLICATION",
+          "confidence": 0.09099317972911543
+        },
+        {
+          "label": "TRAINING",
+          "confidence": 0.08005159118851592
+        }
+      ]
+    }
+  },
+  {
+    "text": "watch tutorial on Flutter state management",
+    "set_a": {
+      "prediction": "CREATE_CALENDAR_EVENT",
+      "confidence": 0.8883525067863587,
+      "top_predictions": [
+        {
+          "label": "CREATE_CALENDAR_EVENT",
+          "confidence": 0.8883525067863587
+        },
+        {
+          "label": "CREATE_REMINDER",
+          "confidence": 0.02754065928841702
+        },
+        {
+          "label": "CREATE_TASK",
+          "confidence": 0.017907364874298816
+        }
+      ]
+    },
+    "set_b": {
+      "prediction": "WORKSHOP",
+      "confidence": 0.24341715055086235,
+      "top_predictions": [
+        {
+          "label": "WORKSHOP",
+          "confidence": 0.24341715055086235
+        },
+        {
+          "label": "INTERVIEW",
+          "confidence": 0.13965213946489816
+        },
+        {
+          "label": "EVENT",
+          "confidence": 0.11831037384714957
+        }
+      ]
+    }
+  }
+]

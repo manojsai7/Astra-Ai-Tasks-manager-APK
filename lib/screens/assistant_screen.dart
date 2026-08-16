@@ -15,6 +15,7 @@ import '../core/motion.dart';
 import '../widgets/design_system/astra_3d_button.dart';
 import '../widgets/design_system/astra_3d_surface.dart';
 import '../widgets/assistant/astra_response_card.dart';
+import '../services/email/astra_email_analyzer.dart';
 
 class AssistantScreen extends ConsumerStatefulWidget {
   const AssistantScreen({super.key});
@@ -544,92 +545,58 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen>
       ).withPremiumEntry(delayMs: 0);
     }
 
+    // ── Plain Assistant Prose (Natural Conversational Flow) ──
     return Align(
       alignment: Alignment.centerLeft,
       child: Container(
-        margin: const EdgeInsets.only(bottom: 14),
-        constraints: BoxConstraints(maxWidth: maxW),
+        margin: const EdgeInsets.only(bottom: 16),
+        constraints: BoxConstraints(maxWidth: MediaQuery.sizeOf(context).width * 0.88),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Card: charcoal body, neutral border, semantic left strip
-            Container(
-              decoration: BoxDecoration(
-                color: AstraColors.surface,
-                borderRadius: BorderRadius.circular(16).copyWith(
-                  bottomLeft: const Radius.circular(4),
-                ),
-                border: Border.all(color: AstraColors.edgeSoft, width: 1),
-                boxShadow: const [
-                  BoxShadow(color: AstraColors.depth, offset: Offset(0, 4), blurRadius: 0),
-                ],
-              ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(15).copyWith(
-                  bottomLeft: const Radius.circular(3),
-                ),
-                child: IntrinsicHeight(
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      // Semantic accent strip (3px left rail)
-                      Container(
-                        width: 3,
-                        decoration: BoxDecoration(
-                          color: accent,
-                          // Extrusion: accent strip has its own depth-colored bottom edge
-                          gradient: LinearGradient(
-                            begin: Alignment.topCenter,
-                            end: Alignment.bottomCenter,
-                            colors: [accent, accentDepth],
-                            stops: const [0.6, 1.0],
+            // Natural left-aligned assistant prose
+            Padding(
+              padding: const EdgeInsets.only(left: 2, right: 4, top: 2, bottom: 4),
+              child: SelectionArea(
+                child: msg.messageType == AssistantMessageType.error
+                    ? Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Padding(
+                            padding: EdgeInsets.only(top: 2, right: 8),
+                            child: Icon(LucideIcons.alertTriangle, size: 15, color: AstraColors.red),
                           ),
+                          Expanded(
+                            child: Text(
+                              msg.text,
+                              softWrap: true,
+                              style: const TextStyle(
+                                color: AstraColors.red,
+                                fontSize: 14.5,
+                                fontWeight: FontWeight.w400,
+                                height: 1.55,
+                              ),
+                            ),
+                          ),
+                        ],
+                      )
+                    : Text(
+                        msg.text,
+                        softWrap: true,
+                        style: const TextStyle(
+                          color: AstraColors.text,
+                          fontSize: 14.5,
+                          fontWeight: FontWeight.w400,
+                          height: 1.55,
+                          letterSpacing: 0.1,
                         ),
                       ),
-                      Expanded(
-                        child: Padding(
-                          padding: const EdgeInsets.fromLTRB(12, 11, 12, 11),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Icon(
-                                msg.messageType == AssistantMessageType.error
-                                    ? LucideIcons.alertTriangle
-                                    : msg.messageType == AssistantMessageType.success
-                                        ? LucideIcons.checkCircle
-                                        : Icons.auto_awesome,
-                                size: 13,
-                                color: accent,
-                              ),
-                              const SizedBox(width: 8),
-                              Flexible(
-                                child: SelectionArea(
-                                  child: Text(
-                                    msg.text,
-                                    softWrap: true,
-                                    overflow: TextOverflow.visible,
-                                    style: const TextStyle(
-                                      color: AstraColors.text,
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w400,
-                                      height: 1.55,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
               ),
             ),
             Padding(
-              padding: const EdgeInsets.only(left: 4, top: 4),
+              padding: const EdgeInsets.only(left: 2, top: 4),
               child: Row(
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   IconButton(
                     onPressed: () => _copyMessage(msg.text),
@@ -639,15 +606,17 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen>
                     constraints: const BoxConstraints(),
                     icon: const Icon(LucideIcons.copy, size: 13, color: AstraColors.textMuted),
                   ),
-                  const SizedBox(width: 6),
+                  const SizedBox(width: 8),
                   Text(
                     DateFormat('h:mm a').format(msg.timestamp),
-                    style: const TextStyle(fontSize: 9, color: AstraColors.textMuted),
+                    style: const TextStyle(fontSize: 10, color: AstraColors.textMuted),
                   ),
                 ],
               ),
             ),
-            if (msg.emails != null && msg.emails!.isNotEmpty)
+            if (msg.emailInsights != null && msg.emailInsights!.isNotEmpty)
+              _buildEmailInsightsCard(msg.emailInsights!)
+            else if (msg.emails != null && msg.emails!.isNotEmpty)
               _buildEmailSummaryCard(msg.emails!),
             if (msg.calendarEvents != null && msg.calendarEvents!.isNotEmpty)
               _buildCalendarSummaryCard(msg.calendarEvents!),
@@ -658,6 +627,200 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen>
   }
 
   // ─── Rich Cards ────────────────────────────────────────────────────────────
+
+  Widget _buildEmailInsightsCard(List<EmailInsightItem> insights) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: insights.take(5).map((item) {
+        final email = item.email;
+        final analysis = item.analysis;
+        final isDeadline = analysis.category == EmailCategory.deadline;
+        final isEvent = analysis.isEvent;
+        final dt = analysis.actionDateTime;
+
+        final badgeColor = isDeadline
+            ? const Color(0xFFF59E0B) // Amber
+            : (isEvent ? AstraColors.cyan : (analysis.isActionable ? AstraColors.lime : AstraColors.textMuted));
+
+        final badgeText = isDeadline
+            ? 'DEADLINE'
+            : (analysis.category == EmailCategory.important
+                ? (analysis.actionRequired?.toUpperCase() ?? 'IMPORTANT')
+                : (analysis.isEvent ? 'EVENT' : (analysis.actionRequired?.toUpperCase() ?? 'EMAIL INSIGHT')));
+
+        return Container(
+          margin: const EdgeInsets.only(top: 8),
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: AstraColors.surface,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: AstraColors.edgeSoft, width: 1),
+            boxShadow: const [
+              BoxShadow(color: AstraColors.depth, offset: Offset(0, 3), blurRadius: 0),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Header: Category Badge + Date/Time
+              Row(
+                children: [
+                  Icon(
+                    isDeadline
+                        ? LucideIcons.alertTriangle
+                        : (isEvent ? LucideIcons.calendar : LucideIcons.mail),
+                    size: 13,
+                    color: badgeColor,
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    badgeText,
+                    style: TextStyle(
+                      fontSize: 9.5,
+                      fontWeight: FontWeight.w700,
+                      color: badgeColor,
+                      letterSpacing: 1.1,
+                    ),
+                  ),
+                  if (dt != null) ...[
+                    const Spacer(),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
+                      decoration: BoxDecoration(
+                        color: badgeColor.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        DateFormat('EEE · h:mm a').format(dt),
+                        style: TextStyle(
+                          fontSize: 9.5,
+                          fontWeight: FontWeight.w700,
+                          color: badgeColor,
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+              const SizedBox(height: 8),
+
+              // Candidate Title
+              Text(
+                analysis.suggestedTaskTitle,
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: AstraColors.text,
+                ),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(height: 2),
+
+              // Sender / Subject snippet
+              Text(
+                'From: ${email.senderName.isNotEmpty ? email.senderName : email.sender}',
+                style: const TextStyle(fontSize: 10.5, color: AstraColors.textMuted),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+
+              // Reason Tag
+              if (analysis.reasons.isNotEmpty) ...[
+                const SizedBox(height: 6),
+                Text(
+                  analysis.reasons.first,
+                  style: TextStyle(
+                    fontSize: 10,
+                    color: AstraColors.textMuted.withValues(alpha: 0.8),
+                    fontStyle: FontStyle.italic,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+
+              // Action Buttons Row (Add to Tasks / Calendar / Ignore)
+              if (analysis.isActionable) ...[
+                const SizedBox(height: 10),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 6,
+                  children: [
+                    Astra3DSurface(
+                      faceColor: AstraDepthColors.limeFace,
+                      depthColor: AstraDepthColors.limeDepth,
+                      borderColor: AstraDepthColors.limeBorder,
+                      depthOffset: AstraDepth.small,
+                      borderRadius: 8,
+                      onTap: () {
+                        ref.read(assistantStateProvider.notifier).addEmailInsightToTasks(
+                              email: email,
+                              analysis: analysis,
+                            );
+                      },
+                      child: const Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(LucideIcons.plus, size: 11, color: Colors.black),
+                            SizedBox(width: 4),
+                            Text(
+                              'ADD TO TASKS',
+                              style: TextStyle(
+                                fontSize: 9.5,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.black,
+                                letterSpacing: 0.8,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    if (isEvent)
+                      Astra3DSurface(
+                        faceColor: AstraDepthColors.cyanFace,
+                        depthColor: AstraDepthColors.cyanDepth,
+                        borderColor: AstraDepthColors.cyanBorder,
+                        depthOffset: AstraDepth.small,
+                        borderRadius: 8,
+                        onTap: () {
+                          ref.read(assistantStateProvider.notifier).addEmailInsightToCalendar(
+                                email: email,
+                                analysis: analysis,
+                              );
+                        },
+                        child: const Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(LucideIcons.calendar, size: 11, color: Colors.black),
+                              SizedBox(width: 4),
+                              Text(
+                                'ADD TO CALENDAR',
+                                style: TextStyle(
+                                  fontSize: 9.5,
+                                  fontWeight: FontWeight.w700,
+                                  color: Colors.black,
+                                  letterSpacing: 0.8,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ],
+            ],
+          ),
+        );
+      }).toList(),
+    );
+  }
 
   Widget _buildEmailSummaryCard(List<GmailMessageData> emails) {
     return Container(

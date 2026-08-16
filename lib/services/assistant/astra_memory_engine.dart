@@ -96,6 +96,49 @@ class AstraMemoryEngine {
     _workingMemory[item.key] = item;
   }
 
+  /// Records a structured memory item for an email-derived task.
+  void storeEmailTaskMemory({
+    required String emailId,
+    required String title,
+    required String taskId,
+    DateTime? deadline,
+    String? organization,
+    String? subject,
+  }) {
+    final now = DateTime.now();
+    final item = AstraMemoryItem(
+      id: 'email_task_$taskId',
+      type: 'EMAIL_TASK_REFERENCE',
+      key: 'email_$emailId',
+      value: title,
+      source: 'email',
+      confidence: 1.0,
+      createdAt: now,
+      updatedAt: now,
+      metadata: {
+        'taskId': taskId,
+        'emailId': emailId,
+        'title': title,
+        'deadline': deadline?.toIso8601String(),
+        'organization': organization,
+        'subject': subject,
+      },
+    );
+    storeMemory(item);
+  }
+
+  /// Searches working memory for references matching a query (e.g. "assignment from email").
+  List<AstraMemoryItem> searchEmailMemories(String query) {
+    final qLower = query.toLowerCase();
+    return _workingMemory.values.where((m) {
+      if (m.source != 'email') return false;
+      final valLower = m.value.toLowerCase();
+      final orgLower = (m.metadata?['organization'] as String?)?.toLowerCase() ?? '';
+      final subjLower = (m.metadata?['subject'] as String?)?.toLowerCase() ?? '';
+      return valLower.contains(qLower) || orgLower.contains(qLower) || subjLower.contains(qLower);
+    }).toList();
+  }
+
   /// Retrieves a structured memory item by key.
   AstraMemoryItem? getMemory(String key) {
     return _workingMemory[key];
@@ -111,3 +154,21 @@ class AstraMemoryEngine {
     _workingMemory.clear();
   }
 }
+
+/// Tracks a lightweight pending conversation action across turns (e.g. "move my exam" -> "tomorrow at 7").
+class PendingConversationAction {
+  final String targetEntity;
+  final String operation; // e.g. 'UPDATE_TASK', 'CREATE_TASK', 'CREATE_REMINDER'
+  final List<String> missingFields; // e.g. ['time', 'title']
+  final DateTime createdAt;
+  final int? sessionId;
+
+  const PendingConversationAction({
+    required this.targetEntity,
+    required this.operation,
+    required this.missingFields,
+    required this.createdAt,
+    this.sessionId,
+  });
+}
+

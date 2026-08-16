@@ -88,10 +88,13 @@ class AstraReferenceResolver {
       }
     }
 
-    // B. Definite reference ("the exam", "the interview", "tomorrow's exam", "the assignment")
+    // B. Definite reference ("the exam", "the interview", "tomorrow's exam", "the assignment", "the assignment from email")
     if (definiteMatch != null && !isPronoun) {
       final query = definiteMatch.group(1)!.trim().toLowerCase();
-      final cleanQuery = query.replaceAll(RegExp(r'\b(tomorrow|today|my)\b'), '').trim();
+      final cleanQuery = query
+          .replaceAll(RegExp(r'\b(tomorrow|today|my)\b', caseSensitive: false), '')
+          .replaceAll(RegExp(r'\b(?:from|in)\s+(?:the\s+)?(?:email|mail|gmail|calendar)\b', caseSensitive: false), '')
+          .trim();
 
       if (cleanQuery.isNotEmpty && cleanQuery != 'one') {
         // Search in active tasks
@@ -129,46 +132,67 @@ class AstraReferenceResolver {
             reason: 'Resolved "$query" from recent conversation entity "${msgMatches.first}".',
           );
         }
+
+        // Search in structured memories (e.g. email task memories)
+        final memoryMatches = context.structuredMemories.where((m) {
+          final val = m.value.toLowerCase();
+          final metaSubj = (m.metadata?['subject'] as String?)?.toLowerCase() ?? '';
+          final metaOrg = (m.metadata?['organization'] as String?)?.toLowerCase() ?? '';
+          return val.contains(cleanQuery) || metaSubj.contains(cleanQuery) || metaOrg.contains(cleanQuery);
+        }).toList();
+
+        if (memoryMatches.length == 1) {
+          final match = memoryMatches.first;
+          return AstraReferenceResult(
+            isResolved: true,
+            resolvedTitle: match.value,
+            resolvedTaskId: match.metadata?['taskId'] as String?,
+            resolvedType: 'memory',
+            confidence: 0.93,
+            reason: 'Resolved "$query" from structured memory "${match.value}".',
+            memoryItem: match,
+          );
+        }
       }
     }
 
     // C. Pronoun reference ("it", "that", "this")
     if (isPronoun) {
-      // 1. Most recent active task if created/updated very recently
-      if (context.activeTasks.isNotEmpty) {
-        // Priority to the single latest task if unique or explicitly prominent
-        final latestTask = context.activeTasks.first;
-        // Check if recent conversation specifically talked about this task or if only 1 task exists
-        if (context.activeTasks.length == 1) {
-          return AstraReferenceResult(
-            isResolved: true,
-            resolvedTitle: latestTask.title,
-            resolvedTaskId: latestTask.id,
-            resolvedType: 'task',
-            confidence: 0.92,
-            reason: 'Resolved pronoun "it" to the single active task "${latestTask.title}".',
-            taskEntry: latestTask,
-          );
-        }
-      }
-
-      // 2. Resolve against most recent conversation entity
+      // 1. Resolve against most recent conversation entity first (what user just said in the current session)
       final recentEntities = _extractEntitiesFromMessages(context.recentMessages);
       if (recentEntities.isNotEmpty) {
         final lastEntity = recentEntities.last;
         // Verify if it matches an active task
         final matchingTask = context.activeTasks.where(
-          (t) => t.title.toLowerCase() == lastEntity.toLowerCase(),
+          (t) => t.title.toLowerCase() == lastEntity.toLowerCase() || t.title.toLowerCase().contains(lastEntity.toLowerCase()),
         ).firstOrNull;
 
         return AstraReferenceResult(
           isResolved: true,
-          resolvedTitle: lastEntity,
+          resolvedTitle: matchingTask?.title ?? lastEntity,
           resolvedTaskId: matchingTask?.id,
           resolvedType: matchingTask != null ? 'task' : 'conversation',
-          confidence: 0.90,
+          confidence: 0.95,
           reason: 'Resolved pronoun "it" to most recent entity "$lastEntity".',
           taskEntry: matchingTask,
+        );
+      }
+
+      // 2. Most recent active task if single active task exists
+      if (context.activeTasks.length == 1) {
+        final singleTask = context.activeTasks.first;
+        return AstraReferenceResult(
+          isResolved: true,
+          resolvedTitle: singleTask.title,
+          resolvedTaskId: singleTask.id,
+          resolvedType: 'task',
+          confidence: 0.92,
+          reason: 'Resolved pronoun "it" to the single active task "${singleTask.title}".',
+          taskEntry: singleTask,
+        );
+      } else if (context.activeTasks.length > 1) {
+        return const AstraReferenceResult.unresolved(
+          reason: 'Ambiguous: Multiple active tasks exist and no recent entity was referenced.',
         );
       }
 
@@ -198,24 +222,41 @@ class AstraReferenceResolver {
       final text = msg.content;
       // Heuristic extraction of common task subjects (e.g. "exam", "interview", "assignment", "meeting")
       final patterns = [
-        RegExp(r'\b([A-Za-z0-9]+\s+(?:exam|interview|assignment|meeting|standup))\b', caseSensitive: false),
-        RegExp(r'\b(?:have\s+(?:a\s+|an\s+)?|my\s+)(exam|interview|assignment|meeting|standup)\b', caseSensitive: false),
+        RegExp(r'\b(?:(?:have|got|my)\s+(?:a\s+|an\s+)?)([A-Za-z0-9]+\s+(?:exam|interview|assignment|meeting|standup|homework|task|project))\b', caseSensitive: false),
+        RegExp(r'\b([A-Za-z0-9]+\s+(?:exam|interview|assignment|meeting|standup|homework|task|project))\b', caseSensitive: false),
+        RegExp(r'\b(?:(?:have|got|my)\s+(?:a\s+|an\s+)?)(exam|interview|assignment|meeting|standup|homework|task|project)\b', caseSensitive: false),
+        RegExp(r'\b(?:an?\s+)(exam|interview|assignment|meeting|standup|homework|task|project)\b', caseSensitive: false),
       ];
 
       for (final p in patterns) {
-        final m = p.firstMatch(text);
-        if (m != null) {
-          final matched = m.group(1)!.trim();
-          // Title case each word cleanly
-          final words = matched.split(RegExp(r'\s+'));
-          final formatted = words.map((w) {
-            if (w.isEmpty) return w;
-            return '${w[0].toUpperCase()}${w.substring(1)}';
-          }).join(' ');
+        final matches = p.allMatches(text);
+        if (matches.isNotEmpty) {
+          for (final m in matches) {
+            var matched = m.group(1)!.trim();
+            // Filter out responses like "Created Assignment" or "Task Created"
+            if (matched.toLowerCase().startsWith('created ') || matched.toLowerCase().startsWith('updated ')) {
+              continue;
+            }
 
-          if (!entities.contains(formatted)) {
-            entities.add(formatted);
+            // Strip leading helper words
+            matched = matched.replaceAll(RegExp(r'^(?:have|got|a|an|my|the)\s+', caseSensitive: false), '').trim();
+
+            // Title case each word cleanly
+            final words = matched.split(RegExp(r'\s+'));
+            final formatted = words.map((w) {
+              if (w.isEmpty) return w;
+              final lower = w.toLowerCase();
+              if (lower == 'microsoft') return 'Microsoft';
+              if (lower == 'google') return 'Google';
+              if (lower == 'amazon') return 'Amazon';
+              return '${w[0].toUpperCase()}${w.substring(1).toLowerCase()}';
+            }).join(' ');
+
+            if (formatted.isNotEmpty && !entities.contains(formatted)) {
+              entities.add(formatted);
+            }
           }
+          break; // Stop at highest priority pattern match for this message
         }
       }
     }

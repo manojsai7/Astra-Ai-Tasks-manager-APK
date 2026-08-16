@@ -14,6 +14,7 @@ import '../services/panchang_service.dart';
 import '../features/scheduler/data/services/gemini_chat_service.dart';
 import '../core/parser/task_parser.dart';
 import '../core/reminders/reminder.dart';
+import '../core/reminders/reminder_strategy.dart';
 import '../core/commands/astra_command.dart';
 import '../core/commands/astra_command_bus.dart';
 import '../core/commands/astra_response.dart';
@@ -23,6 +24,7 @@ import 'auth_provider.dart';
 import 'b1_classifier_provider.dart';
 import '../services/ml/b1_event_classifier_client.dart';
 import 'intent_classifier_provider.dart';
+import '../services/ml/intent_classifier_client.dart';
 import 'astra_intent_resolver_provider.dart';
 import '../services/assistant/astra_intent_resolver.dart';
 import 'astra_routing_policy_provider.dart';
@@ -31,6 +33,11 @@ import 'astra_command_executor_provider.dart';
 import 'astra_semantic_engine_provider.dart';
 import '../services/assistant/astra_command.dart' as semantic;
 import '../services/assistant/astra_update_command.dart';
+import 'astra_memory_provider.dart';
+import '../services/assistant/astra_memory_engine.dart';
+import '../services/assistant/astra_temporal_engine.dart';
+import '../services/email/astra_email_analyzer.dart';
+import 'google_calendar_writer_provider.dart';
 
 // ─── Service Providers ───────────────────────────────────────────────────────
 
@@ -63,6 +70,27 @@ final aiLifeSchedulerServiceProvider = Provider<AiLifeSchedulerService>((ref) {
 
 enum AssistantMessageType { text, emailSummary, calendarSummary, syncResult, info, success, error, auth }
 
+/// Represents an analyzed email insight candidate with actionable status.
+class EmailInsightItem {
+  final GmailMessageData email;
+  final AstraEmailAnalysis analysis;
+  final bool isProcessed;
+
+  const EmailInsightItem({
+    required this.email,
+    required this.analysis,
+    this.isProcessed = false,
+  });
+
+  EmailInsightItem copyWith({bool? isProcessed}) {
+    return EmailInsightItem(
+      email: email,
+      analysis: analysis,
+      isProcessed: isProcessed ?? this.isProcessed,
+    );
+  }
+}
+
 class AssistantMessage {
   final String id;
   final String text;
@@ -71,6 +99,7 @@ class AssistantMessage {
   final AssistantMessageType messageType;
   final AstraResponse? structured;
   final List<GmailMessageData>? emails;
+  final List<EmailInsightItem>? emailInsights;
   final List<CalendarEventData>? calendarEvents;
   final SchedulerSyncResult? syncResult;
 
@@ -82,6 +111,7 @@ class AssistantMessage {
     this.messageType = AssistantMessageType.text,
     this.structured,
     this.emails,
+    this.emailInsights,
     this.calendarEvents,
     this.syncResult,
   });
@@ -150,6 +180,7 @@ class AssistantNotifier extends StateNotifier<AssistantState> {
     AssistantMessageType type = AssistantMessageType.text,
     AstraResponse? structured,
     List<GmailMessageData>? emails,
+    List<EmailInsightItem>? emailInsights,
     List<CalendarEventData>? calendarEvents,
     SchedulerSyncResult? syncResult,
   }) {
@@ -162,6 +193,7 @@ class AssistantNotifier extends StateNotifier<AssistantState> {
       messageType: type,
       structured: structured,
       emails: emails,
+      emailInsights: emailInsights,
       calendarEvents: calendarEvents,
       syncResult: syncResult,
     );
@@ -173,12 +205,14 @@ class AssistantNotifier extends StateNotifier<AssistantState> {
 
     final currentSessionId = ref.read(currentSessionIdProvider);
     if (currentSessionId != null) {
-      ref.read(chatSessionProvider.notifier).addMessage(
-        currentSessionId,
-        isUser ? 'user' : 'assistant',
-        displayText,
-        messageType: type.name,
-      );
+      try {
+        ref.read(chatSessionProvider.notifier).addMessage(
+          currentSessionId,
+          isUser ? 'user' : 'assistant',
+          displayText,
+          messageType: type.name,
+        );
+      } catch (_) {}
     }
   }
 
@@ -271,11 +305,16 @@ class AssistantNotifier extends StateNotifier<AssistantState> {
   Future<AstraResolvedIntent?> _resolveIntentWithSetA(
     String text,
   ) async {
+    IntentClassificationResult? mlResult;
     try {
-      final mlResult = await ref
+      mlResult = await ref
           .read(intentClassifierProvider)
           .classify(text);
+    } catch (_) {
+      mlResult = null;
+    }
 
+    try {
       final resolver = ref.read(
         astraIntentResolverProvider,
       );
@@ -297,6 +336,8 @@ class AssistantNotifier extends StateNotifier<AssistantState> {
     addMessage('Request cancelled.', type: AssistantMessageType.info);
   }
 
+  PendingConversationAction? _pendingAction;
+
   // ─── Command Router ────────────────────────────────────────────────────────
 
   Future<void> sendCommand(String input) async {
@@ -305,10 +346,65 @@ class AssistantNotifier extends StateNotifier<AssistantState> {
 
     final requestGen = ++_activeRequestGeneration;
 
-    final resolvedIntent =
-        await _resolveIntentWithSetA(trimmed);
+    // 1. Resolve session ID & Build bounded local context via M1 Memory Engine
+    final currentSessionId = ref.read(currentSessionIdProvider);
+    final contextBuilder = ref.read(astraContextBuilderProvider);
+    final memoryEngine = ref.read(astraMemoryEngineProvider);
+    final referenceResolver = ref.read(astraReferenceResolverProvider);
+
+    final localContext = await contextBuilder.buildContext(
+      currentText: trimmed,
+      sessionId: currentSessionId,
+      now: DateTime.now(),
+    );
+
+    debugPrint(
+      '[ASTRA MEMORY] session=$currentSessionId '
+      'recent=${localContext.recentMessages.length} '
+      'activeTasks=${localContext.activeTasks.length} '
+      'memories=${localContext.structuredMemories.length}',
+    );
+
+    // 2. Resolve Contextual References (e.g. "it", "the exam", "make it 11", "remind me about it Thursday at 8pm")
+    final refResult = referenceResolver.resolveReference(trimmed, localContext);
+    if (refResult.isResolved) {
+      debugPrint('[ASTRA REFERENCE] resolved="${refResult.resolvedTitle}" type=${refResult.resolvedType} confidence=${refResult.confidence.toStringAsFixed(2)}');
+    }
+
+    // 3. Resolve Intent via Set A on-device classifier & deterministic rules
+    var resolvedIntent = await _resolveIntentWithSetA(trimmed);
 
     if (requestGen != _activeRequestGeneration) return;
+
+    // If a pending conversation action exists and input provides the missing piece (e.g. "tomorrow at 7pm"), align intent to pending operation
+    if (_pendingAction != null && _pendingAction!.operation == 'UPDATE_TASK') {
+      const temporalEngine = AstraTemporalEngine();
+      final temporalCheck = temporalEngine.parse(trimmed);
+      if (temporalCheck.eventStart != null || temporalCheck.deadline != null || RegExp(r'\b(today|tomorrow|tmrw|monday|tuesday|wednesday|thursday|friday|saturday|sunday|\d{1,2}(?::\d{2})?\s*(?:am|pm))\b', caseSensitive: false).hasMatch(trimmed)) {
+        resolvedIntent = const AstraResolvedIntent(
+          intent: 'UPDATE_TASK',
+          mlConfidence: 0.98,
+          reason: 'pending_action_continuation_rule',
+        );
+      }
+    }
+
+    // If text contains pronoun/definite reference to update or remind, ensure intent aligns
+    if (refResult.isResolved) {
+      if (RegExp(r'^(?:make|set|change|shift|move)\s+(?:it|that|this)\b', caseSensitive: false).hasMatch(trimmed)) {
+        resolvedIntent = const AstraResolvedIntent(
+          intent: 'UPDATE_TASK',
+          mlConfidence: 0.95,
+          reason: 'contextual_reference_update_rule',
+        );
+      } else if (RegExp(r'\bremind\s+me\s+about\s+it\b', caseSensitive: false).hasMatch(trimmed)) {
+        resolvedIntent = const AstraResolvedIntent(
+          intent: 'CREATE_REMINDER',
+          mlConfidence: 0.95,
+          reason: 'contextual_reference_reminder_rule',
+        );
+      }
+    }
 
     if (resolvedIntent != null) {
       debugPrint(
@@ -384,8 +480,14 @@ class AssistantNotifier extends StateNotifier<AssistantState> {
               text: trimmed,
             );
 
+            // If reference resolver found an entity (e.g. "remind me about it Thursday at 8pm" -> "Assignment"), augment text for semantic engine
+            String semanticInput = trimmed;
+            if (refResult.isResolved && refResult.resolvedTitle != null && (trimmed.contains(' it') || trimmed.contains(' this') || trimmed.contains(' that'))) {
+              semanticInput = trimmed.replaceAll(RegExp(r'\b(about\s+)?(it|that|this)\b', caseSensitive: false), 'about ${refResult.resolvedTitle!}');
+            }
+
             final semanticCommand = await _understandWithSemanticEngine(
-              trimmed,
+              semanticInput,
               intent: resolvedIntent.intent,
               requiresEventClassification: routingDecision.requiresEventClassification,
             );
@@ -414,6 +516,23 @@ class AssistantNotifier extends StateNotifier<AssistantState> {
                 );
 
                 if (requestGen != _activeRequestGeneration) return;
+
+                // Entity Capture: Store structured memory for newly created entity
+                memoryEngine.storeMemory(
+                  AstraMemoryItem(
+                    id: execResult.taskId.isNotEmpty ? execResult.taskId : DateTime.now().millisecondsSinceEpoch.toString(),
+                    type: 'TASK_ENTITY',
+                    key: 'last_entity',
+                    value: execResult.title,
+                    createdAt: DateTime.now(),
+                    updatedAt: DateTime.now(),
+                    metadata: {
+                      'dueAt': execResult.scheduledAt?.toIso8601String(),
+                      'organization': semanticCommand.organization,
+                      'eventType': semanticCommand.eventType,
+                    },
+                  ),
+                );
 
                 String? calStatus;
                 if (semanticCommand.intent == 'CREATE_CALENDAR_EVENT') {
@@ -459,9 +578,50 @@ class AssistantNotifier extends StateNotifier<AssistantState> {
             debugPrint('[ASTRA ROUTER] intent=${resolvedIntent.intent} source=set_a_resolver mode=AUTHORITATIVE');
             const updateParser = AstraUpdateParser();
             final now = DateTime.now();
-            final updateCmd = updateParser.parse(text: trimmed, now: now);
 
-            final activeTasks = ref.read(taskNotifierProvider);
+            // Handle pending action continuation across turns if applicable:
+            // e.g. previous turn asked for time on "move my exam", next turn is "tomorrow at 7"
+            String updateText = trimmed;
+            if (_pendingAction != null && _pendingAction!.operation == 'UPDATE_TASK') {
+              final pending = _pendingAction!;
+              if (pending.targetEntity.isNotEmpty && !updateText.contains(pending.targetEntity)) {
+                updateText = 'move ${pending.targetEntity} to $updateText';
+              }
+              _pendingAction = null; // consume pending action
+            }
+
+            var updateCmd = updateParser.parse(text: updateText, now: now);
+
+            // Context-Aware Target Resolution:
+            // If target is missing, stopword ("it", "that", "this", "to", "the exam"), or reference resolver found a specific entity, use AstraReferenceResolver result
+            final isGenericTarget = updateCmd.targetQuery.isEmpty ||
+                updateCmd.targetQuery == 'it' ||
+                updateCmd.targetQuery == 'that' ||
+                updateCmd.targetQuery == 'this' ||
+                updateCmd.targetQuery == 'to' ||
+                updateCmd.targetQuery == 'task' ||
+                updateCmd.targetQuery == 'item';
+
+            if ((isGenericTarget || (refResult.isResolved && refResult.resolvedTaskId != null)) && refResult.isResolved && refResult.resolvedTitle != null) {
+              updateCmd = AstraUpdateCommand(
+                originalText: updateCmd.originalText,
+                targetQuery: refResult.resolvedTitle!,
+                newTitle: updateCmd.newTitle,
+                newDueAt: updateCmd.newDueAt,
+                newPriority: updateCmd.newPriority,
+                newOrganization: updateCmd.newOrganization,
+                newRecurrenceRule: updateCmd.newRecurrenceRule,
+                requiresConfirmation: updateCmd.newDueAt == null && updateCmd.newTitle == null && updateCmd.newPriority == null && updateCmd.newOrganization == null,
+                warnings: updateCmd.warnings,
+              );
+            }
+
+            final taskNotifier = ref.read(taskNotifierProvider.notifier);
+            var activeTasks = ref.read(taskNotifierProvider);
+            if (activeTasks.isEmpty) {
+              await taskNotifier.loadTasks();
+              activeTasks = ref.read(taskNotifierProvider);
+            }
             final executor = ref.read(astraCommandExecutorProvider);
             final updateResult = await executor.update(
               ref: ref,
@@ -472,6 +632,21 @@ class AssistantNotifier extends StateNotifier<AssistantState> {
             if (requestGen != _activeRequestGeneration) return;
 
             if (updateResult.success) {
+              // Entity Capture: update structured memory
+              memoryEngine.storeMemory(
+                AstraMemoryItem(
+                  id: updateResult.taskId.isNotEmpty ? updateResult.taskId : DateTime.now().millisecondsSinceEpoch.toString(),
+                  type: 'TASK_ENTITY',
+                  key: 'last_entity',
+                  value: updateResult.title,
+                  createdAt: DateTime.now(),
+                  updatedAt: DateTime.now(),
+                  metadata: {
+                    'dueAt': updateResult.scheduledAt?.toIso8601String(),
+                  },
+                ),
+              );
+
               addStructuredResponse(AstraResponseBuilder.info(
                 'Task updated',
                 lines: [
@@ -485,6 +660,17 @@ class AssistantNotifier extends StateNotifier<AssistantState> {
                 ],
               ));
             } else if (updateResult.requiresConfirmation) {
+              // If target was identified but missing new time, track as pending conversation action
+              if (updateCmd.targetQuery.isNotEmpty && updateCmd.newDueAt == null) {
+                _pendingAction = PendingConversationAction(
+                  targetEntity: updateCmd.targetQuery,
+                  operation: 'UPDATE_TASK',
+                  missingFields: ['time'],
+                  createdAt: DateTime.now(),
+                  sessionId: currentSessionId,
+                );
+              }
+
               final lines = <AstraResponseLine>[];
               if (updateCmd.targetQuery.isNotEmpty) {
                 lines.add(AstraResponseLine(label: 'Target', value: updateCmd.targetQuery, highlight: true));
@@ -671,10 +857,21 @@ class AssistantNotifier extends StateNotifier<AssistantState> {
       return;
     }
 
+    final analyzer = const AstraEmailAnalyzer();
+    final insights = emails.map((e) {
+      final analysis = analyzer.analyze(e);
+      return EmailInsightItem(email: e, analysis: analysis);
+    }).toList();
+
+    final actionableCount = insights.where((i) => i.analysis.isActionable).length;
+
     addMessage(
-      '📧 Found ${emails.length} relevant email${emails.length > 1 ? "s" : ""}:',
+      actionableCount > 0
+          ? '📧 Found ${emails.length} email${emails.length > 1 ? "s" : ""} ($actionableCount actionable):'
+          : '📧 Found ${emails.length} relevant email${emails.length > 1 ? "s" : ""}:',
       type: AssistantMessageType.emailSummary,
       emails: emails,
+      emailInsights: insights,
     );
   }
 
@@ -693,11 +890,134 @@ class AssistantNotifier extends StateNotifier<AssistantState> {
           type: AssistantMessageType.info);
       return;
     }
+
+    final analyzer = const AstraEmailAnalyzer();
+    final analysis = analyzer.analyze(email);
+    final insight = EmailInsightItem(email: email, analysis: analysis);
+
     addMessage(
       'Latest inbox email\n\nFrom: ${email.sender}\nSubject: ${email.subject}\nReceived: ${DateFormat('MMM d, h:mm a').format(email.date)}\n\n${email.snippet.isEmpty ? email.bodyText : email.snippet}',
       type: AssistantMessageType.emailSummary,
       emails: [email],
+      emailInsights: [insight],
     );
+  }
+
+  Future<void> addEmailInsightToTasks({
+    required GmailMessageData email,
+    required AstraEmailAnalysis analysis,
+  }) async {
+    final now = DateTime.now();
+    final scheduledAt = analysis.deadline ?? analysis.eventDateTime;
+    final isHighImportance = analysis.importance == EmailImportance.high || analysis.importance == EmailImportance.critical;
+    final strategy = isHighImportance
+        ? (analysis.category == EmailCategory.deadline ? ReminderStrategy.deadline : ReminderStrategy.important)
+        : ReminderStrategy.normal;
+
+    final command = semantic.AstraCommand(
+      intent: 'CREATE_TASK',
+      eventType: analysis.isEvent ? 'MEETING' : (analysis.category == EmailCategory.deadline ? 'DEADLINE' : 'OTHER'),
+      title: analysis.suggestedTaskTitle,
+      action: analysis.actionRequired,
+      organization: analysis.organization,
+      temporal: semantic.AstraTemporal(
+        deadline: analysis.deadline,
+        eventStart: analysis.eventDateTime,
+        timezone: 'Asia/Kolkata',
+        recurrence: 'NONE',
+      ),
+      recurrence: 'NONE',
+      priority: isHighImportance ? 'high' : 'medium',
+      modelConfidence: analysis.confidence,
+      semanticConfidence: analysis.confidence,
+      requiresConfirmation: false,
+      route: 'EXECUTE',
+      originalText: 'Email: ${email.subject}',
+    );
+
+    final executor = ref.read(astraCommandExecutorProvider);
+    final result = await executor.execute(
+      ref: ref,
+      command: command,
+    );
+
+    if (result.success) {
+      final task = Task(
+        id: result.taskId,
+        title: result.title,
+        dueDate: result.scheduledAt,
+        priority: isHighImportance ? 'high' : 'medium',
+        status: 'active',
+        organization: analysis.organization,
+        createdAt: now,
+        updatedAt: now,
+      );
+
+      await ref.read(taskNotifierProvider.notifier).addTask(task);
+      ref.invalidate(taskListProvider);
+
+      if (scheduledAt != null) {
+        await ref.read(reminderServiceProvider).scheduleReminder(
+          taskId: task.id,
+          taskTitle: task.title,
+          scheduledAt: scheduledAt,
+          strategy: strategy,
+        );
+      }
+
+      // Record structured memory in AstraMemoryEngine
+      final memoryEngine = ref.read(astraMemoryEngineProvider);
+      memoryEngine.storeEmailTaskMemory(
+        emailId: email.id,
+        title: task.title,
+        taskId: task.id,
+        deadline: result.scheduledAt,
+        organization: analysis.organization,
+        subject: email.subject,
+      );
+
+      final dateStr = scheduledAt != null ? ' (due ${DateFormat('EEE, MMM d · h:mm a').format(scheduledAt)})' : '';
+      addMessage(
+        '✅ Added "${task.title}" to your tasks$dateStr.',
+        type: AssistantMessageType.success,
+      );
+    } else {
+      addMessage(
+        'Could not create task: ${result.message}',
+        type: AssistantMessageType.error,
+      );
+    }
+  }
+
+  Future<void> addEmailInsightToCalendar({
+    required GmailMessageData email,
+    required AstraEmailAnalysis analysis,
+  }) async {
+    final authService = ref.read(googleAuthServiceProvider);
+    final client = await authService.getAuthenticatedClient();
+    if (client == null) {
+      addMessage('Please sign in with Google to create calendar events.', type: AssistantMessageType.auth);
+      return;
+    }
+
+    final startTime = analysis.eventDateTime ?? analysis.deadline ?? DateTime.now().add(const Duration(days: 1));
+    final writer = ref.read(googleCalendarWriterServiceProvider);
+
+    try {
+      await writer.createEvent(
+        client,
+        title: analysis.suggestedTaskTitle,
+        startTime: startTime,
+        description: 'From email: ${email.subject}\nSender: ${email.sender}\n\n${email.snippet}',
+      );
+
+      addMessage(
+        '📅 Added "${analysis.suggestedTaskTitle}" to Google Calendar for ${DateFormat('EEE, MMM d · h:mm a').format(startTime)}.',
+        type: AssistantMessageType.success,
+      );
+    } catch (e) {
+      addMessage('Failed to add to Google Calendar: $e', type: AssistantMessageType.error);
+    }
   }
 
   Future<void> handleSyncCalendar() async {
@@ -856,11 +1176,16 @@ class AssistantNotifier extends StateNotifier<AssistantState> {
 
       ScheduleOutcome? notificationOutcome;
       if (wantsReminder && parsed.remindAt != null) {
+        final strategy = ReminderStrategyX.resolve(
+          priority: task.priority,
+          eventType: task.category,
+        );
         final scheduleResult = await ref.read(reminderServiceProvider).scheduleReminder(
               taskId: task.id,
               taskTitle: task.title,
               scheduledAt: parsed.remindAt!,
               timezone: parsed.timezone,
+              strategy: strategy,
             );
         notificationOutcome = scheduleResult.outcome;
       }
@@ -1081,13 +1406,31 @@ class AssistantNotifier extends StateNotifier<AssistantState> {
         .map((m) => {'role': m.isUser ? 'user' : 'model', 'text': m.text})
         .toList();
 
-    final response = await chatService.chat(
-      userMessage: message,
-      history: recentHistory,
-      pendingTasks: tasks.where((t) => !t.isCompleted).toList(),
-      userEmail: state.userEmail,
-    );
-    addMessage(response, type: AssistantMessageType.text);
+    try {
+      final response = await chatService
+          .chat(
+            userMessage: message,
+            history: recentHistory,
+            pendingTasks: tasks.where((t) => !t.isCompleted).toList(),
+            userEmail: state.userEmail,
+          )
+          .timeout(const Duration(seconds: 5));
+      addMessage(response, type: AssistantMessageType.text);
+    } catch (_) {
+      final pending = tasks.where((t) => !t.isCompleted).toList();
+      final now = DateTime.now();
+      if (message.toLowerCase().contains('task') || message.toLowerCase().contains('schedule')) {
+        addMessage(
+          '📋 You have ${pending.length} pending task(s). Current time is ${DateFormat('h:mm a').format(now)}.',
+          type: AssistantMessageType.text,
+        );
+      } else {
+        addMessage(
+          '⚡ ASTRA is active. Current time: ${DateFormat('h:mm a').format(now)}. How can I assist with your tasks or schedule?',
+          type: AssistantMessageType.text,
+        );
+      }
+    }
   }
 
   // ─── Error Formatting ─────────────────────────────────────────────────────

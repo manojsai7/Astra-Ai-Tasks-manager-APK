@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/data/latest.dart' as tz;
@@ -80,7 +81,35 @@ class NotificationService {
   }
 
   static Future<void> _onNotificationResponse(NotificationResponse response) async {
+    final now = DateTime.now();
     debugPrint('[NotificationService] Response: action=${response.actionId}, payload=${response.payload}');
+
+    if (response.payload != null && response.payload!.isNotEmpty) {
+      try {
+        final data = jsonDecode(response.payload!) as Map<String, dynamic>;
+        final taskId = data['taskId'] as String? ?? 'unknown';
+        final scheduledAtStr = data['scheduledAt'] as String? ?? data['occurrence'] as String? ?? '';
+        int driftMs = 0;
+        if (scheduledAtStr.isNotEmpty) {
+          final sched = DateTime.tryParse(scheduledAtStr);
+          if (sched != null) {
+            driftMs = now.difference(sched).inMilliseconds;
+          }
+        }
+        debugPrint(
+          '[ASTRA ALARM FIRED]\n'
+          'taskId=$taskId\n'
+          'scheduledAt=$scheduledAtStr\n'
+          'firedAt=$now\n'
+          'driftMs=$driftMs',
+        );
+        debugPrint(
+          '[ASTRA NOTIFICATION]\n'
+          'taskId=$taskId\n'
+          'displayedAt=$now',
+        );
+      } catch (_) {}
+    }
 
     if (response.actionId != null && _actionCallback != null) {
       await _actionCallback!(response.actionId!, response.payload);
@@ -100,6 +129,10 @@ class NotificationService {
     required String body,
     required DateTime scheduledTime,
     String? payload,
+    String? taskId,
+    DateTime? occurrence,
+    String? offsetStr,
+    String? strategyStr,
   }) async {
     await _ensureInitialized();
 
@@ -161,6 +194,21 @@ class NotificationService {
       }
     } catch (_) {}
 
+    final tId = taskId ?? (payload != null ? _extractTaskId(payload) : '$id');
+    final occ = occurrence ?? scheduledTime;
+    final off = offsetStr ?? '0m';
+
+    debugPrint(
+      '[ASTRA ALARM]\n'
+      'taskId=$tId\n'
+      'occurrence=$occ\n'
+      'offset=$off\n'
+      'requestedAt=$nowTz\n'
+      'scheduledAt=$scheduledTz\n'
+      'exactAlarmPermission=$exactAllowed\n'
+      'alarmMode=exactAllowWhileIdle',
+    );
+
     debugPrint(
       '[NotificationService DIAGNOSTIC] id=$id title="$title" '
       'requestedTime=$scheduledTime scheduledTz=$scheduledTz nowTz=$nowTz '
@@ -202,6 +250,15 @@ class NotificationService {
         debugPrint('[NotificationService DIAGNOSTIC] result=FAILED ($e2)');
         return NotificationScheduleResult.failed;
       }
+    }
+  }
+
+  static String _extractTaskId(String payload) {
+    try {
+      final map = jsonDecode(payload) as Map<String, dynamic>;
+      return map['taskId'] as String? ?? 'unknown';
+    } catch (_) {
+      return 'unknown';
     }
   }
 

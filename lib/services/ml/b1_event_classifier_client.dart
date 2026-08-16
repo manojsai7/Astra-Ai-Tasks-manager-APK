@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
+import 'i_b1_event_classifier.dart';
 
 /// Result returned by ASTRA B1 event classifier.
 class B1ClassificationResult {
@@ -57,10 +58,7 @@ class B1Prediction {
 ///
 /// IMPORTANT:
 /// - This service NEVER creates tasks.
-/// - This service NEVER calls Gemini.
-/// - This service NEVER blocks the rest of ASTRA.
-/// - Failure returns null so local deterministic logic continues.
-class B1EventClassifierClient {
+class B1EventClassifierClient implements IB1EventClassifier {
   B1EventClassifierClient({
     required String baseUrl,
     http.Client? client,
@@ -72,6 +70,7 @@ class B1EventClassifierClient {
   final http.Client _client;
   final Duration timeout;
 
+  @override
   Future<B1ClassificationResult?> classify(
     String text,
   ) async {
