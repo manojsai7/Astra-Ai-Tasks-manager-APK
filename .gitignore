@@ -49,6 +49,8 @@ app.*.map.json
 .env
 *.env
 assets/.env
+android/app/google-services.json
+ios/Runner/GoogleService-Info.plist
 
 # Local Release APKs & Bundles (distribute via GitHub Releases, not git repo)
 releases/

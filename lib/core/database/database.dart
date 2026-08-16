@@ -137,6 +137,54 @@ class AppDatabase extends _$AppDatabase {
   @override
   int get schemaVersion => 9;
 
+  Future<bool> _tableExists(String tableName) async {
+    try {
+      final rows = await customSelect(
+        'SELECT name FROM sqlite_master WHERE type="table" AND name=?',
+        variables: [Variable.withString(tableName)],
+      ).get();
+      return rows.isNotEmpty;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<bool> _columnExists(String tableName, String columnName) async {
+    try {
+      final rows = await customSelect('PRAGMA table_info("$tableName")').get();
+      return rows.any(
+        (row) => row.read<String>('name').toLowerCase() == columnName.toLowerCase(),
+      );
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<void> _safeCreateTable(Migrator m, TableInfo table) async {
+    final exists = await _tableExists(table.actualTableName);
+    if (!exists) {
+      try {
+        await m.createTable(table);
+      } catch (e) {
+        if (!e.toString().contains('already exists')) rethrow;
+      }
+    }
+  }
+
+  Future<void> _safeAddColumn(Migrator m, TableInfo table, GeneratedColumn column) async {
+    final exists = await _columnExists(table.actualTableName, column.$name);
+    if (!exists) {
+      try {
+        await m.addColumn(table, column);
+      } catch (e) {
+        if (!e.toString().contains('duplicate column name') &&
+            !e.toString().contains('already exists')) {
+          rethrow;
+        }
+      }
+    }
+  }
+
   @override
   MigrationStrategy get migration => MigrationStrategy(
     onCreate: (m) async {
@@ -144,36 +192,36 @@ class AppDatabase extends _$AppDatabase {
     },
     onUpgrade: (m, from, to) async {
       if (from < 2) {
-        await m.createTable(tasks);
+        await _safeCreateTable(m, tasks);
       }
       if (from < 3) {
-        await m.createTable(panchangEvents);
-        await m.createTable(ritualRules);
+        await _safeCreateTable(m, panchangEvents);
+        await _safeCreateTable(m, ritualRules);
       }
       if (from < 4) {
-        await m.createTable(taskContexts);
+        await _safeCreateTable(m, taskContexts);
       }
       if (from < 5) {
-        await m.createTable(chatSessions);
-        await m.createTable(chatMessages);
+        await _safeCreateTable(m, chatSessions);
+        await _safeCreateTable(m, chatMessages);
       }
       if (from < 6) {
-        await m.addColumn(tasks, tasks.order);
-        await m.addColumn(tasks, tasks.subtasksJson);
-        await m.addColumn(tasks, tasks.source);
-        await m.addColumn(tasks, tasks.sourceId);
-        await m.addColumn(tasks, tasks.category);
-        await m.addColumn(tasks, tasks.organization);
+        await _safeAddColumn(m, tasks, tasks.order);
+        await _safeAddColumn(m, tasks, tasks.subtasksJson);
+        await _safeAddColumn(m, tasks, tasks.source);
+        await _safeAddColumn(m, tasks, tasks.sourceId);
+        await _safeAddColumn(m, tasks, tasks.category);
+        await _safeAddColumn(m, tasks, tasks.organization);
       }
       if (from < 7) {
-        await m.createTable(reminders);
+        await _safeCreateTable(m, reminders);
       }
       if (from < 8) {
-        await m.addColumn(tasks, tasks.recurrenceRuleJson);
+        await _safeAddColumn(m, tasks, tasks.recurrenceRuleJson);
       }
       if (from < 9) {
-        await m.addColumn(tasks, tasks.startAt);
-        await m.addColumn(tasks, tasks.endAt);
+        await _safeAddColumn(m, tasks, tasks.startAt);
+        await _safeAddColumn(m, tasks, tasks.endAt);
       }
     },
   );
