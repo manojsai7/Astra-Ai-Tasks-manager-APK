@@ -17,14 +17,14 @@
 
 ```text
 Generic Chatbots ──► "I'll help you remember that!" (Generates text bubble, does nothing)
-ASTRA            ──► Actually creates the task, schedules 3-stage hardware alarms, syncs calendar, and remembers context.
+          ASTRA  ──► Actually creates the task, schedules 3-stage hardware alarms, syncs calendar, and remembers context.
 ```
 
 </div>
 
 ---
 
-## ⚡ The 15-Second Recruiter Overview
+## ⚡ The 15-Second Overview
 
 ```text
 Turn:
