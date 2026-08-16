@@ -1,5 +1,6 @@
 import 'package:intl/intl.dart';
 
+import '../assistant/astra_document_analyzer.dart';
 import '../assistant/astra_temporal_engine.dart';
 import '../../features/scheduler/data/services/gmail_sync_service.dart';
 
@@ -27,6 +28,8 @@ class AstraEmailAnalysis {
   final String? actionRequired;
   final DateTime? deadline;
   final DateTime? eventDateTime;
+  final DateTime? startAt;
+  final DateTime? endAt;
   final String? organization;
   final String suggestedTaskTitle;
   final double confidence;
@@ -35,6 +38,7 @@ class AstraEmailAnalysis {
   final bool isEvent;
   final bool requiresConfirmation;
   final List<String> warnings;
+  final AstraDocumentAnalysis? documentAnalysis;
 
   const AstraEmailAnalysis({
     required this.category,
@@ -42,6 +46,8 @@ class AstraEmailAnalysis {
     this.actionRequired,
     this.deadline,
     this.eventDateTime,
+    this.startAt,
+    this.endAt,
     this.organization,
     required this.suggestedTaskTitle,
     this.confidence = 0.90,
@@ -50,9 +56,10 @@ class AstraEmailAnalysis {
     this.isEvent = false,
     this.requiresConfirmation = false,
     this.warnings = const [],
+    this.documentAnalysis,
   });
 
-  DateTime? get actionDateTime => deadline ?? eventDateTime;
+  DateTime? get actionDateTime => deadline ?? eventDateTime ?? startAt;
 }
 
 /// 100% on-device deterministic email intelligence analyzer.
@@ -95,9 +102,25 @@ class AstraEmailAnalyzer {
       );
     }
 
-    // ── 3. Action and Event Type Detection ───────────────────────────────────
+    // ── 3. Temporal & Deadline Extraction ────────────────────────────────────
+    final temporalResult = _extractTemporalDetails(fullText, baseTime);
+    final deadline = temporalResult.deadline;
+    final eventStart = temporalResult.eventStart;
+    final hasAmbiguousDate = temporalResult.isAmbiguous;
+
+    if (deadline != null) {
+      reasons.add('Deadline detected: ${DateFormat('EEE, MMM d · h:mm a').format(deadline)}.');
+    } else if (eventStart != null) {
+      reasons.add('Event time detected: ${DateFormat('EEE, MMM d · h:mm a').format(eventStart)}.');
+    } else if (hasAmbiguousDate) {
+      warnings.add('Temporal reference found but exact date/time could not be resolved with certainty.');
+    }
+
+    // ── 4. Action and Event Type Detection (Evidence-Based) ──────────────────
+    final hasInterviewWording = _matchesPattern(fullLower, _interviewPatterns);
+    final isInterview = hasInterviewWording && (eventStart != null || fullLower.contains('invitation') || fullLower.contains('scheduled') || fullLower.contains('round') || fullLower.contains('confirmed'));
+
     final isExam = _matchesPattern(fullLower, _examPatterns);
-    final isInterview = _matchesPattern(fullLower, _interviewPatterns);
     final isAssignment = _matchesPattern(fullLower, _assignmentPatterns);
     final isApplication = _matchesPattern(fullLower, _applicationPatterns);
     final isPayment = _matchesPattern(fullLower, _paymentPatterns);
@@ -109,7 +132,19 @@ class AstraEmailAnalyzer {
       reasons.add('Exam or academic assessment detected.');
     } else if (isInterview) {
       action = 'interview';
-      reasons.add('Interview or hiring round detected.');
+      String? evidenceSnippet;
+      for (final p in _interviewPatterns) {
+        final m = p.firstMatch(fullText);
+        if (m != null) {
+          evidenceSnippet = m.group(0);
+          break;
+        }
+      }
+      if (evidenceSnippet != null) {
+        reasons.add('Evidence: "$evidenceSnippet"');
+      } else {
+        reasons.add('Interview or hiring round detected.');
+      }
     } else if (isAssignment) {
       action = 'submit';
       reasons.add('Assignment or project submission detected.');
@@ -127,20 +162,6 @@ class AstraEmailAnalyzer {
       if (action != null) {
         reasons.add('Action phrase "$action" detected.');
       }
-    }
-
-    // ── 4. Temporal & Deadline Extraction ────────────────────────────────────
-    final temporalResult = _extractTemporalDetails(fullText, baseTime);
-    final deadline = temporalResult.deadline;
-    final eventStart = temporalResult.eventStart;
-    final hasAmbiguousDate = temporalResult.isAmbiguous;
-
-    if (deadline != null) {
-      reasons.add('Deadline detected: ${DateFormat('EEE, MMM d · h:mm a').format(deadline)}.');
-    } else if (eventStart != null) {
-      reasons.add('Event time detected: ${DateFormat('EEE, MMM d · h:mm a').format(eventStart)}.');
-    } else if (hasAmbiguousDate) {
-      warnings.add('Temporal reference found but exact date/time could not be resolved with certainty.');
     }
 
     // ── 5. Category & Importance Assignment ──────────────────────────────────
@@ -182,20 +203,30 @@ class AstraEmailAnalyzer {
       isPayment: isPayment,
     );
 
+    // ── 7. Long Document / Multi-Item Analysis ─────────────────────────────
+    final docAnalyzer = AstraDocumentAnalyzer(temporalEngine: temporalEngine);
+    final docAnalysis = docAnalyzer.analyze(fullText, now: baseTime);
+
+    final effectiveStart = eventStart ?? (docAnalysis.extractedItems.isNotEmpty ? docAnalysis.extractedItems.first.startAt : null);
+    final effectiveEnd = (docAnalysis.extractedItems.isNotEmpty ? docAnalysis.extractedItems.first.endAt : null);
+
     return AstraEmailAnalysis(
       category: category,
       importance: importance,
       actionRequired: action,
       deadline: deadline,
       eventDateTime: eventStart,
+      startAt: effectiveStart,
+      endAt: effectiveEnd,
       organization: org,
       suggestedTaskTitle: taskTitle,
       confidence: isActionable ? 0.92 : 0.85,
       reasons: reasons,
       isActionable: isActionable,
-      isEvent: isEvent,
-      requiresConfirmation: hasAmbiguousDate || (isActionable && deadline == null && eventStart == null),
+      isEvent: isEvent || effectiveStart != null,
+      requiresConfirmation: hasAmbiguousDate || (isActionable && deadline == null && effectiveStart == null),
       warnings: warnings,
+      documentAnalysis: docAnalysis.extractedItems.isNotEmpty ? docAnalysis : null,
     );
   }
 
@@ -249,12 +280,21 @@ class AstraEmailAnalyzer {
       'discount code',
       'terms of service update',
       'privacy policy update',
+      'weekly contest',
+      'daily challenge',
+      'problem of the day',
+      'interview prep',
+      'interview preparation',
+      'mock interview practice',
+      'study plan',
+      'crash course',
     ];
     int hits = 0;
     for (final term in noiseTerms) {
       if (text.contains(term)) hits++;
     }
-    return hits >= 2 && !text.contains('interview') && !text.contains('exam') && !text.contains('deadline');
+    final isExplicitPersonalEvent = _matchesPattern(text, _interviewPatterns) || _matchesPattern(text, _examPatterns);
+    return hits >= 2 && !isExplicitPersonalEvent;
   }
 
   bool _matchesPattern(String text, List<RegExp> patterns) {
@@ -417,11 +457,11 @@ class AstraEmailAnalyzer {
   ];
 
   static final List<RegExp> _examPatterns = [
-    RegExp(r'\b(?:exam|examination|midterm|finals|quiz|test|assessment)\b', caseSensitive: false),
+    RegExp(r'\b(?:exam\s+(?:scheduled|date|time|on|for)|examination|midterm\s+exam|finals\s+exam|semester\s+exam|online\s+proctored\s+test|quiz\s+due|assessment\s+(?:due|link|invitation)|take\s+the\s+assessment)\b', caseSensitive: false),
   ];
 
   static final List<RegExp> _interviewPatterns = [
-    RegExp(r'\b(?:interview|screening\s+round|technical\s+round|hiring\s+manager|interview\s+invitation)\b', caseSensitive: false),
+    RegExp(r'\b(?:interview\s+(?:scheduled|invitation|confirmed|details|with|at|for|on)|technical\s+(?:interview|round)|screening\s+round|hiring\s+manager\s+interview|final\s+round\s+interview|video\s+interview|onsite\s+interview|invited\s+to\s+interview|interview\s+slot)\b', caseSensitive: false),
   ];
 
   static final List<RegExp> _assignmentPatterns = [

@@ -586,6 +586,26 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, TaskEntry> {
     type: DriftSqlType.dateTime,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _startAtMeta = const VerificationMeta(
+    'startAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> startAt = GeneratedColumn<DateTime>(
+    'start_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _endAtMeta = const VerificationMeta('endAt');
+  @override
+  late final GeneratedColumn<DateTime> endAt = GeneratedColumn<DateTime>(
+    'end_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _completedAtMeta = const VerificationMeta(
     'completedAt',
   );
@@ -684,6 +704,8 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, TaskEntry> {
     order,
     subtasksJson,
     dueAt,
+    startAt,
+    endAt,
     completedAt,
     createdAt,
     updatedAt,
@@ -773,6 +795,18 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, TaskEntry> {
       context.handle(
         _dueAtMeta,
         dueAt.isAcceptableOrUnknown(data['due_at']!, _dueAtMeta),
+      );
+    }
+    if (data.containsKey('start_at')) {
+      context.handle(
+        _startAtMeta,
+        startAt.isAcceptableOrUnknown(data['start_at']!, _startAtMeta),
+      );
+    }
+    if (data.containsKey('end_at')) {
+      context.handle(
+        _endAtMeta,
+        endAt.isAcceptableOrUnknown(data['end_at']!, _endAtMeta),
       );
     }
     if (data.containsKey('completed_at')) {
@@ -885,6 +919,14 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, TaskEntry> {
         DriftSqlType.dateTime,
         data['${effectivePrefix}due_at'],
       ),
+      startAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}start_at'],
+      ),
+      endAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}end_at'],
+      ),
       completedAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}completed_at'],
@@ -937,6 +979,8 @@ class TaskEntry extends DataClass implements Insertable<TaskEntry> {
   final int order;
   final String subtasksJson;
   final DateTime? dueAt;
+  final DateTime? startAt;
+  final DateTime? endAt;
   final DateTime? completedAt;
   final DateTime createdAt;
   final DateTime updatedAt;
@@ -956,6 +1000,8 @@ class TaskEntry extends DataClass implements Insertable<TaskEntry> {
     required this.order,
     required this.subtasksJson,
     this.dueAt,
+    this.startAt,
+    this.endAt,
     this.completedAt,
     required this.createdAt,
     required this.updatedAt,
@@ -983,6 +1029,12 @@ class TaskEntry extends DataClass implements Insertable<TaskEntry> {
     map['subtasks_json'] = Variable<String>(subtasksJson);
     if (!nullToAbsent || dueAt != null) {
       map['due_at'] = Variable<DateTime>(dueAt);
+    }
+    if (!nullToAbsent || startAt != null) {
+      map['start_at'] = Variable<DateTime>(startAt);
+    }
+    if (!nullToAbsent || endAt != null) {
+      map['end_at'] = Variable<DateTime>(endAt);
     }
     if (!nullToAbsent || completedAt != null) {
       map['completed_at'] = Variable<DateTime>(completedAt);
@@ -1025,6 +1077,12 @@ class TaskEntry extends DataClass implements Insertable<TaskEntry> {
       dueAt: dueAt == null && nullToAbsent
           ? const Value.absent()
           : Value(dueAt),
+      startAt: startAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(startAt),
+      endAt: endAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(endAt),
       completedAt: completedAt == null && nullToAbsent
           ? const Value.absent()
           : Value(completedAt),
@@ -1064,6 +1122,8 @@ class TaskEntry extends DataClass implements Insertable<TaskEntry> {
       order: serializer.fromJson<int>(json['order']),
       subtasksJson: serializer.fromJson<String>(json['subtasksJson']),
       dueAt: serializer.fromJson<DateTime?>(json['dueAt']),
+      startAt: serializer.fromJson<DateTime?>(json['startAt']),
+      endAt: serializer.fromJson<DateTime?>(json['endAt']),
       completedAt: serializer.fromJson<DateTime?>(json['completedAt']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
@@ -1090,6 +1150,8 @@ class TaskEntry extends DataClass implements Insertable<TaskEntry> {
       'order': serializer.toJson<int>(order),
       'subtasksJson': serializer.toJson<String>(subtasksJson),
       'dueAt': serializer.toJson<DateTime?>(dueAt),
+      'startAt': serializer.toJson<DateTime?>(startAt),
+      'endAt': serializer.toJson<DateTime?>(endAt),
       'completedAt': serializer.toJson<DateTime?>(completedAt),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
@@ -1112,6 +1174,8 @@ class TaskEntry extends DataClass implements Insertable<TaskEntry> {
     int? order,
     String? subtasksJson,
     Value<DateTime?> dueAt = const Value.absent(),
+    Value<DateTime?> startAt = const Value.absent(),
+    Value<DateTime?> endAt = const Value.absent(),
     Value<DateTime?> completedAt = const Value.absent(),
     DateTime? createdAt,
     DateTime? updatedAt,
@@ -1131,6 +1195,8 @@ class TaskEntry extends DataClass implements Insertable<TaskEntry> {
     order: order ?? this.order,
     subtasksJson: subtasksJson ?? this.subtasksJson,
     dueAt: dueAt.present ? dueAt.value : this.dueAt,
+    startAt: startAt.present ? startAt.value : this.startAt,
+    endAt: endAt.present ? endAt.value : this.endAt,
     completedAt: completedAt.present ? completedAt.value : this.completedAt,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
@@ -1160,6 +1226,8 @@ class TaskEntry extends DataClass implements Insertable<TaskEntry> {
           ? data.subtasksJson.value
           : this.subtasksJson,
       dueAt: data.dueAt.present ? data.dueAt.value : this.dueAt,
+      startAt: data.startAt.present ? data.startAt.value : this.startAt,
+      endAt: data.endAt.present ? data.endAt.value : this.endAt,
       completedAt: data.completedAt.present
           ? data.completedAt.value
           : this.completedAt,
@@ -1190,6 +1258,8 @@ class TaskEntry extends DataClass implements Insertable<TaskEntry> {
           ..write('order: $order, ')
           ..write('subtasksJson: $subtasksJson, ')
           ..write('dueAt: $dueAt, ')
+          ..write('startAt: $startAt, ')
+          ..write('endAt: $endAt, ')
           ..write('completedAt: $completedAt, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
@@ -1214,6 +1284,8 @@ class TaskEntry extends DataClass implements Insertable<TaskEntry> {
     order,
     subtasksJson,
     dueAt,
+    startAt,
+    endAt,
     completedAt,
     createdAt,
     updatedAt,
@@ -1237,6 +1309,8 @@ class TaskEntry extends DataClass implements Insertable<TaskEntry> {
           other.order == this.order &&
           other.subtasksJson == this.subtasksJson &&
           other.dueAt == this.dueAt &&
+          other.startAt == this.startAt &&
+          other.endAt == this.endAt &&
           other.completedAt == this.completedAt &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt &&
@@ -1258,6 +1332,8 @@ class TasksCompanion extends UpdateCompanion<TaskEntry> {
   final Value<int> order;
   final Value<String> subtasksJson;
   final Value<DateTime?> dueAt;
+  final Value<DateTime?> startAt;
+  final Value<DateTime?> endAt;
   final Value<DateTime?> completedAt;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
@@ -1278,6 +1354,8 @@ class TasksCompanion extends UpdateCompanion<TaskEntry> {
     this.order = const Value.absent(),
     this.subtasksJson = const Value.absent(),
     this.dueAt = const Value.absent(),
+    this.startAt = const Value.absent(),
+    this.endAt = const Value.absent(),
     this.completedAt = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
@@ -1299,6 +1377,8 @@ class TasksCompanion extends UpdateCompanion<TaskEntry> {
     this.order = const Value.absent(),
     this.subtasksJson = const Value.absent(),
     this.dueAt = const Value.absent(),
+    this.startAt = const Value.absent(),
+    this.endAt = const Value.absent(),
     this.completedAt = const Value.absent(),
     required DateTime createdAt,
     required DateTime updatedAt,
@@ -1323,6 +1403,8 @@ class TasksCompanion extends UpdateCompanion<TaskEntry> {
     Expression<int>? order,
     Expression<String>? subtasksJson,
     Expression<DateTime>? dueAt,
+    Expression<DateTime>? startAt,
+    Expression<DateTime>? endAt,
     Expression<DateTime>? completedAt,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
@@ -1344,6 +1426,8 @@ class TasksCompanion extends UpdateCompanion<TaskEntry> {
       if (order != null) 'order': order,
       if (subtasksJson != null) 'subtasks_json': subtasksJson,
       if (dueAt != null) 'due_at': dueAt,
+      if (startAt != null) 'start_at': startAt,
+      if (endAt != null) 'end_at': endAt,
       if (completedAt != null) 'completed_at': completedAt,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
@@ -1368,6 +1452,8 @@ class TasksCompanion extends UpdateCompanion<TaskEntry> {
     Value<int>? order,
     Value<String>? subtasksJson,
     Value<DateTime?>? dueAt,
+    Value<DateTime?>? startAt,
+    Value<DateTime?>? endAt,
     Value<DateTime?>? completedAt,
     Value<DateTime>? createdAt,
     Value<DateTime>? updatedAt,
@@ -1389,6 +1475,8 @@ class TasksCompanion extends UpdateCompanion<TaskEntry> {
       order: order ?? this.order,
       subtasksJson: subtasksJson ?? this.subtasksJson,
       dueAt: dueAt ?? this.dueAt,
+      startAt: startAt ?? this.startAt,
+      endAt: endAt ?? this.endAt,
       completedAt: completedAt ?? this.completedAt,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
@@ -1434,6 +1522,12 @@ class TasksCompanion extends UpdateCompanion<TaskEntry> {
     if (dueAt.present) {
       map['due_at'] = Variable<DateTime>(dueAt.value);
     }
+    if (startAt.present) {
+      map['start_at'] = Variable<DateTime>(startAt.value);
+    }
+    if (endAt.present) {
+      map['end_at'] = Variable<DateTime>(endAt.value);
+    }
     if (completedAt.present) {
       map['completed_at'] = Variable<DateTime>(completedAt.value);
     }
@@ -1477,6 +1571,8 @@ class TasksCompanion extends UpdateCompanion<TaskEntry> {
           ..write('order: $order, ')
           ..write('subtasksJson: $subtasksJson, ')
           ..write('dueAt: $dueAt, ')
+          ..write('startAt: $startAt, ')
+          ..write('endAt: $endAt, ')
           ..write('completedAt: $completedAt, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
@@ -4907,6 +5003,8 @@ typedef $$TasksTableCreateCompanionBuilder =
       Value<int> order,
       Value<String> subtasksJson,
       Value<DateTime?> dueAt,
+      Value<DateTime?> startAt,
+      Value<DateTime?> endAt,
       Value<DateTime?> completedAt,
       required DateTime createdAt,
       required DateTime updatedAt,
@@ -4929,6 +5027,8 @@ typedef $$TasksTableUpdateCompanionBuilder =
       Value<int> order,
       Value<String> subtasksJson,
       Value<DateTime?> dueAt,
+      Value<DateTime?> startAt,
+      Value<DateTime?> endAt,
       Value<DateTime?> completedAt,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
@@ -5018,6 +5118,16 @@ class $$TasksTableFilterComposer extends Composer<_$AppDatabase, $TasksTable> {
 
   ColumnFilters<DateTime> get dueAt => $composableBuilder(
     column: $table.dueAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get startAt => $composableBuilder(
+    column: $table.startAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get endAt => $composableBuilder(
+    column: $table.endAt,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -5146,6 +5256,16 @@ class $$TasksTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<DateTime> get startAt => $composableBuilder(
+    column: $table.startAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get endAt => $composableBuilder(
+    column: $table.endAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get completedAt => $composableBuilder(
     column: $table.completedAt,
     builder: (column) => ColumnOrderings(column),
@@ -5231,6 +5351,12 @@ class $$TasksTableAnnotationComposer
 
   GeneratedColumn<DateTime> get dueAt =>
       $composableBuilder(column: $table.dueAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get startAt =>
+      $composableBuilder(column: $table.startAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get endAt =>
+      $composableBuilder(column: $table.endAt, builder: (column) => column);
 
   GeneratedColumn<DateTime> get completedAt => $composableBuilder(
     column: $table.completedAt,
@@ -5326,6 +5452,8 @@ class $$TasksTableTableManager
                 Value<int> order = const Value.absent(),
                 Value<String> subtasksJson = const Value.absent(),
                 Value<DateTime?> dueAt = const Value.absent(),
+                Value<DateTime?> startAt = const Value.absent(),
+                Value<DateTime?> endAt = const Value.absent(),
                 Value<DateTime?> completedAt = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
@@ -5346,6 +5474,8 @@ class $$TasksTableTableManager
                 order: order,
                 subtasksJson: subtasksJson,
                 dueAt: dueAt,
+                startAt: startAt,
+                endAt: endAt,
                 completedAt: completedAt,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
@@ -5368,6 +5498,8 @@ class $$TasksTableTableManager
                 Value<int> order = const Value.absent(),
                 Value<String> subtasksJson = const Value.absent(),
                 Value<DateTime?> dueAt = const Value.absent(),
+                Value<DateTime?> startAt = const Value.absent(),
+                Value<DateTime?> endAt = const Value.absent(),
                 Value<DateTime?> completedAt = const Value.absent(),
                 required DateTime createdAt,
                 required DateTime updatedAt,
@@ -5388,6 +5520,8 @@ class $$TasksTableTableManager
                 order: order,
                 subtasksJson: subtasksJson,
                 dueAt: dueAt,
+                startAt: startAt,
+                endAt: endAt,
                 completedAt: completedAt,
                 createdAt: createdAt,
                 updatedAt: updatedAt,

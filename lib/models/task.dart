@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:intl/intl.dart';
 import 'package:uuid/uuid.dart';
 
 import '../services/assistant/astra_recurrence_engine.dart';
@@ -52,6 +53,8 @@ class Task {
   final String title;
   final String? description;
   final DateTime? dueDate;
+  final DateTime? startAt;
+  final DateTime? endAt;
   final String status; // 'pending' | 'active' | 'completed' | 'cancelled'
   final String priority; // 'low' | 'medium' | 'high'
   final int order;
@@ -70,6 +73,8 @@ class Task {
     required this.title,
     this.description,
     this.dueDate,
+    this.startAt,
+    this.endAt,
     this.status = 'pending',
     this.priority = 'medium',
     this.order = 0,
@@ -87,10 +92,24 @@ class Task {
   // Backward compatibility getter
   bool get isCompleted => status == 'completed';
 
+  // Duration & deadline helper getters
+  bool get isDuration => startAt != null && endAt != null;
+  bool get isDeadline => dueDate != null && startAt == null;
+
+  String? get durationFormatted {
+    if (!isDuration) return null;
+    final days = endAt!.difference(startAt!).inDays + 1;
+    final startFmt = DateFormat('d MMM').format(startAt!);
+    final endFmt = DateFormat('d MMM').format(endAt!);
+    return '$startFmt – $endFmt · $days Days';
+  }
+
   factory Task.create({
     required String title,
     String? description,
     DateTime? dueDate,
+    DateTime? startAt,
+    DateTime? endAt,
     String priority = 'medium',
     String status = 'pending',
     int order = 0,
@@ -107,6 +126,8 @@ class Task {
       title: title,
       description: description,
       dueDate: dueDate,
+      startAt: startAt,
+      endAt: endAt,
       priority: priority,
       status: status,
       order: order,
@@ -127,6 +148,8 @@ class Task {
     String? title,
     String? description,
     DateTime? dueDate,
+    DateTime? startAt,
+    DateTime? endAt,
     String? status,
     String? priority,
     int? order,
@@ -148,6 +171,8 @@ class Task {
       title: title ?? this.title,
       description: description ?? this.description,
       dueDate: dueDate ?? this.dueDate,
+      startAt: startAt ?? this.startAt,
+      endAt: endAt ?? this.endAt,
       status: newStatus,
       priority: priority ?? this.priority,
       order: order ?? this.order,
@@ -168,6 +193,8 @@ class Task {
         'title': title,
         'description': description,
         'dueDate': dueDate?.toIso8601String(),
+        'startAt': startAt?.toIso8601String(),
+        'endAt': endAt?.toIso8601String(),
         'status': status,
         'priority': priority,
         'order': order,
@@ -212,6 +239,8 @@ class Task {
       title: json['title'] as String,
       description: json['description'] as String?,
       dueDate: json['dueDate'] != null ? DateTime.parse(json['dueDate'] as String) : null,
+      startAt: json['startAt'] != null ? DateTime.parse(json['startAt'] as String) : null,
+      endAt: json['endAt'] != null ? DateTime.parse(json['endAt'] as String) : null,
       status: parsedStatus,
       priority: json['priority'] as String? ?? 'medium',
       order: json['order'] as int? ?? 0,

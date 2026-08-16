@@ -78,6 +78,8 @@ class TaskNotifier extends StateNotifier<List<Task>> {
             order: Value(task.order),
             subtasksJson: Value(subtasksJson),
             dueAt: Value(task.dueDate),
+            startAt: Value(task.startAt),
+            endAt: Value(task.endAt),
             completedAt: Value(task.completedAt),
             createdAt: Value(task.createdAt),
             updatedAt: Value(task.updatedAt ?? now),
@@ -205,6 +207,8 @@ class TaskNotifier extends StateNotifier<List<Task>> {
         order: Value(updated.order),
         subtasksJson: Value(subtasksJson),
         dueAt: Value(updated.dueDate),
+        startAt: Value(updated.startAt),
+        endAt: Value(updated.endAt),
         completedAt: Value(updated.completedAt),
         updatedAt: Value(now),
         source: Value(updated.source),
@@ -228,9 +232,13 @@ List<Task> sortTasks(List<Task> tasks, SortMode mode) {
       list.sort((a, b) => a.order.compareTo(b.order));
       return list;
     case SortMode.byDate:
-      final withDate = list.where((t) => t.dueDate != null).toList()
-        ..sort((a, b) => a.dueDate!.compareTo(b.dueDate!));
-      final noDate = list.where((t) => t.dueDate == null).toList()
+      final withDate = list.where((t) => t.dueDate != null || t.startAt != null).toList()
+        ..sort((a, b) {
+          final aDate = a.dueDate ?? a.startAt!;
+          final bDate = b.dueDate ?? b.startAt!;
+          return aDate.compareTo(bDate);
+        });
+      final noDate = list.where((t) => t.dueDate == null && t.startAt == null).toList()
         ..sort((a, b) => a.order.compareTo(b.order));
       return [...withDate, ...noDate];
     case SortMode.byPriority:
@@ -265,6 +273,8 @@ Task _rowToTask(TaskEntry row) {
     title: row.title,
     description: row.description,
     dueDate: row.dueAt,
+    startAt: row.startAt,
+    endAt: row.endAt,
     status: row.status,
     priority: row.priority,
     order: row.order,

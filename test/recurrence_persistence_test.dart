@@ -184,9 +184,9 @@ void main() {
       expect(loaded.recurrenceRule, isNull);
     });
 
-    // G. Migration simulation: database schema version 8 exposes recurrenceRuleJson
+    // G. Migration simulation: database schema version exposes recurrenceRuleJson
     test('G. Migration: schema upgrade from version 7 to 8 adds recurrenceRuleJson column', () async {
-      expect(db.schemaVersion, 8);
+      expect(db.schemaVersion, greaterThanOrEqualTo(8));
 
       final task = Task.create(
         title: 'Schema 8 Task',

@@ -16,6 +16,7 @@ import '../widgets/design_system/astra_3d_button.dart';
 import '../widgets/design_system/astra_3d_surface.dart';
 import '../widgets/assistant/astra_response_card.dart';
 import '../services/email/astra_email_analyzer.dart';
+import '../services/assistant/astra_document_analyzer.dart';
 
 class AssistantScreen extends ConsumerStatefulWidget {
   const AssistantScreen({super.key});
@@ -212,11 +213,9 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen>
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(assistantStateProvider);
-    final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
 
     return Scaffold(
       backgroundColor: AppTheme.background,
-      resizeToAvoidBottomInset: false,
       body: SafeArea(
         child: Column(
           children: [
@@ -227,10 +226,7 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen>
                   : _buildMessageList(context, state),
             ),
             if (state.isLoading) _buildThinkingIndicator(),
-            Padding(
-              padding: EdgeInsets.only(bottom: bottomInset),
-              child: _buildInputBar(context),
-            ),
+            _buildInputBar(context),
           ],
         ),
       ),
@@ -450,11 +446,71 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen>
     final maxW = MediaQuery.sizeOf(context).width * 0.78;
 
     if (isUser) {
+      final isLongUserDoc = msg.text.length > 200 || msg.text.split('\n').length >= 4;
+      final userMaxW = isLongUserDoc
+          ? MediaQuery.sizeOf(context).width * 0.90
+          : MediaQuery.sizeOf(context).width * 0.78;
+
+      if (isLongUserDoc) {
+        return Align(
+          alignment: Alignment.centerRight,
+          child: Container(
+            margin: const EdgeInsets.only(bottom: 14),
+            constraints: BoxConstraints(maxWidth: userMaxW),
+            decoration: BoxDecoration(
+              color: AstraColors.surface,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: AstraColors.edgeSoft),
+              boxShadow: const [
+                BoxShadow(color: AstraColors.depth, offset: Offset(0, 2), blurRadius: 0),
+              ],
+            ),
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Icon(LucideIcons.fileText, size: 13, color: AstraColors.lime),
+                    const SizedBox(width: 6),
+                    const Text(
+                      'PASTED DOCUMENT / NOTICE',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                        color: AstraColors.lime,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                    const Spacer(),
+                    Text(
+                      DateFormat('h:mm a').format(msg.timestamp),
+                      style: const TextStyle(fontSize: 9, color: AstraColors.textMuted),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                SelectionArea(
+                  child: Text(
+                    msg.text,
+                    style: const TextStyle(
+                      color: AstraColors.textPrimary,
+                      fontSize: 13,
+                      height: 1.5,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ).withPremiumEntry(delayMs: 0);
+      }
+
       return Align(
         alignment: Alignment.centerRight,
         child: Container(
           margin: const EdgeInsets.only(bottom: 14),
-          constraints: BoxConstraints(maxWidth: maxW),
+          constraints: BoxConstraints(maxWidth: userMaxW),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
@@ -614,7 +670,9 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen>
                 ],
               ),
             ),
-            if (msg.emailInsights != null && msg.emailInsights!.isNotEmpty)
+            if (msg.documentAnalysis != null)
+              _buildDocumentAnalysisCard(msg.documentAnalysis!)
+            else if (msg.emailInsights != null && msg.emailInsights!.isNotEmpty)
               _buildEmailInsightsCard(msg.emailInsights!)
             else if (msg.emails != null && msg.emails!.isNotEmpty)
               _buildEmailSummaryCard(msg.emails!),
@@ -627,6 +685,219 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen>
   }
 
   // ─── Rich Cards ────────────────────────────────────────────────────────────
+
+  Widget _buildDocumentAnalysisCard(AstraDocumentAnalysis analysis) {
+    return Container(
+      margin: const EdgeInsets.only(top: 10),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AstraColors.surface,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AstraColors.borderSubtle),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                decoration: BoxDecoration(
+                  color: AstraColors.violet.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(color: AstraColors.violet.withValues(alpha: 0.4)),
+                ),
+                child: Text(
+                  analysis.sourceType.toUpperCase(),
+                  style: const TextStyle(
+                    color: AstraColors.violet,
+                    fontSize: 9.5,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  analysis.title,
+                  style: const TextStyle(
+                    color: AstraColors.textPrimary,
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w600,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          ...analysis.extractedItems.map((item) {
+            final isTraining = item.type == 'training';
+            final isForm = item.type == 'form' || item.actionRequired;
+            final isExam = item.type == 'exam';
+
+            final badgeColor = isForm
+                ? const Color(0xFFF59E0B)
+                : (isTraining ? AstraColors.cyan : (isExam ? AstraColors.red : AstraColors.lime));
+
+            final badgeText = item.durationDays != null
+                ? '${item.type.toUpperCase()} · ${item.durationDays} DAYS'
+                : (isForm ? 'ACTION REQUIRED' : item.type.toUpperCase());
+
+            return Container(
+              margin: const EdgeInsets.only(bottom: 8),
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: AstraColors.surfaceGlass,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: AstraColors.borderSubtle),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: badgeColor.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(4),
+                          border: Border.all(color: badgeColor.withValues(alpha: 0.4)),
+                        ),
+                        child: Text(
+                          badgeText,
+                          style: TextStyle(
+                            color: badgeColor,
+                            fontSize: 9,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 0.4,
+                          ),
+                        ),
+                      ),
+                      const Spacer(),
+                      if (item.confidence >= 0.9)
+                        const Text(
+                          '100% On-Device',
+                          style: TextStyle(color: AstraColors.textMuted, fontSize: 9),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    item.title,
+                    style: const TextStyle(
+                      color: AstraColors.textPrimary,
+                      fontSize: 13.5,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    item.description,
+                    style: const TextStyle(
+                      color: AstraColors.textSecondary,
+                      fontSize: 11.5,
+                      height: 1.4,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 6,
+                    children: [
+                      InkWell(
+                        onTap: () {
+                          HapticFeedback.lightImpact();
+                          ref.read(assistantStateProvider.notifier).addDocumentItemToTasks(item);
+                        },
+                        borderRadius: BorderRadius.circular(6),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                          decoration: BoxDecoration(
+                            color: AstraColors.lime.withValues(alpha: 0.18),
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(color: AstraColors.lime.withValues(alpha: 0.5)),
+                          ),
+                          child: const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(LucideIcons.plus, size: 12, color: AstraColors.lime),
+                              SizedBox(width: 4),
+                              Text(
+                                'ADD TO TASKS',
+                                style: TextStyle(
+                                  color: AstraColors.lime,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      InkWell(
+                        onTap: () {
+                          HapticFeedback.lightImpact();
+                          ref.read(assistantStateProvider.notifier).addDocumentItemToCalendar(item);
+                        },
+                        borderRadius: BorderRadius.circular(6),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                          decoration: BoxDecoration(
+                            color: AstraColors.cyan.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(color: AstraColors.cyan.withValues(alpha: 0.4)),
+                          ),
+                          child: const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(LucideIcons.calendar, size: 12, color: AstraColors.cyan),
+                              SizedBox(width: 4),
+                              Text(
+                                'ADD TO CALENDAR',
+                                style: TextStyle(
+                                  color: AstraColors.cyan,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            );
+          }),
+          if (analysis.extractedItems.length >= 2) ...[
+            const SizedBox(height: 4),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: () {
+                  HapticFeedback.mediumImpact();
+                  ref.read(assistantStateProvider.notifier).addAllDocumentItemsToTasks(analysis.extractedItems);
+                },
+                icon: const Icon(LucideIcons.checkCheck, size: 14),
+                label: Text('ADD ALL TO TASKS (${analysis.extractedItems.length})'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AstraColors.lime,
+                  foregroundColor: Colors.black,
+                  textStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
 
   Widget _buildEmailInsightsCard(List<EmailInsightItem> insights) {
     return Column(

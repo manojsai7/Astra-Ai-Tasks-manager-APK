@@ -1,10 +1,12 @@
 import 'dart:convert';
-import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/data/latest.dart' as tz;
 import 'package:timezone/timezone.dart' as tz_lib;
 
+import '../core/database/database.dart';
 import '../core/time/astra_time_service.dart';
+import 'reminder_service.dart';
 
 /// Result of a notification scheduling attempt — honest, structured status.
 enum NotificationScheduleResult {
@@ -16,6 +18,13 @@ enum NotificationScheduleResult {
 }
 
 typedef NotificationActionCallback = Future<void> Function(String actionId, String? payload);
+
+/// Background isolate notification response entry-point.
+@pragma('vm:entry-point')
+void astraNotificationBackgroundHandler(NotificationResponse response) async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await NotificationService.handleNotificationActionResponse(response);
+}
 
 /// ASTRA Notification Service — schedules task reminders with action buttons.
 class NotificationService {
@@ -67,6 +76,7 @@ class NotificationService {
     await _plugin.initialize(
       settings: settings,
       onDidReceiveNotificationResponse: _onNotificationResponse,
+      onDidReceiveBackgroundNotificationResponse: astraNotificationBackgroundHandler,
     );
 
     final androidImpl = _plugin.resolvePlatformSpecificImplementation<
@@ -81,12 +91,24 @@ class NotificationService {
   }
 
   static Future<void> _onNotificationResponse(NotificationResponse response) async {
-    final now = DateTime.now();
-    debugPrint('[NotificationService] Response: action=${response.actionId}, payload=${response.payload}');
+    await handleNotificationActionResponse(response);
+  }
 
-    if (response.payload != null && response.payload!.isNotEmpty) {
+  /// Authoritative handling of notification action responses with structured diagnostics.
+  static Future<void> handleNotificationActionResponse(NotificationResponse response) async {
+    final now = DateTime.now();
+    final actionId = response.actionId ?? NotificationService.actionOpenTask;
+    final payload = response.payload;
+
+    debugPrint(
+      '[ASTRA NOTIF ACTION RECEIVED]\n'
+      'action=$actionId\n'
+      'payload=$payload',
+    );
+
+    if (payload != null && payload.isNotEmpty) {
       try {
-        final data = jsonDecode(response.payload!) as Map<String, dynamic>;
+        final data = jsonDecode(payload) as Map<String, dynamic>;
         final taskId = data['taskId'] as String? ?? 'unknown';
         final scheduledAtStr = data['scheduledAt'] as String? ?? data['occurrence'] as String? ?? '';
         int driftMs = 0;
@@ -104,20 +126,65 @@ class NotificationService {
           'driftMs=$driftMs',
         );
         debugPrint(
-          '[ASTRA NOTIFICATION]\n'
-          'taskId=$taskId\n'
-          'displayedAt=$now',
+          '[ASTRA NOTIFICATION SHOWN]\n'
+          'task=$taskId\n'
+          'shownAt=$now\n'
+          'endToEndDriftMs=$driftMs',
         );
       } catch (_) {}
     }
 
-    if (response.actionId != null && _actionCallback != null) {
-      await _actionCallback!(response.actionId!, response.payload);
+    if (payload == null || payload.isEmpty) {
+      debugPrint('[ASTRA NOTIF ACTION COMPLETE]\nsuccess=false\nnewScheduledAt=null');
       return;
     }
 
-    // Tap without action → open task (logged for now).
-    debugPrint('[NotificationService] Notification tapped: ${response.payload}');
+    String? taskId;
+    String? reminderId;
+
+    try {
+      final data = jsonDecode(payload) as Map<String, dynamic>;
+      taskId = data['taskId'] as String?;
+      reminderId = data['reminderId'] as String?;
+    } catch (_) {}
+
+    debugPrint(
+      '[ASTRA NOTIF ACTION PARSED]\n'
+      'taskId=$taskId\n'
+      'reminderId=$reminderId',
+    );
+
+    debugPrint(
+      '[ASTRA NOTIF ACTION EXECUTING]\n'
+      'action=$actionId',
+    );
+
+    bool success = false;
+    DateTime? newScheduledAt;
+
+    try {
+      if (_actionCallback != null) {
+        await _actionCallback!(actionId, payload);
+      } else {
+        final db = constructDb();
+        final reminderService = ReminderService(db);
+        await reminderService.handleNotificationAction(actionId, payload);
+      }
+
+      if (actionId == NotificationService.actionSnooze10m) {
+        newScheduledAt = now.add(const Duration(minutes: 10));
+      }
+      success = true;
+    } catch (e) {
+      debugPrint('[NotificationService] Action execution error: $e');
+      success = false;
+    }
+
+    debugPrint(
+      '[ASTRA NOTIF ACTION COMPLETE]\n'
+      'success=$success\n'
+      'newScheduledAt=$newScheduledAt',
+    );
   }
 
   // ─── Task Reminder Scheduling ─────────────────────────────────────────────
@@ -147,7 +214,16 @@ class NotificationService {
 
     debugPrint('[NotificationService] Scheduling "$title" at $scheduledTz ($_timezone)');
 
-    const androidDetails = AndroidNotificationDetails(
+    final bigTextStyle = BigTextStyleInformation(
+      body,
+      htmlFormatBigText: false,
+      contentTitle: title,
+      htmlFormatContentTitle: false,
+      summaryText: 'ASTRA',
+      htmlFormatSummaryText: false,
+    );
+
+    final androidDetails = AndroidNotificationDetails(
       'task_channel',
       'Task Reminders',
       channelDescription: 'Critical reminders for your tasks and deadlines',
@@ -156,8 +232,9 @@ class NotificationService {
       enableVibration: true,
       enableLights: true,
       playSound: true,
+      styleInformation: bigTextStyle,
       category: AndroidNotificationCategory.reminder,
-      actions: <AndroidNotificationAction>[
+      actions: const <AndroidNotificationAction>[
         AndroidNotificationAction(
           actionDone,
           'DONE',
@@ -173,14 +250,14 @@ class NotificationService {
       ],
     );
 
-    const iosDetails = DarwinNotificationDetails(
+    final iosDetails = const DarwinNotificationDetails(
       presentAlert: true,
       presentBadge: true,
       presentSound: true,
       categoryIdentifier: 'task_reminder',
     );
 
-    const notificationDetails = NotificationDetails(
+    final notificationDetails = NotificationDetails(
       android: androidDetails,
       iOS: iosDetails,
     );
@@ -199,13 +276,13 @@ class NotificationService {
     final off = offsetStr ?? '0m';
 
     debugPrint(
-      '[ASTRA ALARM]\n'
-      'taskId=$tId\n'
+      '[ASTRA ALARM SCHEDULED]\n'
+      'task=$tId\n'
       'occurrence=$occ\n'
       'offset=$off\n'
       'requestedAt=$nowTz\n'
       'scheduledAt=$scheduledTz\n'
-      'exactAlarmPermission=$exactAllowed\n'
+      'exactPermission=$exactAllowed\n'
       'alarmMode=exactAllowWhileIdle',
     );
 
@@ -218,7 +295,7 @@ class NotificationService {
     try {
       await _plugin.zonedSchedule(
         id: id,
-        title: '⏰ $title',
+        title: title,
         body: body,
         scheduledDate: scheduledTz,
         notificationDetails: notificationDetails,
@@ -232,7 +309,7 @@ class NotificationService {
       try {
         await _plugin.zonedSchedule(
           id: id,
-          title: '⏰ $title',
+          title: title,
           body: body,
           scheduledDate: scheduledTz,
           notificationDetails: notificationDetails,

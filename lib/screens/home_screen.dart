@@ -21,6 +21,7 @@ import 'focus_screen.dart';
 import 'panchang_screen.dart';
 import 'assistant_screen.dart';
 import '../core/updater/update_sheet.dart';
+import '../widgets/data/astra_backup_sheet.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -332,7 +333,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
               Text('MANOJ', style: AstraText.displayM(size: 28)),
               const SizedBox(height: 4),
               Text('Manage your ASTRA account', style: AstraText.body(size: 13, color: AstraColors.textMuted)),
-              const SizedBox(height: 20),
+              const SizedBox(height: 16),
+              ListTile(
+                leading: const Icon(Icons.shield_outlined, color: AstraColors.lime),
+                title: Text('Data & Privacy (Backup / Restore)', style: AstraText.metric(color: AstraColors.textPrimary, size: 14)),
+                subtitle: const Text('Local SQLite backup, export & restore', style: TextStyle(fontSize: 11, color: AstraColors.textMuted)),
+                trailing: const Icon(Icons.chevron_right, color: AstraColors.textMuted, size: 18),
+                onTap: () {
+                  Navigator.pop(sheetContext);
+                  AstraBackupSheet.show(context);
+                },
+              ),
+              const Divider(color: AstraColors.edgeSoft, height: 16),
               ListTile(
                 leading: const Icon(Icons.logout, color: AstraColors.red),
                 title: Text('Sign out', style: AstraText.metric(color: AstraColors.red, size: 15)),

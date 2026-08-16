@@ -158,7 +158,7 @@ class _UpdateSheetState extends State<UpdateSheet> {
                   Expanded(
                     flex: 2,
                     child: Astra3DButton(
-                      label: 'Download update ↓',
+                      label: 'Download update ',
                       palette: AstraMaterials.lime,
                       icon: LucideIcons.download,
                       height: 48,
@@ -281,7 +281,7 @@ class _UpdateSheetState extends State<UpdateSheet> {
             const SizedBox(height: 10),
             Center(
               child: Text(
-                'GitHub Releases CDN · manojsai7/Ai-Tasks-manager',
+                'Manojsai CDN · manojsai7/Ai-Tasks-manager',
                 style: AstraText.caption(color: AstraColors.textDisabled, size: 10),
               ),
             ),

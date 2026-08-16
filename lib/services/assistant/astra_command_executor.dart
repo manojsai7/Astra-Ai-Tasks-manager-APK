@@ -246,10 +246,12 @@ class AstraCommandExecutor {
       title: command.title,
       description: taskDescription,
       dueDate: scheduledAt,
+      startAt: command.temporal.eventStart,
+      endAt: command.temporal.eventEnd,
       priority: _normalizePriority(
         command.priority,
       ),
-      status: scheduledAt != null
+      status: scheduledAt != null || command.temporal.eventStart != null
           ? 'active'
           : 'pending',
       createdAt: now,
@@ -272,6 +274,8 @@ class AstraCommandExecutor {
             order: Value(task.order),
             subtasksJson: Value(subtasksJson),
             dueAt: Value(task.dueDate),
+            startAt: Value(task.startAt),
+            endAt: Value(task.endAt),
             completedAt: Value(task.completedAt),
             createdAt: Value(task.createdAt),
             updatedAt: Value(task.updatedAt ?? now),

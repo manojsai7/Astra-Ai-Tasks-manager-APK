@@ -36,8 +36,12 @@ import '../services/assistant/astra_update_command.dart';
 import 'astra_memory_provider.dart';
 import '../services/assistant/astra_memory_engine.dart';
 import '../services/assistant/astra_temporal_engine.dart';
+import '../services/assistant/astra_input_classifier.dart';
+import '../services/assistant/astra_document_analyzer.dart';
 import '../services/email/astra_email_analyzer.dart';
+import '../features/scheduler/data/services/google_calendar_writer_service.dart';
 import 'google_calendar_writer_provider.dart';
+import 'package:uuid/uuid.dart';
 
 // ─── Service Providers ───────────────────────────────────────────────────────
 
@@ -68,7 +72,7 @@ final aiLifeSchedulerServiceProvider = Provider<AiLifeSchedulerService>((ref) {
 
 // ─── State ───────────────────────────────────────────────────────────────────
 
-enum AssistantMessageType { text, emailSummary, calendarSummary, syncResult, info, success, error, auth }
+enum AssistantMessageType { text, emailSummary, calendarSummary, syncResult, documentAnalysis, info, success, error, auth }
 
 /// Represents an analyzed email insight candidate with actionable status.
 class EmailInsightItem {
@@ -102,6 +106,7 @@ class AssistantMessage {
   final List<EmailInsightItem>? emailInsights;
   final List<CalendarEventData>? calendarEvents;
   final SchedulerSyncResult? syncResult;
+  final AstraDocumentAnalysis? documentAnalysis;
 
   AssistantMessage({
     required this.id,
@@ -114,6 +119,7 @@ class AssistantMessage {
     this.emailInsights,
     this.calendarEvents,
     this.syncResult,
+    this.documentAnalysis,
   });
 }
 
@@ -158,6 +164,8 @@ final astraCommandBusProvider = Provider<AstraCommandBus>((ref) => AstraCommandB
 
 class AssistantNotifier extends StateNotifier<AssistantState> {
   final Ref ref;
+  final Set<String> _syncedCalendarCandidateIds = <String>{};
+  final Set<String> _inFlightCalendarCandidateIds = <String>{};
 
   AssistantNotifier(this.ref) : super(const AssistantState()) {
     checkInitialAuth();
@@ -183,6 +191,7 @@ class AssistantNotifier extends StateNotifier<AssistantState> {
     List<EmailInsightItem>? emailInsights,
     List<CalendarEventData>? calendarEvents,
     SchedulerSyncResult? syncResult,
+    AstraDocumentAnalysis? documentAnalysis,
   }) {
     final displayText = structured?.toPlainText() ?? text;
     final newMsg = AssistantMessage(
@@ -196,6 +205,7 @@ class AssistantNotifier extends StateNotifier<AssistantState> {
       emailInsights: emailInsights,
       calendarEvents: calendarEvents,
       syncResult: syncResult,
+      documentAnalysis: documentAnalysis,
     );
 
     state = state.copyWith(
@@ -345,6 +355,18 @@ class AssistantNotifier extends StateNotifier<AssistantState> {
     if (trimmed.isEmpty) return;
 
     final requestGen = ++_activeRequestGeneration;
+
+    // 0. Classify Input Kind (Command vs Conversation vs Document vs Multi-Item Document)
+    const inputClassifier = AstraInputClassifier();
+    final inputKind = inputClassifier.classify(trimmed);
+
+    if (inputKind.kind == AstraInputKind.document || inputKind.kind == AstraInputKind.multiItemDocument) {
+      debugPrint('[ASTRA ROUTER] inputKind=${inputKind.kind.name} mode=DOCUMENT_INTAKE reason=${inputKind.reason}');
+      addMessage(trimmed, isUser: true);
+      state = state.copyWith(isLoading: true, error: null);
+      await handleDocumentIntake(trimmed, requestGen);
+      return;
+    }
 
     // 1. Resolve session ID & Build bounded local context via M1 Memory Engine
     final currentSessionId = ref.read(currentSessionIdProvider);
@@ -955,6 +977,7 @@ class AssistantNotifier extends StateNotifier<AssistantState> {
 
       await ref.read(taskNotifierProvider.notifier).addTask(task);
       ref.invalidate(taskListProvider);
+      await ref.read(taskNotifierProvider.notifier).loadTasks();
 
       if (scheduledAt != null) {
         await ref.read(reminderServiceProvider).scheduleReminder(
@@ -993,31 +1016,310 @@ class AssistantNotifier extends StateNotifier<AssistantState> {
     required GmailMessageData email,
     required AstraEmailAnalysis analysis,
   }) async {
+    final candidateId = 'email_${email.id}_${analysis.suggestedTaskTitle.hashCode}';
+    if (_syncedCalendarCandidateIds.contains(candidateId)) {
+      addMessage(
+        'Already added "${analysis.suggestedTaskTitle}" to Google Calendar.',
+        type: AssistantMessageType.info,
+      );
+      return;
+    }
+    if (_inFlightCalendarCandidateIds.contains(candidateId)) return;
+
+    final startTime = analysis.startAt ?? analysis.eventDateTime ?? analysis.deadline ?? DateTime.now().add(const Duration(days: 1));
+    final endTime = analysis.endAt ?? startTime.add(const Duration(hours: 1));
+
     final authService = ref.read(googleAuthServiceProvider);
     final client = await authService.getAuthenticatedClient();
+
     if (client == null) {
-      addMessage('Please sign in with Google to create calendar events.', type: AssistantMessageType.auth);
+      debugPrint(
+        '[ASTRA CALENDAR CARD]\n'
+        'candidateId=$candidateId\n'
+        'title=${analysis.suggestedTaskTitle}\n'
+        'startAt=$startTime\n'
+        'endAt=$endTime\n'
+        'authenticated=false\n'
+        'insertStarted=false',
+      );
+      debugPrint(
+        '[ASTRA CALENDAR CARD]\n'
+        'insertSuccess=false\n'
+        'errorCode=auth_missing',
+      );
+      addMessage(
+        'Google Calendar permission is required.',
+        type: AssistantMessageType.auth,
+      );
       return;
     }
 
-    final startTime = analysis.eventDateTime ?? analysis.deadline ?? DateTime.now().add(const Duration(days: 1));
-    final writer = ref.read(googleCalendarWriterServiceProvider);
+    _inFlightCalendarCandidateIds.add(candidateId);
+    debugPrint(
+      '[ASTRA CALENDAR CARD]\n'
+      'candidateId=$candidateId\n'
+      'title=${analysis.suggestedTaskTitle}\n'
+      'startAt=$startTime\n'
+      'endAt=$endTime\n'
+      'authenticated=true\n'
+      'insertStarted=true',
+    );
 
     try {
-      await writer.createEvent(
+      final writer = ref.read(googleCalendarWriterServiceProvider);
+      final senderInfo = email.senderName.isNotEmpty ? email.senderName : email.sender;
+      final desc = 'From email: ${email.subject}\nSender: $senderInfo <${email.senderEmail}>\n\n${email.snippet}';
+
+      final createdEvent = await writer.createEvent(
         client,
         title: analysis.suggestedTaskTitle,
         startTime: startTime,
-        description: 'From email: ${email.subject}\nSender: ${email.sender}\n\n${email.snippet}',
+        endTime: endTime,
+        description: desc,
+        location: analysis.organization,
+      );
+
+      _syncedCalendarCandidateIds.add(candidateId);
+      _inFlightCalendarCandidateIds.remove(candidateId);
+
+      // Also ensure local task exists
+      await addEmailInsightToTasks(email: email, analysis: analysis);
+
+      final googleEventId = createdEvent.id;
+      debugPrint(
+        '[ASTRA CALENDAR CARD]\n'
+        'insertSuccess=true\n'
+        'googleEventId=$googleEventId',
       );
 
       addMessage(
-        '📅 Added "${analysis.suggestedTaskTitle}" to Google Calendar for ${DateFormat('EEE, MMM d · h:mm a').format(startTime)}.',
+        'Added to Google Calendar: "${analysis.suggestedTaskTitle}".',
         type: AssistantMessageType.success,
       );
+    } on GoogleCalendarWriteException catch (e) {
+      _inFlightCalendarCandidateIds.remove(candidateId);
+      debugPrint(
+        '[ASTRA CALENDAR CARD]\n'
+        'insertSuccess=false\n'
+        'errorCode=${e.code.name}',
+      );
+      switch (e.code) {
+        case GoogleCalendarWriteErrorCode.authRequired:
+        case GoogleCalendarWriteErrorCode.permissionRequired:
+          addMessage('Google Calendar permission is required.', type: AssistantMessageType.error);
+          break;
+        case GoogleCalendarWriteErrorCode.networkError:
+          addMessage('Google Calendar is temporarily unavailable.', type: AssistantMessageType.error);
+          break;
+        case GoogleCalendarWriteErrorCode.apiError:
+          addMessage('Could not add this event to Google Calendar.', type: AssistantMessageType.error);
+          break;
+      }
     } catch (e) {
-      addMessage('Failed to add to Google Calendar: $e', type: AssistantMessageType.error);
+      _inFlightCalendarCandidateIds.remove(candidateId);
+      debugPrint(
+        '[ASTRA CALENDAR CARD]\n'
+        'insertSuccess=false\n'
+        'errorCode=unexpected_error',
+      );
+      addMessage('Could not add this event to Google Calendar.', type: AssistantMessageType.error);
     }
+  }
+
+  // ─── Document Intake Handlers ─────────────────────────────────────────────
+
+  Future<void> handleDocumentIntake(String text, int requestGen) async {
+    final analyzer = const AstraDocumentAnalyzer();
+    final analysis = analyzer.analyze(text);
+
+    if (requestGen != _activeRequestGeneration) return;
+
+    // Record extracted items in memory engine so user can refer to them later
+    final memoryEngine = ref.read(astraMemoryEngineProvider);
+    for (final item in analysis.extractedItems) {
+      memoryEngine.storeEmailTaskMemory(
+        emailId: item.id,
+        title: item.title,
+        taskId: item.id,
+        deadline: item.dueAt ?? item.startAt,
+        organization: item.organization,
+        subject: item.description,
+      );
+    }
+
+    final itemCount = analysis.extractedItems.length;
+    final header = '📄 **${analysis.title}**\n${analysis.summary}\n\n'
+        'Found **$itemCount actionable ${itemCount == 1 ? "item" : "items"}** from the document:';
+
+    addMessage(
+      header,
+      type: AssistantMessageType.documentAnalysis,
+      documentAnalysis: analysis,
+    );
+  }
+
+  Future<void> addDocumentItemToTasks(AstraDocumentItem item) async {
+    final now = DateTime.now();
+    final taskId = const Uuid().v4();
+    final scheduledAt = item.dueAt ?? item.startAt;
+
+    final task = Task(
+      id: taskId,
+      title: item.title,
+      description: item.description,
+      startAt: item.startAt,
+      endAt: item.endAt,
+      dueDate: item.dueAt ?? item.startAt,
+      priority: item.actionRequired ? 'high' : 'medium',
+      status: 'active',
+      organization: item.organization,
+      createdAt: now,
+      updatedAt: now,
+    );
+
+    await ref.read(taskNotifierProvider.notifier).addTask(task);
+    ref.invalidate(taskListProvider);
+    await ref.read(taskNotifierProvider.notifier).loadTasks();
+
+    if (scheduledAt != null) {
+      final isHigh = item.actionRequired || item.type == 'exam';
+      final strategy = isHigh ? ReminderStrategy.important : ReminderStrategy.normal;
+      try {
+        await ref.read(reminderServiceProvider).scheduleReminder(
+          taskId: task.id,
+          taskTitle: task.title,
+          scheduledAt: scheduledAt,
+          strategy: strategy,
+        );
+      } catch (_) {}
+    }
+
+    final dateStr = item.isDuration
+        ? ' (${DateFormat('d MMM').format(item.startAt!)} – ${DateFormat('d MMM yyyy').format(item.endAt!)})'
+        : (scheduledAt != null ? ' (${DateFormat('EEE, MMM d · h:mm a').format(scheduledAt)})' : '');
+
+    addMessage(
+      '✅ Added "${item.title}"$dateStr to your tasks.',
+      type: AssistantMessageType.success,
+    );
+  }
+
+  Future<void> addDocumentItemToCalendar(AstraDocumentItem item) async {
+    final candidateId = item.id;
+    if (_syncedCalendarCandidateIds.contains(candidateId)) {
+      addMessage(
+        'Already added "${item.title}" to Google Calendar.',
+        type: AssistantMessageType.info,
+      );
+      return;
+    }
+    if (_inFlightCalendarCandidateIds.contains(candidateId)) return;
+
+    final startTime = item.startAt ?? item.dueAt ?? DateTime.now();
+    final endTime = item.endAt ?? startTime.add(const Duration(hours: 1));
+
+    final authService = ref.read(googleAuthServiceProvider);
+    final client = await authService.getAuthenticatedClient();
+
+    if (client == null) {
+      debugPrint(
+        '[ASTRA CALENDAR CARD]\n'
+        'candidateId=$candidateId\n'
+        'title=${item.title}\n'
+        'startAt=$startTime\n'
+        'endAt=$endTime\n'
+        'authenticated=false\n'
+        'insertStarted=false',
+      );
+      debugPrint(
+        '[ASTRA CALENDAR CARD]\n'
+        'insertSuccess=false\n'
+        'errorCode=auth_missing',
+      );
+      addMessage(
+        'Google Calendar permission is required.',
+        type: AssistantMessageType.auth,
+      );
+      return;
+    }
+
+    _inFlightCalendarCandidateIds.add(candidateId);
+    debugPrint(
+      '[ASTRA CALENDAR CARD]\n'
+      'candidateId=$candidateId\n'
+      'title=${item.title}\n'
+      'startAt=$startTime\n'
+      'endAt=$endTime\n'
+      'authenticated=true\n'
+      'insertStarted=true',
+    );
+
+    try {
+      final writer = ref.read(googleCalendarWriterServiceProvider);
+      final createdEvent = await writer.createEvent(
+        client,
+        title: item.title,
+        startTime: startTime,
+        endTime: endTime,
+        description: item.description,
+        location: item.organization,
+      );
+
+      _syncedCalendarCandidateIds.add(candidateId);
+      _inFlightCalendarCandidateIds.remove(candidateId);
+
+      // Preserve local-task invariant
+      await addDocumentItemToTasks(item);
+
+      final googleEventId = createdEvent.id;
+      debugPrint(
+        '[ASTRA CALENDAR CARD]\n'
+        'insertSuccess=true\n'
+        'googleEventId=$googleEventId',
+      );
+
+      addMessage(
+        'Added to Google Calendar: "${item.title}".',
+        type: AssistantMessageType.success,
+      );
+    } on GoogleCalendarWriteException catch (e) {
+      _inFlightCalendarCandidateIds.remove(candidateId);
+      debugPrint(
+        '[ASTRA CALENDAR CARD]\n'
+        'insertSuccess=false\n'
+        'errorCode=${e.code.name}',
+      );
+      switch (e.code) {
+        case GoogleCalendarWriteErrorCode.authRequired:
+        case GoogleCalendarWriteErrorCode.permissionRequired:
+          addMessage('Google Calendar permission is required.', type: AssistantMessageType.error);
+          break;
+        case GoogleCalendarWriteErrorCode.networkError:
+          addMessage('Google Calendar is temporarily unavailable.', type: AssistantMessageType.error);
+          break;
+        case GoogleCalendarWriteErrorCode.apiError:
+          addMessage('Could not add this event to Google Calendar.', type: AssistantMessageType.error);
+          break;
+      }
+    } catch (e) {
+      _inFlightCalendarCandidateIds.remove(candidateId);
+      debugPrint(
+        '[ASTRA CALENDAR CARD]\n'
+        'insertSuccess=false\n'
+        'errorCode=unexpected_error',
+      );
+      addMessage('Could not add this event to Google Calendar.', type: AssistantMessageType.error);
+    }
+  }
+
+  Future<void> addAllDocumentItemsToTasks(List<AstraDocumentItem> items) async {
+    for (final item in items) {
+      await addDocumentItemToTasks(item);
+    }
+    addMessage(
+      '🎉 Added all ${items.length} items from the document to your tasks and schedule.',
+      type: AssistantMessageType.success,
+    );
   }
 
   Future<void> handleSyncCalendar() async {

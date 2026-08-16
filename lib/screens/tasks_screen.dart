@@ -956,7 +956,27 @@ class _TaskCard extends StatelessWidget {
                         overflow: TextOverflow.ellipsis,
                       ),
                     ],
-                    if (task.dueDate != null) ...[
+                    if (task.isDuration) ...[
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          const Icon(
+                            LucideIcons.calendarRange,
+                            size: 11,
+                            color: AstraColors.cyan,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            '${DateFormat('d MMM').format(task.startAt!)} – ${DateFormat('d MMM yyyy').format(task.endAt!)} · ${task.endAt!.difference(task.startAt!).inDays + 1} Days',
+                            style: const TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w600,
+                              color: AstraColors.cyan,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ] else if (task.dueDate != null) ...[
                       const SizedBox(height: 4),
                       Row(
                         children: [

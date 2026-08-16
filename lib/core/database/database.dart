@@ -32,6 +32,8 @@ class Tasks extends Table {
   IntColumn get order => integer().withDefault(const Constant(0))();
   TextColumn get subtasksJson => text().withDefault(const Constant('[]'))();
   DateTimeColumn get dueAt => dateTime().nullable()();
+  DateTimeColumn get startAt => dateTime().nullable()();
+  DateTimeColumn get endAt => dateTime().nullable()();
   DateTimeColumn get completedAt => dateTime().nullable()();
   DateTimeColumn get createdAt => dateTime()();
   DateTimeColumn get updatedAt => dateTime()();
@@ -133,7 +135,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 8;
+  int get schemaVersion => 9;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -168,6 +170,10 @@ class AppDatabase extends _$AppDatabase {
       }
       if (from < 8) {
         await m.addColumn(tasks, tasks.recurrenceRuleJson);
+      }
+      if (from < 9) {
+        await m.addColumn(tasks, tasks.startAt);
+        await m.addColumn(tasks, tasks.endAt);
       }
     },
   );
