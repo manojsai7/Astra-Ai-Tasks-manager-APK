@@ -13,7 +13,7 @@ import 'package:package_info_plus/package_info_plus.dart';
 ///   User taps "Download" → [url_launcher] opens the APK download URL.
 class AppUpdater {
   static const String _owner = 'manojsai7';
-  static const String _repo  = 'Ai-Tasks-manager';
+  static const String _repo  = 'Astra-Ai-Tasks-manager-APK';
 
   /// GitHub Releases API endpoint — always points to the latest release.
   static const String _apiUrl =

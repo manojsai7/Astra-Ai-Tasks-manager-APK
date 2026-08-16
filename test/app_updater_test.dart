@@ -36,15 +36,15 @@ void main() {
       final assets = [
         {
           'name': 'app-x86_64-release.apk',
-          'browser_download_url': 'https://github.com/manojsai7/Ai-Tasks-manager/releases/download/v2.1.1/app-x86_64-release.apk',
+          'browser_download_url': 'https://github.com/manojsai7/Astra-Ai-Tasks-manager-APK/releases/download/v2.1.1/app-x86_64-release.apk',
         },
         {
           'name': 'app-arm64-v8a-release.apk',
-          'browser_download_url': 'https://github.com/manojsai7/Ai-Tasks-manager/releases/download/v2.1.1/app-arm64-v8a-release.apk',
+          'browser_download_url': 'https://github.com/manojsai7/Astra-Ai-Tasks-manager-APK/releases/download/v2.1.1/app-arm64-v8a-release.apk',
         },
         {
           'name': 'app-armeabi-v7a-release.apk',
-          'browser_download_url': 'https://github.com/manojsai7/Ai-Tasks-manager/releases/download/v2.1.1/app-armeabi-v7a-release.apk',
+          'browser_download_url': 'https://github.com/manojsai7/Astra-Ai-Tasks-manager-APK/releases/download/v2.1.1/app-armeabi-v7a-release.apk',
         },
       ];
 
@@ -62,7 +62,7 @@ void main() {
       final fallbackAssets = [
         {
           'name': 'astra-release.apk',
-          'browser_download_url': 'https://github.com/manojsai7/Ai-Tasks-manager/releases/download/v2.1.1/astra-release.apk',
+          'browser_download_url': 'https://github.com/manojsai7/Astra-Ai-Tasks-manager-APK/releases/download/v2.1.1/astra-release.apk',
         },
       ];
       expect(AppUpdater.selectReleaseAsset(fallbackAssets), contains('astra-release.apk'));
@@ -73,7 +73,7 @@ void main() {
       const info = UpdateInfo(
         latestVersion: '2.1.1',
         currentVersion: '1.1.4',
-        downloadUrl: 'https://github.com/manojsai7/Ai-Tasks-manager/releases/download/v2.1.1/app-arm64-v8a-release.apk',
+        downloadUrl: 'https://github.com/manojsai7/Astra-Ai-Tasks-manager-APK/releases/download/v2.1.1/app-arm64-v8a-release.apk',
         releaseNotes: 'Smarter chat.\nBetter memory.\nImproved scheduling.',
         isAvailable: true,
       );
@@ -81,7 +81,7 @@ void main() {
       expect(info.isAvailable, isTrue);
       expect(info.latestVersion, '2.1.1');
       expect(info.shortNotes, contains('Smarter chat.'));
-      expect(info.downloadUrl, contains('manojsai7/Ai-Tasks-manager'));
+      expect(info.downloadUrl, contains('manojsai7/Astra-Ai-Tasks-manager-APK'));
     });
   });
 }

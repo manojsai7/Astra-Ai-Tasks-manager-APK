@@ -356,8 +356,8 @@ Physical Hardware Validation: OnePlus Nord CE3 5G (Android 14, API 34)
 
 ### 2. Clone & Install Dependencies
 ```bash
-git clone https://github.com/manojsai7/Ai-Tasks-manager.git
-cd Ai-Tasks-manager
+git clone https://github.com/manojsai7/Astra-Ai-Tasks-manager-APK.git
+cd Astra-Ai-Tasks-manager-APK
 flutter pub get
 ```
 
@@ -380,8 +380,8 @@ ASTRA includes an integrated updater that automatically checks GitHub Releases o
 
 | Architecture | Recommended Device | Direct Download |
 |---|---|---|
-| **ARM64 (64-bit)** | **Modern Android Phones (Recommended)** | [⬇️ Download `app-arm64-v8a-release.apk`](https://github.com/manojsai7/Ai-Tasks-manager/releases/latest/) |
-| **ARMv7 (32-bit)** | Older Android Phones | [⬇️ Download `app-armeabi-v7a-release.apk`](https://github.com/manojsai7/Ai-Tasks-manager/releases/latest/) |
+| **ARM64 (64-bit)** | **Modern Android Phones (Recommended)** | [⬇️ Download `app-arm64-v8a-release.apk`](https://github.com/manojsai7/Astra-Ai-Tasks-manager-APK/releases/latest/) |
+| **ARMv7 (32-bit)** | Older Android Phones | [⬇️ Download `app-armeabi-v7a-release.apk`](https://github.com/manojsai7/Astra-Ai-Tasks-manager-APK/releases/latest/) |
 
 ### Installation Steps:
 1. Download the ARM64 APK directly onto your Android device.

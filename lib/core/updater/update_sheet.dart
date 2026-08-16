@@ -281,7 +281,7 @@ class _UpdateSheetState extends State<UpdateSheet> {
             const SizedBox(height: 10),
             Center(
               child: Text(
-                'Manojsai CDN · manojsai7/Ai-Tasks-manager',
+                'Manojsai CDN · manojsai7/Astra-Ai-Tasks-manager-APK',
                 style: AstraText.caption(color: AstraColors.textDisabled, size: 10),
               ),
             ),
@@ -300,7 +300,7 @@ class _UpdateSheetState extends State<UpdateSheet> {
 
     final url = widget.info.downloadUrl.isNotEmpty
         ? widget.info.downloadUrl
-        : 'https://github.com/manojsai7/Ai-Tasks-manager/releases/latest';
+        : 'https://github.com/manojsai7/Astra-Ai-Tasks-manager-APK/releases/latest';
 
     final fileName = 'astra_v${widget.info.latestVersion}.apk';
 
@@ -334,7 +334,7 @@ class _UpdateSheetState extends State<UpdateSheet> {
   Future<void> _openInBrowser() async {
     final url = widget.info.downloadUrl.isNotEmpty
         ? widget.info.downloadUrl
-        : 'https://github.com/manojsai7/Ai-Tasks-manager/releases/latest';
+        : 'https://github.com/manojsai7/Astra-Ai-Tasks-manager-APK/releases/latest';
     final uri = Uri.parse(url);
     try {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
