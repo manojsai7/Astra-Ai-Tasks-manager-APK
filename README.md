@@ -262,31 +262,86 @@ Building a production-grade personal assistant on Android revealed critical chal
 
 ## 💾 Local SQLite Storage & Portable `.astra.db` Backup
 
-ASTRA strictly keeps user data inside **application-private SQLite storage** using Drift. No remote cloud database (such as Supabase or Firebase) is used to store user records.
+### 💡 The Core Intuition: Why We Avoided Cloud Databases (Supabase / Firebase)
+When building an AI life assistant, the standard industry approach is:
+> *Create a cloud database (Postgres/Supabase/Firebase) $\rightarrow$ force users to sign up $\rightarrow$ sync all personal thoughts, tasks, messages, and schedules to a remote server.*
+
+We rejected this model entirely for three fundamental reasons:
+1. **True Privacy**: Your personal schedule, college deadlines, and chat notes should belong only to you, not sit on a third-party multi-tenant server.
+2. **Offline Immunity**: If you are in a college basement, on a flight, or have no cellular data, ASTRA functions with zero latency because SQLite runs natively in your app process.
+3. **Zero Maintenance / Hosting Costs**: No monthly database hosting bills or sudden cloud vendor outages that take down your personal reminders.
+
+---
+
+### ⚠️ The Problem with Simple File Copies & How We Solved It
+Many local apps implement "backup" by simply copying the active `.sqlite` file while the app is running. **This is dangerous in production:**
+* If SQLite is in the middle of a write transaction or WAL (Write-Ahead Log) checkpoint, copying the raw binary file produces a **corrupted, unreadable database**.
+* Raw database copies also risk capturing device-specific session state, OAuth credentials, or private access tokens.
+
+ASTRA solves this with a **Cryptographic Snapshot Engine**:
 
 ```mermaid
 stateDiagram-v2
     [*] --> AppDatabase: Live Private SQLite Storage
 
     AppDatabase --> BackupRequested: User taps BACK UP NOW
-    BackupRequested --> ValidateSnapshot: Extract Tasks, Messages, Memories
-    ValidateSnapshot --> ExportArchive: Generate SHA-256 Checksum & Envelope
-    ExportArchive --> SaveLocal: Save ASTRA_Backup_YYYY-MM-DD_HH-mm.astra.db
+    BackupRequested --> DataExtraction: Read Tasks, Messages, Memories (Exclude Auth Tokens)
+    DataExtraction --> ComputeChecksum: Generate SHA-256 Digest of Data
+    ComputeChecksum --> WrapEnvelope: Build Header (Signature + Schema + Checksum)
+    WrapEnvelope --> ExportArchive: Save ASTRA_Backup_YYYY-MM-DD_HH-mm.astra.db
 
-    SaveLocal --> RestoreSelected: User selects .astra.db Archive
-    RestoreSelected --> ValidateIntegrity: Verify Signature + SHA-256 + Schema
-    ValidateIntegrity --> StagedRestore: Safe Temporary Staging
-    ValidateIntegrity --> RestoreRejected: Corrupt or Invalid Checksum (DB Untouched)
+    ExportArchive --> UserStorage: Saved in User's Document / Personal Drive
 
-    StagedRestore --> AppDatabase: Atomic Replace & Riverpod Invalidation
-    RestoreRejected --> AppDatabase: Live DB Remains 100% Intact
+    UserStorage --> RestoreSelected: User selects .astra.db Archive
+    RestoreSelected --> HeaderValidation: Validate ASTRA_BACKUP_V1 Signature
+    HeaderValidation --> IntegrityCheck: Verify SHA-256 Digest Matches File Content
+    IntegrityCheck --> SchemaCompat: Check Schema Version Compatibility (v6-v9)
+    IntegrityCheck --> RestoreRejected: Corrupted / Modified Bytes Detected
+
+    SchemaCompat --> StagedTransaction: Execute Atomic Transaction in SQLite
+    StagedTransaction --> AppDatabase: Commit & Invalidate UI State (Riverpod)
+    RestoreRejected --> AppDatabase: Abort! Live DB Remains 100% Untouched
     AppDatabase --> [*]
 ```
 
-### Portable `.astra.db` Backup Format
-* **Cryptographic Security**: Every backup contains an envelope with an `ASTRA_BACKUP_V1` signature and SHA-256 checksum over the serialized data.
-* **Zero Credential Leakage**: Backups strictly export tasks, sessions, messages, memories, and reminders. OAuth tokens, API keys, passwords, and device secrets are **excluded 100%**.
-* **Atomic Restore Safety**: Restorations are staged and validated before applying. If an archive is corrupt or invalid, the restore aborts immediately and leaves the active database completely untouched.
+---
+
+### 🛡️ Anatomy of the `.astra.db` Archive
+The backup is structured as an **isolated, verifiable cryptographic envelope**:
+
+```json
+{
+  "signature": "ASTRA_BACKUP_V1",
+  "backupVersion": 1,
+  "schemaVersion": 9,
+  "appVersion": "2.1.3",
+  "createdAt": "2026-08-16T16:15:00.000Z",
+  "counts": {
+    "taskCount": 42,
+    "sessionCount": 3,
+    "messageCount": 115,
+    "memoryCount": 18,
+    "reminderCount": 24,
+    "ritualRuleCount": 4
+  },
+  "checksum": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "data": {
+    "tasks": [ ... ],
+    "chatSessions": [ ... ],
+    "chatMessages": [ ... ],
+    "taskContexts": [ ... ],
+    "reminders": [ ... ],
+    "ritualRules": [ ... ],
+    "inboxItems": [ ... ]
+  }
+}
+```
+
+### 🔒 Key Security & Reliability Invariants:
+1. **Zero Credential Leakage**: Backups strictly export user content (tasks, chat sessions, messages, structured memories, reminders, ritual rules). **OAuth tokens, client secrets, API keys, and device passwords are 100% excluded.**
+2. **Cryptographic SHA-256 Checksum**: The file header stores an SHA-256 hash calculated over the raw serialized data. If even a single byte or character is modified or corrupted, the integrity check fails instantly before any database operation begins.
+3. **Atomic Restore Staging (Fail-Safe Rollback)**: Restorations run inside a single atomic SQLite transaction. If an archive is corrupt, schema-incompatible, or invalid, the restore aborts immediately and leaves your active live database **100% untouched**.
+4. **Post-Restore Reactive Invalidation**: Restoring data automatically refreshes Riverpod state (`taskListProvider`, `chatSessionProvider`, `taskNotifierProvider`) and reconciles pending Android alarms without requiring an app restart.
 
 ---
 
