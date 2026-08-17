@@ -722,7 +722,7 @@ void main() {
 
   group('AstraCommandExecutor UPDATE_TASK Integration Tests (Phase 2Y-4)', () {
     const updateParser = AstraUpdateParser();
-    final now = DateTime(2026, 8, 15, 10, 0); // Saturday 10:00 AM
+    final now = DateTime.now().toLocal();
 
     test('A. Reschedule exact task: dueDate updated, reminder rescheduled, no duplicate task', () async {
       final taskNotifier = container.read(taskNotifierProvider.notifier);
@@ -731,7 +731,7 @@ void main() {
       final initialTask = Task(
         id: 'exam-1',
         title: 'Exam',
-        dueDate: DateTime(2026, 8, 15, 18, 0),
+        dueDate: now.add(const Duration(hours: 4)),
         priority: 'high',
         status: 'active',
         createdAt: now,
@@ -751,16 +751,18 @@ void main() {
       expect(result.success, isTrue);
       expect(result.requiresConfirmation, isFalse);
 
+      final expectedNewDue = DateTime(now.year, now.month, now.day + 1, 19, 0);
+
       // Verify task updated in DB
       final tasksInDb = await testDb.select(testDb.tasks).get();
       expect(tasksInDb.length, 1);
-      expect(tasksInDb.first.dueAt, DateTime(2026, 8, 16, 19, 0));
+      expect(tasksInDb.first.dueAt, expectedNewDue);
 
       // Verify exactly 1 active reminder in DB at new time
       final remindersInDb = await testDb.select(testDb.reminders).get();
       final activeReminders = remindersInDb.where((r) => r.status != 'cancelled').toList();
       expect(activeReminders.length, 1);
-      expect(activeReminders.first.scheduledAt, DateTime(2026, 8, 16, 19, 0));
+      expect(activeReminders.first.scheduledAt, expectedNewDue);
     });
 
     test('B. Reschedule by organization/title: "reschedule my Microsoft interview to 2pm"', () async {
@@ -923,7 +925,7 @@ void main() {
 
       expect(result.success, isTrue);
       final updated = (await testDb.select(testDb.tasks).get()).firstWhere((t) => t.id == 'recurring-task-1');
-      expect(updated.dueAt, DateTime(2026, 8, 16, 8, 0));
+      expect(updated.dueAt, DateTime(now.year, now.month, now.day + 1, 8, 0));
       expect(updated.recurrenceRuleJson, isNotNull);
       expect(updated.recurrenceRuleJson, contains('DAILY'));
     });

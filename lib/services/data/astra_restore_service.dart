@@ -4,6 +4,7 @@ import 'package:drift/drift.dart';
 
 import '../../core/database/database.dart';
 import 'astra_backup_service.dart';
+import 'astra_crypto_service.dart';
 
 /// Exceptions thrown during backup restoration or validation.
 class AstraRestoreException implements Exception {
@@ -37,13 +38,15 @@ class AstraRestoreResult {
   });
 }
 
-/// Service that safely validates and restores ASTRA backup archives into SQLite.
+/// Service that safely validates, decrypts, and restores ASTRA backup archives into SQLite.
 class AstraRestoreService {
   final AppDatabase _db;
+  final AstraCryptoService _cryptoService;
 
-  const AstraRestoreService(this._db);
+  AstraRestoreService(this._db, {AstraCryptoService? cryptoService})
+      : _cryptoService = cryptoService ?? AstraCryptoService();
 
-  /// Validates a backup archive's signature, structure, checksum, and schema compatibility.
+  /// Validates a backup archive's signature, structure, and schema compatibility.
   /// Returns the parsed [AstraBackupMetadata] on success, or throws [AstraRestoreException].
   AstraBackupMetadata validateBackup(Uint8List bytes) {
     if (bytes.isEmpty) {
@@ -64,11 +67,15 @@ class AstraRestoreService {
       throw const AstraRestoreException('The backup file contains corrupted JSON.', 'corrupt_json');
     }
 
-    final metadataJson = json['metadata'] as Map<String, dynamic>?;
-    final dataJson = json['data'] as Map<String, dynamic>?;
+    final metadataJson = (json['metadata'] as Map<String, dynamic>?) ?? json;
+    final signature = (json['signature'] as String?) ?? (metadataJson['signature'] as String? ?? '');
 
-    if (metadataJson == null || dataJson == null) {
-      throw const AstraRestoreException('Missing metadata or data section in backup.', 'invalid_structure');
+    if (signature != AstraBackupMetadata.encryptedV2Signature &&
+        signature != AstraBackupMetadata.legacyV1Signature) {
+      throw AstraRestoreException(
+        'Invalid backup signature "$signature". This file is not a valid ASTRA backup archive.',
+        'invalid_signature',
+      );
     }
 
     final metadata = AstraBackupMetadata.fromJson(metadataJson);
@@ -81,14 +88,20 @@ class AstraRestoreService {
       );
     }
 
-    // 2. Checksum Verification
-    final dataString = jsonEncode(dataJson);
-    final calculatedChecksum = sha256.convert(utf8.encode(dataString)).toString();
-    if (calculatedChecksum != metadata.checksum) {
-      throw const AstraRestoreException(
-        'Backup integrity check failed: checksum mismatch. The file may be corrupted.',
-        'checksum_mismatch',
-      );
+    // 2. Legacy V1 Checksum Verification (if unencrypted)
+    if (metadata.isLegacyV1) {
+      final dataJson = json['data'] as Map<String, dynamic>?;
+      if (dataJson == null) {
+        throw const AstraRestoreException('Missing data section in legacy backup.', 'invalid_structure');
+      }
+      final dataString = jsonEncode(dataJson);
+      final calculatedChecksum = sha256.convert(utf8.encode(dataString)).toString();
+      if (calculatedChecksum != metadata.checksum) {
+        throw const AstraRestoreException(
+          'Backup integrity check failed: checksum mismatch. The file may be corrupted.',
+          'checksum_mismatch',
+        );
+      }
     }
 
     // 3. Schema Compatibility Check
@@ -102,21 +115,47 @@ class AstraRestoreService {
     return metadata;
   }
 
-  /// Restores data from the backup archive into the active [AppDatabase].
+  /// Restores data from an encrypted (V2) or legacy (V1) backup archive into the active [AppDatabase].
   ///
   /// Invariants:
-  /// - Staging & validation execute before database mutation.
-  /// - If validation or parsing fails, the live database remains 100% untouched.
+  /// - Full decryption, envelope inspection, and schema parsing execute before any database write.
+  /// - If password is wrong or archive is corrupt, live database remains 100% untouched.
+  /// - Restoration executes in a single atomic transaction.
   Future<AstraRestoreResult> restoreBackup(
     Uint8List bytes, {
+    String? password,
     bool clearExisting = true,
   }) async {
-    // 1. Validate header, signature, and checksum
+    // 1. Validate envelope signature and schema version
     final metadata = validateBackup(bytes);
 
     final jsonStr = utf8.decode(bytes);
     final json = jsonDecode(jsonStr) as Map<String, dynamic>;
-    final data = json['data'] as Map<String, dynamic>;
+
+    final Map<String, dynamic> data;
+
+    if (metadata.isEncryptedV2) {
+      if (password == null || password.isEmpty) {
+        throw const AstraRestoreException('This backup is encrypted. Please enter the backup password.', 'password_required');
+      }
+
+      final encryptedPackage = AstraEncryptedPackage.fromJson(json);
+
+      // Decrypt and verify AES-256-GCM authentication tag
+      final decryptedJsonString = await _cryptoService.decryptData(
+        package: encryptedPackage,
+        password: password,
+      );
+
+      try {
+        data = jsonDecode(decryptedJsonString) as Map<String, dynamic>;
+      } catch (_) {
+        throw const AstraRestoreException('Decrypted payload contains invalid data structure.', 'corrupt_decrypted_data');
+      }
+    } else {
+      // Legacy V1 unencrypted archive
+      data = json['data'] as Map<String, dynamic>? ?? {};
+    }
 
     final rawTasks = data['tasks'] as List<dynamic>? ?? [];
     final rawSessions = data['chatSessions'] as List<dynamic>? ?? [];
@@ -126,7 +165,7 @@ class AstraRestoreService {
     final rawRitualRules = data['ritualRules'] as List<dynamic>? ?? [];
     final rawInboxItems = data['inboxItems'] as List<dynamic>? ?? [];
 
-    // 2. Perform restoration in a batch transaction
+    // 2. Perform restoration in an atomic batch transaction
     await _db.transaction(() async {
       if (clearExisting) {
         // Clear child tables first to respect foreign keys
@@ -155,116 +194,116 @@ class AstraRestoreService {
             );
       }
 
-      // Restore Tasks (with schema compatibility for v6-v9)
+      // Restore Tasks
       for (final raw in rawTasks) {
-        final t = raw as Map<String, dynamic>;
+        final item = raw as Map<String, dynamic>;
         await _db.into(_db.tasks).insertOnConflictUpdate(
               TasksCompanion(
-                id: Value(t['id'] as String),
-                inboxItemId: Value(t['inboxItemId'] as String?),
-                title: Value(t['title'] as String),
-                description: Value(t['description'] as String?),
-                taskType: Value(t['taskType'] as String? ?? 'reminder'),
-                priority: Value(t['priority'] as String? ?? 'medium'),
-                status: Value(t['status'] as String? ?? 'pending'),
-                order: Value(t['order'] as int? ?? 0),
-                subtasksJson: Value(t['subtasksJson'] as String? ?? '[]'),
-                dueAt: Value(t['dueAt'] != null ? DateTime.parse(t['dueAt'] as String) : null),
-                startAt: Value(t['startAt'] != null ? DateTime.parse(t['startAt'] as String) : null),
-                endAt: Value(t['endAt'] != null ? DateTime.parse(t['endAt'] as String) : null),
-                completedAt: Value(t['completedAt'] != null ? DateTime.parse(t['completedAt'] as String) : null),
-                createdAt: Value(DateTime.parse(t['createdAt'] as String)),
-                updatedAt: Value(DateTime.parse(t['updatedAt'] as String)),
-                source: Value(t['source'] as String?),
-                sourceId: Value(t['sourceId'] as String?),
-                category: Value(t['category'] as String?),
-                organization: Value(t['organization'] as String?),
-                recurrenceRuleJson: Value(t['recurrenceRuleJson'] as String?),
+                id: Value(item['id'] as String),
+                inboxItemId: Value(item['inboxItemId'] as String?),
+                title: Value(item['title'] as String),
+                description: Value(item['description'] as String?),
+                taskType: Value(item['taskType'] as String? ?? 'todo'),
+                priority: Value(item['priority'] as String? ?? 'medium'),
+                status: Value(item['status'] as String? ?? 'active'),
+                order: Value(item['order'] as int? ?? 0),
+                subtasksJson: Value(item['subtasksJson'] as String? ?? '[]'),
+                dueAt: Value(item['dueAt'] != null ? DateTime.parse(item['dueAt'] as String) : null),
+                startAt: Value(item['startAt'] != null ? DateTime.parse(item['startAt'] as String) : null),
+                endAt: Value(item['endAt'] != null ? DateTime.parse(item['endAt'] as String) : null),
+                completedAt: Value(item['completedAt'] != null ? DateTime.parse(item['completedAt'] as String) : null),
+                createdAt: Value(DateTime.parse(item['createdAt'] as String)),
+                updatedAt: Value(DateTime.parse(item['updatedAt'] as String)),
+                source: Value(item['source'] as String?),
+                sourceId: Value(item['sourceId'] as String?),
+                category: Value(item['category'] as String?),
+                organization: Value(item['organization'] as String?),
+                recurrenceRuleJson: Value(item['recurrenceRuleJson'] as String?),
               ),
             );
       }
 
       // Restore Chat Sessions
       for (final raw in rawSessions) {
-        final s = raw as Map<String, dynamic>;
+        final item = raw as Map<String, dynamic>;
         await _db.into(_db.chatSessions).insertOnConflictUpdate(
               ChatSessionsCompanion(
-                id: Value(s['id'] as int),
-                title: Value(s['title'] as String),
-                createdAt: Value(DateTime.parse(s['createdAt'] as String)),
-                updatedAt: Value(DateTime.parse(s['updatedAt'] as String)),
+                id: Value(item['id'] as int),
+                title: Value(item['title'] as String? ?? 'New Chat'),
+                createdAt: Value(DateTime.parse(item['createdAt'] as String)),
+                updatedAt: Value(DateTime.parse(item['updatedAt'] as String)),
               ),
             );
       }
 
       // Restore Chat Messages
       for (final raw in rawMessages) {
-        final m = raw as Map<String, dynamic>;
+        final item = raw as Map<String, dynamic>;
         await _db.into(_db.chatMessages).insertOnConflictUpdate(
               ChatMessagesCompanion(
-                id: Value(m['id'] as int),
-                sessionId: Value(m['sessionId'] as int),
-                role: Value(m['role'] as String),
-                content: Value(m['content'] as String),
-                messageType: Value(m['messageType'] as String? ?? 'text'),
-                timestamp: Value(DateTime.parse((m['timestamp'] ?? m['createdAt']) as String)),
+                id: Value(item['id'] as int),
+                sessionId: Value(item['sessionId'] as int),
+                role: Value(item['role'] as String),
+                content: Value(item['content'] as String),
+                messageType: Value(item['messageType'] as String? ?? 'normal'),
+                timestamp: Value(DateTime.parse(item['timestamp'] as String)),
               ),
             );
       }
 
       // Restore Task Contexts (Memories)
       for (final raw in rawMemories) {
-        final c = raw as Map<String, dynamic>;
+        final item = raw as Map<String, dynamic>;
         await _db.into(_db.taskContexts).insertOnConflictUpdate(
               TaskContextsCompanion(
-                id: Value(c['id'] as int),
-                taskId: Value(c['taskId'] as String),
-                companyName: Value(c['companyName'] as String?),
-                role: Value(c['role'] as String?),
-                requirements: Value(c['requirements'] as String?),
-                applicationLink: Value(c['applicationLink'] as String?),
-                emailSnippet: Value(c['emailSnippet'] as String?),
-                fullEmail: Value(c['fullEmail'] as String?),
-                hasApplied: Value(c['hasApplied'] as bool? ?? false),
-                appliedAt: Value(c['appliedAt'] != null ? DateTime.parse(c['appliedAt'] as String) : null),
-                eventType: Value(c['eventType'] as String?),
-                location: Value(c['location'] as String?),
-                stipend: Value(c['stipend'] as String?),
-                actionItems: Value(c['actionItems'] as String?),
-                source: Value(c['source'] as String? ?? 'gmail'),
+                id: Value(item['id'] as int),
+                taskId: Value(item['taskId'] as String? ?? ''),
+                companyName: Value(item['companyName'] as String?),
+                role: Value(item['role'] as String?),
+                requirements: Value(item['requirements'] as String?),
+                applicationLink: Value(item['applicationLink'] as String?),
+                emailSnippet: Value(item['emailSnippet'] as String?),
+                fullEmail: Value(item['fullEmail'] as String?),
+                hasApplied: Value(item['hasApplied'] as bool? ?? false),
+                appliedAt: Value(item['appliedAt'] != null ? DateTime.parse(item['appliedAt'] as String) : null),
+                eventType: Value(item['eventType'] as String?),
+                location: Value(item['location'] as String?),
+                stipend: Value(item['stipend'] as String?),
+                actionItems: Value(item['actionItems'] as String?),
+                source: Value(item['source'] as String? ?? 'chat'),
               ),
             );
       }
 
       // Restore Reminders
       for (final raw in rawReminders) {
-        final r = raw as Map<String, dynamic>;
+        final item = raw as Map<String, dynamic>;
         await _db.into(_db.reminders).insertOnConflictUpdate(
               RemindersCompanion(
-                id: Value(r['id'] as String),
-                taskId: Value(r['taskId'] as String),
-                scheduledAt: Value(DateTime.parse(r['scheduledAt'] as String)),
-                timezone: Value(r['timezone'] as String? ?? 'Asia/Kolkata'),
-                notificationId: Value(r['notificationId'] as int),
-                status: Value(r['status'] as String? ?? 'scheduled'),
-                createdAt: Value(DateTime.parse(r['createdAt'] as String)),
-                updatedAt: Value(DateTime.parse(r['updatedAt'] as String)),
+                id: Value(item['id'] as String),
+                taskId: Value(item['taskId'] as String),
+                scheduledAt: Value(DateTime.parse(item['scheduledAt'] as String)),
+                timezone: Value(item['timezone'] as String? ?? 'Asia/Kolkata'),
+                notificationId: Value(item['notificationId'] as int),
+                status: Value(item['status'] as String? ?? 'scheduled'),
+                createdAt: Value(DateTime.parse(item['createdAt'] as String)),
+                updatedAt: Value(DateTime.parse(item['updatedAt'] as String)),
               ),
             );
       }
 
       // Restore Ritual Rules
       for (final raw in rawRitualRules) {
-        final rr = raw as Map<String, dynamic>;
+        final item = raw as Map<String, dynamic>;
         await _db.into(_db.ritualRules).insertOnConflictUpdate(
               RitualRulesCompanion(
-                id: Value(rr['id'] as int),
-                eventType: Value(rr['eventType'] as String),
-                title: Value(rr['title'] as String),
-                instructions: Value(rr['instructions'] as String?),
-                remindDaysBefore: Value(rr['remindDaysBefore'] as int? ?? 1),
-                remindAtTime: Value(rr['remindAtTime'] as String? ?? '06:00'),
-                isActive: Value(rr['isActive'] as bool? ?? true),
+                id: Value(item['id'] is int ? item['id'] as int : int.tryParse(item['id'].toString()) ?? 1),
+                eventType: Value(item['eventType'] as String),
+                title: Value(item['title'] as String),
+                instructions: Value(item['instructions'] as String),
+                remindDaysBefore: Value(item['remindDaysBefore'] as int),
+                remindAtTime: Value(item['remindAtTime'] as String),
+                isActive: Value(item['isActive'] as bool? ?? true),
               ),
             );
       }

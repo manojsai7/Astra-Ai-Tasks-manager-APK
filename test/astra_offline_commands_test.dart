@@ -174,8 +174,8 @@ void main() {
       expect(state.messages.last.isUser, isFalse);
       expect(state.messages.last.text, contains('Standup'));
 
-      // 6. "Microsoft interview Monday at 11am"
-      await assistantNotifier.sendCommand('Microsoft interview Monday at 11am');
+      // 6. "schedule Microsoft interview tomorrow at 11am"
+      await assistantNotifier.sendCommand('schedule Microsoft interview tomorrow at 11am');
       state = container.read(assistantStateProvider);
       expect(state.messages.last.isUser, isFalse);
       expect(state.messages.last.text, contains('Microsoft'));

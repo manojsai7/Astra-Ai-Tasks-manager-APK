@@ -416,6 +416,7 @@ class ReminderService {
               ),
             );
           }
+          debugPrint('[ASTRA DONE]\ntaskCompleted=true');
 
         case NotificationService.actionSnooze10m:
           if (remId != null) {

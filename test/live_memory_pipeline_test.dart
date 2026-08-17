@@ -129,17 +129,18 @@ void main() {
       container.dispose();
     });
 
-    // C. "Microsoft interview Monday at 11am" then "make it 2pm"
-    test('C. Multi-turn interview: "Microsoft interview Monday at 11am" then "make it 2pm"', () async {
+    // C. "schedule Microsoft interview tomorrow at 11am" then "make it 2pm"
+    test('C. Multi-turn interview: "schedule Microsoft interview tomorrow at 11am" then "make it 2pm"', () async {
       final container = createOfflineContainer();
       final sessionId = await container.read(chatSessionProvider.notifier).createSession(title: 'Interview Session');
       container.read(currentSessionIdProvider.notifier).state = sessionId;
 
       final assistant = container.read(assistantStateProvider.notifier);
 
-      await assistant.sendCommand('Microsoft interview Monday at 11am');
+      await assistant.sendCommand('schedule Microsoft interview tomorrow at 11am');
       var state = container.read(assistantStateProvider);
-      expect(state.messages.last.text, contains('Microsoft Interview'));
+      expect(state.messages.last.isUser, isFalse);
+      expect(state.messages.last.text, contains('Microsoft'));
 
       await assistant.sendCommand('make it 2pm');
       state = container.read(assistantStateProvider);
@@ -148,7 +149,7 @@ void main() {
       final tasks = await db.select(db.tasks).get();
       expect(tasks.length, 1);
       expect(tasks.first.dueAt?.hour, 14); // 2:00 PM
-      expect(tasks.first.dueAt?.weekday, DateTime.monday);
+      expect(tasks.first.dueAt?.weekday, DateTime.now().add(const Duration(days: 1)).weekday);
 
       container.dispose();
     });

@@ -1,18 +1,17 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
-import 'package:path_provider/path_provider.dart';
 
 import '../../providers/astra_backup_provider.dart';
 import '../../services/data/astra_backup_service.dart';
+import '../../services/data/astra_crypto_service.dart';
 import '../../services/data/astra_restore_service.dart';
 import '../../theme/app_theme.dart';
 import '../design_system/astra_3d_button.dart';
 import '../design_system/astra_card.dart';
 
-/// Bottom sheet for ASTRA local database backup and restore operations.
+/// Bottom sheet for ASTRA portable encrypted database backup and restore operations.
 class AstraBackupSheet extends ConsumerStatefulWidget {
   const AstraBackupSheet({super.key});
 
@@ -38,7 +37,234 @@ class _AstraBackupSheetState extends ConsumerState<AstraBackupSheet> {
   String? _statusMessage;
   bool _isSuccess = true;
 
+  Future<String?> _showCreatePasswordDialog() async {
+    final passCtrl = TextEditingController();
+    final confirmCtrl = TextEditingController();
+    bool obscurePass = true;
+    String? errorText;
+
+    return showDialog<String>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          return AlertDialog(
+            backgroundColor: AstraColors.surface,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(18),
+              side: const BorderSide(color: AstraColors.edgeSoft),
+            ),
+            title: Row(
+              children: [
+                const Icon(LucideIcons.lock, color: AstraColors.lime, size: 20),
+                const SizedBox(width: 8),
+                Text('Create Backup Password', style: AstraText.displayM(size: 18)),
+              ],
+            ),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Set a password to encrypt your ASTRA backup (AES-256-GCM).',
+                    style: TextStyle(fontSize: 12, color: AstraColors.textMuted, height: 1.4),
+                  ),
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: AstraColors.lime.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: AstraColors.lime.withValues(alpha: 0.3)),
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Icon(LucideIcons.shieldAlert, size: 16, color: AstraColors.lime),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'Keep this password safe. ASTRA cannot recover your data without it.',
+                            style: TextStyle(fontSize: 11, color: Colors.lime.shade200, height: 1.3),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  TextField(
+                    controller: passCtrl,
+                    obscureText: obscurePass,
+                    autofocus: true,
+                    style: const TextStyle(color: AstraColors.textPrimary, fontSize: 14),
+                    decoration: InputDecoration(
+                      labelText: 'Backup Password',
+                      labelStyle: const TextStyle(color: AstraColors.textMuted, fontSize: 12),
+                      filled: true,
+                      fillColor: Colors.black26,
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                      suffixIcon: IconButton(
+                        icon: Icon(obscurePass ? LucideIcons.eyeOff : LucideIcons.eye, size: 18, color: AstraColors.textMuted),
+                        onPressed: () => setDialogState(() => obscurePass = !obscurePass),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: confirmCtrl,
+                    obscureText: obscurePass,
+                    style: const TextStyle(color: AstraColors.textPrimary, fontSize: 14),
+                    decoration: InputDecoration(
+                      labelText: 'Confirm Password',
+                      labelStyle: const TextStyle(color: AstraColors.textMuted, fontSize: 12),
+                      filled: true,
+                      fillColor: Colors.black26,
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                    ),
+                  ),
+                  if (errorText != null) ...[
+                    const SizedBox(height: 8),
+                    Text(errorText!, style: const TextStyle(color: AstraColors.red, fontSize: 11)),
+                  ],
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, null),
+                child: const Text('CANCEL', style: TextStyle(color: AstraColors.textMuted)),
+              ),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AstraColors.lime,
+                  foregroundColor: Colors.black,
+                ),
+                onPressed: () {
+                  final pass = passCtrl.text.trim();
+                  final confirm = confirmCtrl.text.trim();
+                  if (pass.isEmpty) {
+                    setDialogState(() => errorText = 'Password cannot be empty.');
+                    return;
+                  }
+                  if (pass.length < 4) {
+                    setDialogState(() => errorText = 'Password must be at least 4 characters.');
+                    return;
+                  }
+                  if (pass != confirm) {
+                    setDialogState(() => errorText = 'Passwords do not match.');
+                    return;
+                  }
+                  Navigator.pop(ctx, pass);
+                },
+                child: const Text('ENCRYPT & SAVE', style: TextStyle(fontWeight: FontWeight.bold)),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  Future<String?> _showEnterPasswordDialog(AstraBackupMetadata metadata, String fileName) async {
+    final passCtrl = TextEditingController();
+    bool obscurePass = true;
+    String? errorText;
+
+    return showDialog<String>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          return AlertDialog(
+            backgroundColor: AstraColors.surface,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(18),
+              side: const BorderSide(color: AstraColors.edgeSoft),
+            ),
+            title: Row(
+              children: [
+                const Icon(LucideIcons.keyRound, color: AstraColors.lime, size: 20),
+                const SizedBox(width: 8),
+                Text('Decrypt ASTRA Backup', style: AstraText.displayM(size: 18)),
+              ],
+            ),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Archive: $fileName',
+                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AstraColors.lime),
+                  ),
+                  const SizedBox(height: 8),
+                  _DetailRow('Created:', DateFormat('MMM d, yyyy · h:mm a').format(metadata.createdAt.toLocal())),
+                  _DetailRow('App Version:', metadata.appVersion),
+                  _DetailRow('Tasks:', '${metadata.taskCount}'),
+                  _DetailRow('Messages:', '${metadata.messageCount}'),
+                  _DetailRow('Memories:', '${metadata.memoryCount}'),
+                  const SizedBox(height: 14),
+                  TextField(
+                    controller: passCtrl,
+                    obscureText: obscurePass,
+                    autofocus: true,
+                    style: const TextStyle(color: AstraColors.textPrimary, fontSize: 14),
+                    decoration: InputDecoration(
+                      labelText: 'Enter Backup Password',
+                      labelStyle: const TextStyle(color: AstraColors.textMuted, fontSize: 12),
+                      filled: true,
+                      fillColor: Colors.black26,
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                      suffixIcon: IconButton(
+                        icon: Icon(obscurePass ? LucideIcons.eyeOff : LucideIcons.eye, size: 18, color: AstraColors.textMuted),
+                        onPressed: () => setDialogState(() => obscurePass = !obscurePass),
+                      ),
+                    ),
+                  ),
+                  if (errorText != null) ...[
+                    const SizedBox(height: 8),
+                    Text(errorText!, style: const TextStyle(color: AstraColors.red, fontSize: 11)),
+                  ],
+                  const SizedBox(height: 12),
+                  const Text(
+                    '⚠️ Restoring will replace current local tasks, messages, and memories with the archive contents.',
+                    style: TextStyle(fontSize: 11, color: AstraColors.textMuted, height: 1.3),
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, null),
+                child: const Text('CANCEL', style: TextStyle(color: AstraColors.textMuted)),
+              ),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AstraColors.lime,
+                  foregroundColor: Colors.black,
+                ),
+                onPressed: () {
+                  final pass = passCtrl.text.trim();
+                  if (pass.isEmpty) {
+                    setDialogState(() => errorText = 'Password cannot be empty.');
+                    return;
+                  }
+                  Navigator.pop(ctx, pass);
+                },
+                child: const Text('DECRYPT & RESTORE', style: TextStyle(fontWeight: FontWeight.bold)),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
   Future<void> _handleBackup() async {
+    final password = await _showCreatePasswordDialog();
+    if (password == null) return; // User cancelled password setup
+
     setState(() {
       _isProcessing = true;
       _statusMessage = null;
@@ -46,25 +272,35 @@ class _AstraBackupSheetState extends ConsumerState<AstraBackupSheet> {
 
     try {
       final backupService = ref.read(astraBackupServiceProvider);
-      final payload = await backupService.createBackup();
+      final storageService = ref.read(astraBackupStorageServiceProvider);
+
+      // Create AES-256-GCM encrypted V2 backup package
+      final payload = await backupService.createEncryptedBackup(password: password);
       final bytes = payload.toBytes();
       final fileName = AstraBackupService.generateBackupFileName();
 
-      // Write to application documents directory
-      final dir = await getApplicationDocumentsDirectory();
-      final backupDir = Directory('${dir.path}/backups');
-      if (!await backupDir.exists()) {
-        await backupDir.create(recursive: true);
-      }
-      final file = File('${backupDir.path}/$fileName');
-      await file.writeAsBytes(bytes);
+      // Save via Android Storage Access Framework (SAF ACTION_CREATE_DOCUMENT)
+      final savedPath = await storageService.saveBackupDocument(
+        fileName: fileName,
+        bytes: bytes,
+      );
 
       if (!mounted) return;
-      setState(() {
-        _isProcessing = false;
-        _isSuccess = true;
-        _statusMessage = 'Backup saved successfully:\n$fileName\n(${file.path})';
-      });
+
+      if (savedPath != null && savedPath.isNotEmpty) {
+        setState(() {
+          _isProcessing = false;
+          _isSuccess = true;
+          _statusMessage = 'Encrypted backup saved successfully:\n$fileName\n($savedPath)';
+        });
+      } else {
+        setState(() {
+          _isProcessing = false;
+          _isSuccess = true;
+          _statusMessage = 'Encrypted backup created: $fileName';
+        });
+      }
+
       ref.invalidate(databaseStatsProvider);
     } catch (e) {
       if (!mounted) return;
@@ -83,101 +319,98 @@ class _AstraBackupSheetState extends ConsumerState<AstraBackupSheet> {
     });
 
     try {
-      final dir = await getApplicationDocumentsDirectory();
-      final backupDir = Directory('${dir.path}/backups');
-
-      if (!await backupDir.exists()) {
-        setState(() {
-          _isProcessing = false;
-          _isSuccess = false;
-          _statusMessage = 'No local backups found in ${backupDir.path}.';
-        });
-        return;
-      }
-
-      final files = backupDir
-          .listSync()
-          .whereType<File>()
-          .where((f) => f.path.endsWith('.astra.db'))
-          .toList()
-        ..sort((a, b) => b.lastModifiedSync().compareTo(a.lastModifiedSync()));
-
-      if (files.isEmpty) {
-        setState(() {
-          _isProcessing = false;
-          _isSuccess = false;
-          _statusMessage = 'No .astra.db files found in backup directory.';
-        });
-        return;
-      }
-
-      final latestFile = files.first;
-      final bytes = await latestFile.readAsBytes();
-
+      final storageService = ref.read(astraBackupStorageServiceProvider);
       final restoreService = ref.read(astraRestoreServiceProvider);
-      final metadata = restoreService.validateBackup(bytes);
+
+      // Open Android Storage Access Framework (SAF ACTION_OPEN_DOCUMENT)
+      final pickedDoc = await storageService.pickBackupDocument();
+
+      if (pickedDoc == null) {
+        if (!mounted) return;
+        setState(() => _isProcessing = false);
+        return;
+      }
+
+      // Validate envelope structure and schema version
+      final metadata = restoreService.validateBackup(pickedDoc.bytes);
 
       if (!mounted) return;
       setState(() => _isProcessing = false);
 
-      final shouldRestore = await showDialog<bool>(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          backgroundColor: AstraColors.surface,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(18),
-            side: const BorderSide(color: AstraColors.edgeSoft),
-          ),
-          title: Text('Restore ASTRA Data?', style: AstraText.displayM(size: 20)),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Archive: ${latestFile.uri.pathSegments.last}',
-                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AstraColors.lime),
+      String? password;
+      if (metadata.isEncryptedV2) {
+        password = await _showEnterPasswordDialog(metadata, pickedDoc.name);
+        if (password == null) return; // User cancelled password dialog
+      } else {
+        // Legacy V1 plaintext preview confirmation
+        final shouldRestore = await showDialog<bool>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            backgroundColor: AstraColors.surface,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(18),
+              side: const BorderSide(color: AstraColors.edgeSoft),
+            ),
+            title: Text('Restore Legacy Backup?', style: AstraText.displayM(size: 20)),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Archive: ${pickedDoc.name}',
+                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AstraColors.lime),
+                ),
+                const SizedBox(height: 10),
+                _DetailRow('Created:', DateFormat('MMM d, yyyy · h:mm a').format(metadata.createdAt.toLocal())),
+                _DetailRow('App Version:', metadata.appVersion),
+                _DetailRow('Tasks:', '${metadata.taskCount}'),
+                _DetailRow('Messages:', '${metadata.messageCount}'),
+                _DetailRow('Memories:', '${metadata.memoryCount}'),
+                const SizedBox(height: 14),
+                const Text(
+                  '⚠️ This will replace current local tasks, messages, and memories with the archive contents.',
+                  style: TextStyle(fontSize: 11, color: AstraColors.textMuted, height: 1.4),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text('CANCEL', style: TextStyle(color: AstraColors.textMuted)),
               ),
-              const SizedBox(height: 10),
-              _DetailRow('Created:', DateFormat('MMM d, yyyy · h:mm a').format(metadata.createdAt.toLocal())),
-              _DetailRow('App Version:', metadata.appVersion),
-              _DetailRow('Schema Version:', 'v${metadata.schemaVersion}'),
-              _DetailRow('Tasks:', '${metadata.taskCount}'),
-              _DetailRow('Messages:', '${metadata.messageCount}'),
-              _DetailRow('Memories:', '${metadata.memoryCount}'),
-              const SizedBox(height: 14),
-              const Text(
-                '⚠️ This will replace current local tasks, messages, and memories with the archive contents.',
-                style: TextStyle(fontSize: 11, color: AstraColors.textMuted, height: 1.4),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AstraColors.lime,
+                  foregroundColor: Colors.black,
+                ),
+                onPressed: () => Navigator.pop(ctx, true),
+                child: const Text('RESTORE', style: TextStyle(fontWeight: FontWeight.bold)),
               ),
             ],
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('CANCEL', style: TextStyle(color: AstraColors.textMuted)),
-            ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AstraColors.lime,
-                foregroundColor: Colors.black,
-              ),
-              onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('RESTORE', style: TextStyle(fontWeight: FontWeight.bold)),
-            ),
-          ],
-        ),
-      );
-
-      if (shouldRestore != true) return;
+        );
+        if (shouldRestore != true) return;
+      }
 
       setState(() => _isProcessing = true);
-      final result = await executeAstraRestore(ref, bytes);
+      final result = await executeAstraRestore(
+        ref,
+        pickedDoc.bytes,
+        password: password,
+      );
 
       if (!mounted) return;
       setState(() {
         _isProcessing = false;
         _isSuccess = true;
         _statusMessage = 'Restored ${result.tasksRestored} tasks, ${result.messagesRestored} messages, and ${result.memoriesRestored} memories.';
+      });
+    } on AstraCryptoException catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _isProcessing = false;
+        _isSuccess = false;
+        _statusMessage = 'Decryption failed: ${e.message}';
       });
     } on AstraRestoreException catch (e) {
       if (!mounted) return;
@@ -209,14 +442,14 @@ class _AstraBackupSheetState extends ConsumerState<AstraBackupSheet> {
           children: [
             Row(
               children: [
-                const Icon(LucideIcons.database, color: AstraColors.lime, size: 24),
+                const Icon(LucideIcons.shieldCheck, color: AstraColors.lime, size: 24),
                 const SizedBox(width: 10),
-                Text('DATA & PRIVACY', style: AstraText.displayM(size: 22)),
+                Text('DATA & ENCRYPTED BACKUP', style: AstraText.displayM(size: 20)),
               ],
             ),
             const SizedBox(height: 6),
             Text(
-              '100% on-device SQLite database. No cloud DB or tracking.',
+              '100% on-device SQLite database with AES-256-GCM password-encrypted backups.',
               style: AstraText.body(size: 13, color: AstraColors.textMuted),
             ),
             const SizedBox(height: 18),
@@ -281,7 +514,7 @@ class _AstraBackupSheetState extends ConsumerState<AstraBackupSheet> {
                 Expanded(
                   child: Astra3DButton(
                     label: _isProcessing ? 'Working…' : 'BACK UP NOW',
-                    icon: LucideIcons.downloadCloud,
+                    icon: LucideIcons.lock,
                     palette: AstraMaterials.lime,
                     height: 48,
                     onTap: _isProcessing ? null : _handleBackup,
@@ -291,7 +524,7 @@ class _AstraBackupSheetState extends ConsumerState<AstraBackupSheet> {
                 Expanded(
                   child: Astra3DButton(
                     label: 'RESTORE DATA',
-                    icon: LucideIcons.uploadCloud,
+                    icon: LucideIcons.keyRound,
                     palette: AstraMaterials.neutral,
                     height: 48,
                     onTap: _isProcessing ? null : _handleRestore,

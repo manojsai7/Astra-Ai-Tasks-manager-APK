@@ -4,11 +4,13 @@ import 'package:crypto/crypto.dart';
 import 'package:intl/intl.dart';
 
 import '../../core/database/database.dart';
+import 'astra_crypto_service.dart';
 
 /// Structured metadata for an ASTRA database backup archive.
 class AstraBackupMetadata {
-  static const String currentSignature = 'ASTRA_BACKUP_V1';
-  static const int currentBackupVersion = 1;
+  static const String legacyV1Signature = 'ASTRA_BACKUP_V1';
+  static const String encryptedV2Signature = 'ASTRA_ENCRYPTED_V2';
+  static const int currentBackupVersion = 2;
   static const int currentSchemaVersion = 9;
 
   final String signature;
@@ -25,7 +27,7 @@ class AstraBackupMetadata {
   final String checksum;
 
   const AstraBackupMetadata({
-    this.signature = currentSignature,
+    this.signature = encryptedV2Signature,
     this.backupVersion = currentBackupVersion,
     this.schemaVersion = currentSchemaVersion,
     required this.createdAt,
@@ -60,7 +62,7 @@ class AstraBackupMetadata {
     final counts = json['counts'] as Map<String, dynamic>? ?? {};
     return AstraBackupMetadata(
       signature: json['signature'] as String? ?? '',
-      backupVersion: json['backupVersion'] as int? ?? 1,
+      backupVersion: json['backupVersion'] as int? ?? (json['formatVersion'] as int? ?? 1),
       schemaVersion: json['schemaVersion'] as int? ?? 1,
       createdAt: DateTime.tryParse(json['createdAt'] as String? ?? '') ?? DateTime.now(),
       appVersion: json['appVersion'] as String? ?? 'unknown',
@@ -74,10 +76,12 @@ class AstraBackupMetadata {
     );
   }
 
-  bool get isValidSignature => signature == currentSignature;
+  bool get isEncryptedV2 => signature == encryptedV2Signature;
+  bool get isLegacyV1 => signature == legacyV1Signature;
+  bool get isValidSignature => isEncryptedV2 || isLegacyV1;
 }
 
-/// Complete backup container holding metadata and data tables.
+/// Complete backup container holding metadata and data tables (Legacy V1 plaintext container).
 class AstraBackupPayload {
   final AstraBackupMetadata metadata;
   final Map<String, dynamic> data;
@@ -114,6 +118,56 @@ class AstraBackupPayload {
   }
 }
 
+/// Encrypted backup container (V2 format) holding envelope metadata and AES-256-GCM encrypted payload.
+class AstraEncryptedBackupPayload {
+  final AstraBackupMetadata metadata;
+  final AstraEncryptedPackage encryptedPackage;
+
+  const AstraEncryptedBackupPayload({
+    required this.metadata,
+    required this.encryptedPackage,
+  });
+
+  Map<String, dynamic> toJson() => {
+        'signature': metadata.signature,
+        'formatVersion': 2,
+        'cipher': encryptedPackage.cipher,
+        'kdf': encryptedPackage.kdf,
+        'kdfParameters': {
+          'iterations': encryptedPackage.kdfIterations,
+          'keyLength': 32,
+          'saltLength': 16,
+          'nonceLength': 12,
+        },
+        'salt': encryptedPackage.saltBase64,
+        'nonce': encryptedPackage.nonceBase64,
+        'authTag': encryptedPackage.authTagBase64,
+        'ciphertext': encryptedPackage.ciphertextBase64,
+        'metadata': metadata.toJson(),
+      };
+
+  String toJsonString() => jsonEncode(toJson());
+
+  Uint8List toBytes() => Uint8List.fromList(utf8.encode(toJsonString()));
+
+  factory AstraEncryptedBackupPayload.fromJson(Map<String, dynamic> json) {
+    final metadataJson = json['metadata'] as Map<String, dynamic>? ?? {};
+    final metadata = AstraBackupMetadata.fromJson(metadataJson);
+    final encryptedPackage = AstraEncryptedPackage.fromJson(json);
+
+    return AstraEncryptedBackupPayload(
+      metadata: metadata,
+      encryptedPackage: encryptedPackage,
+    );
+  }
+
+  factory AstraEncryptedBackupPayload.fromBytes(Uint8List bytes) {
+    final str = utf8.decode(bytes);
+    final json = jsonDecode(str) as Map<String, dynamic>;
+    return AstraEncryptedBackupPayload.fromJson(json);
+  }
+}
+
 /// Database statistics for display in UI.
 class AstraDatabaseStats {
   final int taskCount;
@@ -142,8 +196,10 @@ class AstraDatabaseStats {
 /// Service that creates consistent, secret-free SQLite backup exports.
 class AstraBackupService {
   final AppDatabase _db;
+  final AstraCryptoService _cryptoService;
 
-  const AstraBackupService(this._db);
+  AstraBackupService(this._db, {AstraCryptoService? cryptoService})
+      : _cryptoService = cryptoService ?? AstraCryptoService();
 
   /// Generates the standard ASTRA backup filename: `ASTRA_Backup_YYYY-MM-DD_HH-mm.astra.db`.
   static String generateBackupFileName([DateTime? time]) {
@@ -160,7 +216,6 @@ class AstraBackupService {
     final memories = await _db.select(_db.taskContexts).get();
     final reminders = await _db.select(_db.reminders).get();
 
-    // Compute approximate payload size in bytes
     final sampleJson = jsonEncode({
       'tasks': tasks.length * 200,
       'messages': messages.length * 150,
@@ -178,7 +233,7 @@ class AstraBackupService {
     );
   }
 
-  /// Creates a consistent, secret-free [AstraBackupPayload].
+  /// Creates a consistent raw [AstraBackupPayload] internally.
   Future<AstraBackupPayload> createBackup({
     String appVersion = '2.1.3',
     DateTime? timestamp,
@@ -298,6 +353,8 @@ class AstraBackupService {
     final checksum = sha256.convert(utf8.encode(dataString)).toString();
 
     final metadata = AstraBackupMetadata(
+      signature: AstraBackupMetadata.legacyV1Signature,
+      backupVersion: 1,
       createdAt: now,
       appVersion: appVersion,
       taskCount: tasks.length,
@@ -312,6 +369,48 @@ class AstraBackupService {
     return AstraBackupPayload(
       metadata: metadata,
       data: dataPayload,
+    );
+  }
+
+  /// Creates a password-protected, authenticated encrypted [AstraEncryptedBackupPayload] (V2 format).
+  Future<AstraEncryptedBackupPayload> createEncryptedBackup({
+    required String password,
+    String appVersion = '2.1.3',
+    DateTime? timestamp,
+    int kdfIterations = AstraCryptoService.defaultPbkdf2Iterations,
+  }) async {
+    // 1. Create the plaintext payload internally
+    final plainPayload = await createBackup(
+      appVersion: appVersion,
+      timestamp: timestamp,
+    );
+
+    // 2. Encrypt the data payload JSON string using AES-256-GCM + PBKDF2
+    final dataJsonString = jsonEncode(plainPayload.data);
+    final encryptedPackage = await _cryptoService.encryptData(
+      plaintext: dataJsonString,
+      password: password,
+      iterations: kdfIterations,
+    );
+
+    final v2Metadata = AstraBackupMetadata(
+      signature: AstraBackupMetadata.encryptedV2Signature,
+      backupVersion: 2,
+      schemaVersion: AstraBackupMetadata.currentSchemaVersion,
+      createdAt: plainPayload.metadata.createdAt,
+      appVersion: appVersion,
+      taskCount: plainPayload.metadata.taskCount,
+      sessionCount: plainPayload.metadata.sessionCount,
+      messageCount: plainPayload.metadata.messageCount,
+      memoryCount: plainPayload.metadata.memoryCount,
+      reminderCount: plainPayload.metadata.reminderCount,
+      ritualRuleCount: plainPayload.metadata.ritualRuleCount,
+      checksum: plainPayload.metadata.checksum,
+    );
+
+    return AstraEncryptedBackupPayload(
+      metadata: v2Metadata,
+      encryptedPackage: encryptedPackage,
     );
   }
 }

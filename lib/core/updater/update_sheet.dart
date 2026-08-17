@@ -35,6 +35,83 @@ class _UpdateSheetState extends State<UpdateSheet> {
   int _downloadedBytes = 0;
   int _totalBytes = 0;
   String? _errorMessage;
+  String? _persistedApkPath;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkPersistedApk();
+  }
+
+  Future<void> _checkPersistedApk() async {
+    final file = await UpdateDownloader.getPersistedApk(version: widget.info.latestVersion);
+    if (file != null && mounted) {
+      setState(() {
+        _state = UpdateDownloadState.downloaded;
+        _persistedApkPath = file.path;
+      });
+    }
+  }
+
+  Future<void> _startDownload() async {
+    if (widget.info.downloadUrl.isEmpty) {
+      setState(() {
+        _state = UpdateDownloadState.failed;
+        _errorMessage = 'Download link not available for this release.';
+      });
+      return;
+    }
+
+    setState(() {
+      _state = UpdateDownloadState.downloading;
+      _progress = 0.0;
+      _downloadedBytes = 0;
+      _errorMessage = null;
+    });
+
+    await UpdateDownloader.downloadAndInstall(
+      url: widget.info.downloadUrl,
+      version: widget.info.latestVersion,
+      onProgress: (progress, downloaded, total) {
+        if (mounted) {
+          setState(() {
+            _progress = progress;
+            _downloadedBytes = downloaded;
+            _totalBytes = total;
+          });
+        }
+      },
+      onStateChanged: (state, error) {
+        if (mounted) {
+          setState(() {
+            _state = state;
+            _errorMessage = error;
+          });
+          if (state == UpdateDownloadState.downloaded) {
+            _checkPersistedApk();
+          }
+        }
+      },
+    );
+  }
+
+  Future<void> _installPersisted() async {
+    if (_persistedApkPath != null && _persistedApkPath!.isNotEmpty) {
+      await UpdateDownloader.installApk(
+        _persistedApkPath!,
+        onStateChanged: (state, error) {
+          if (mounted) {
+            setState(() {
+              _state = state;
+              _errorMessage = error;
+            });
+          }
+        },
+      );
+    } else {
+      _startDownload();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -76,7 +153,7 @@ class _UpdateSheetState extends State<UpdateSheet> {
                   ),
                   child: Icon(
                     _state == UpdateDownloadState.downloaded
-                        ? LucideIcons.check
+                        ? LucideIcons.packageCheck
                         : _state == UpdateDownloadState.downloading
                             ? LucideIcons.arrowDownToLine
                             : LucideIcons.sparkles,
@@ -93,7 +170,7 @@ class _UpdateSheetState extends State<UpdateSheet> {
                     children: [
                       Text(
                         _state == UpdateDownloadState.downloaded
-                            ? 'ASTRA UPDATE READY'
+                            ? 'DOWNLOADED • READY TO INSTALL'
                             : _state == UpdateDownloadState.downloading
                                 ? 'DOWNLOADING ASTRA'
                                 : 'ASTRA UPDATE',
@@ -123,7 +200,6 @@ class _UpdateSheetState extends State<UpdateSheet> {
 
             // ── Dynamic Content based on State ──
             if (_state == UpdateDownloadState.available) ...[
-              // Release notes preview
               if (widget.info.shortNotes.isNotEmpty) ...[
                 Container(
                   width: double.infinity,
@@ -142,8 +218,6 @@ class _UpdateSheetState extends State<UpdateSheet> {
                 ),
                 const SizedBox(height: 16),
               ],
-
-              // Actions
               Row(
                 children: [
                   Expanded(
@@ -158,7 +232,7 @@ class _UpdateSheetState extends State<UpdateSheet> {
                   Expanded(
                     flex: 2,
                     child: Astra3DButton(
-                      label: 'Download update ',
+                      label: 'Download Update',
                       palette: AstraMaterials.lime,
                       icon: LucideIcons.download,
                       height: 48,
@@ -168,7 +242,6 @@ class _UpdateSheetState extends State<UpdateSheet> {
                 ],
               ),
             ] else if (_state == UpdateDownloadState.downloading) ...[
-              // Progress Bar
               ClipRRect(
                 borderRadius: BorderRadius.circular(6),
                 child: LinearProgressIndicator(
@@ -183,7 +256,7 @@ class _UpdateSheetState extends State<UpdateSheet> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    'Downloading APK…',
+                    'Downloading to Downloads/…',
                     style: AstraText.caption(color: AstraColors.textSecondary, size: 12),
                   ),
                   Text(
@@ -196,7 +269,7 @@ class _UpdateSheetState extends State<UpdateSheet> {
               ),
               const SizedBox(height: 6),
               Text(
-                'Download continues in background',
+                'Persistent APK saved to Downloads/ASTRA',
                 style: AstraText.caption(color: AstraColors.textDisabled, size: 11),
               ),
             ] else if (_state == UpdateDownloadState.downloaded ||
@@ -207,11 +280,21 @@ class _UpdateSheetState extends State<UpdateSheet> {
                 decoration: BoxDecoration(
                   color: AstraColors.surface1,
                   borderRadius: BorderRadius.circular(AstraRadii.sm),
-                  border: Border.all(color: AstraColors.borderSoft, width: 1),
+                  border: Border.all(color: AstraColors.lime.withValues(alpha: 0.3), width: 1),
                 ),
-                child: Text(
-                  'ASTRA v${widget.info.latestVersion} has been downloaded.\nTap Install to update.',
-                  style: AstraText.body(color: AstraColors.textPrimary, size: 13),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'ASTRA-v${widget.info.latestVersion}.apk is saved in Downloads.',
+                      style: AstraText.body(color: AstraColors.textPrimary, size: 13),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Ready to install. The file will remain in Downloads if you need to retry.',
+                      style: AstraText.caption(color: AstraColors.textMuted, size: 11),
+                    ),
+                  ],
                 ),
               ),
               const SizedBox(height: 16),
@@ -219,21 +302,22 @@ class _UpdateSheetState extends State<UpdateSheet> {
                 children: [
                   Expanded(
                     child: Astra3DButton(
-                      label: 'Close',
+                      label: 'RE-DOWNLOAD',
                       palette: AstraMaterials.dark,
+                      icon: LucideIcons.refreshCw,
                       height: 48,
-                      onPressed: () => Navigator.pop(context),
+                      onPressed: _startDownload,
                     ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
                     flex: 2,
                     child: Astra3DButton(
-                      label: 'INSTALL NOW',
+                      label: 'INSTALL',
                       palette: AstraMaterials.lime,
                       icon: LucideIcons.packageCheck,
                       height: 48,
-                      onPressed: _installAgain,
+                      onPressed: _installPersisted,
                     ),
                   ),
                 ],
@@ -248,7 +332,7 @@ class _UpdateSheetState extends State<UpdateSheet> {
                   border: Border.all(color: AstraColors.red.withValues(alpha: 0.3), width: 1),
                 ),
                 child: Text(
-                  _errorMessage ?? 'Download failed. Tap below to open in browser.',
+                  _errorMessage ?? 'Download failed. Please check your connection.',
                   style: AstraText.caption(color: AstraColors.red, size: 12),
                 ),
               ),
@@ -257,88 +341,37 @@ class _UpdateSheetState extends State<UpdateSheet> {
                 children: [
                   Expanded(
                     child: Astra3DButton(
-                      label: 'Cancel',
+                      label: 'Browser',
                       palette: AstraMaterials.dark,
+                      icon: LucideIcons.externalLink,
                       height: 48,
-                      onPressed: () => Navigator.pop(context),
+                      onPressed: () {
+                        if (widget.info.downloadUrl.isNotEmpty) {
+                          launchUrl(
+                            Uri.parse(widget.info.downloadUrl),
+                            mode: LaunchMode.externalApplication,
+                          );
+                        }
+                      },
                     ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
                     flex: 2,
                     child: Astra3DButton(
-                      label: 'Open Browser',
-                      palette: AstraMaterials.cyan,
-                      icon: LucideIcons.externalLink,
+                      label: 'Retry Download',
+                      palette: AstraMaterials.lime,
+                      icon: LucideIcons.refreshCw,
                       height: 48,
-                      onPressed: _openInBrowser,
+                      onPressed: _startDownload,
                     ),
                   ),
                 ],
               ),
             ],
-
-            const SizedBox(height: 10),
-            Center(
-              child: Text(
-                'Manojsai CDN · manojsai7/Astra-Ai-Tasks-manager-APK',
-                style: AstraText.caption(color: AstraColors.textDisabled, size: 10),
-              ),
-            ),
           ],
         ),
       ),
     );
-  }
-
-  Future<void> _startDownload() async {
-    setState(() {
-      _state = UpdateDownloadState.downloading;
-      _progress = 0.0;
-      _errorMessage = null;
-    });
-
-    final url = widget.info.downloadUrl.isNotEmpty
-        ? widget.info.downloadUrl
-        : 'https://github.com/manojsai7/Astra-Ai-Tasks-manager-APK/releases/latest';
-
-    final fileName = 'astra_v${widget.info.latestVersion}.apk';
-
-    await UpdateDownloader.downloadAndInstall(
-      url: url,
-      fileName: fileName,
-      onProgress: (p, downloaded, total) {
-        if (mounted) {
-          setState(() {
-            _progress = p;
-            _downloadedBytes = downloaded;
-            _totalBytes = total;
-          });
-        }
-      },
-      onStateChanged: (state, error) {
-        if (mounted) {
-          setState(() {
-            _state = state;
-            _errorMessage = error;
-          });
-        }
-      },
-    );
-  }
-
-  Future<void> _installAgain() async {
-    _startDownload();
-  }
-
-  Future<void> _openInBrowser() async {
-    final url = widget.info.downloadUrl.isNotEmpty
-        ? widget.info.downloadUrl
-        : 'https://github.com/manojsai7/Astra-Ai-Tasks-manager-APK/releases/latest';
-    final uri = Uri.parse(url);
-    try {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
-    } catch (_) {}
-    if (mounted) Navigator.pop(context);
   }
 }

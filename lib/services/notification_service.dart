@@ -23,7 +23,7 @@ typedef NotificationActionCallback = Future<void> Function(String actionId, Stri
 @pragma('vm:entry-point')
 void astraNotificationBackgroundHandler(NotificationResponse response) async {
   WidgetsFlutterBinding.ensureInitialized();
-  await NotificationService.handleNotificationActionResponse(response);
+  await NotificationService.handleNotificationActionResponse(response, isBackground: true);
 }
 
 /// ASTRA Notification Service — schedules task reminders with action buttons.
@@ -91,11 +91,14 @@ class NotificationService {
   }
 
   static Future<void> _onNotificationResponse(NotificationResponse response) async {
-    await handleNotificationActionResponse(response);
+    await handleNotificationActionResponse(response, isBackground: false);
   }
 
   /// Authoritative handling of notification action responses with structured diagnostics.
-  static Future<void> handleNotificationActionResponse(NotificationResponse response) async {
+  static Future<void> handleNotificationActionResponse(
+    NotificationResponse response, {
+    bool isBackground = false,
+  }) async {
     final now = DateTime.now();
     final actionId = response.actionId ?? NotificationService.actionOpenTask;
     final payload = response.payload;
@@ -148,6 +151,15 @@ class NotificationService {
       reminderId = data['reminderId'] as String?;
     } catch (_) {}
 
+    final actionTag = actionId == NotificationService.actionDone
+        ? 'DONE'
+        : (actionId == NotificationService.actionSnooze10m ? 'SNOOZE' : actionId);
+
+    debugPrint('[ASTRA NOTIFICATION ACTION] action=$actionTag taskId=$taskId reminderId=$reminderId');
+    if (isBackground) {
+      debugPrint('[ASTRA NOTIFICATION ACTION] background_callback=true');
+    }
+
     debugPrint(
       '[ASTRA NOTIF ACTION PARSED]\n'
       'taskId=$taskId\n'
@@ -163,12 +175,16 @@ class NotificationService {
     DateTime? newScheduledAt;
 
     try {
-      if (_actionCallback != null) {
+      if (!isBackground && _actionCallback != null) {
         await _actionCallback!(actionId, payload);
       } else {
         final db = constructDb();
-        final reminderService = ReminderService(db);
-        await reminderService.handleNotificationAction(actionId, payload);
+        try {
+          final reminderService = ReminderService(db);
+          await reminderService.handleNotificationAction(actionId, payload);
+        } finally {
+          await db.close();
+        }
       }
 
       if (actionId == NotificationService.actionSnooze10m) {
@@ -232,6 +248,8 @@ class NotificationService {
       enableVibration: true,
       enableLights: true,
       playSound: true,
+      visibility: NotificationVisibility.public,
+      fullScreenIntent: true,
       styleInformation: bigTextStyle,
       category: AndroidNotificationCategory.reminder,
       actions: const <AndroidNotificationAction>[

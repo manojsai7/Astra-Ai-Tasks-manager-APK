@@ -2,22 +2,36 @@ import 'dart:typed_data';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../services/data/astra_backup_service.dart';
+import '../services/data/astra_backup_storage_service.dart';
+import '../services/data/astra_crypto_service.dart';
 import '../services/data/astra_restore_service.dart';
 import 'chat_session_provider.dart';
 import 'reminder_provider.dart';
 import 'ritual_provider.dart';
 import 'task_provider.dart';
 
+/// Provider for [AstraCryptoService].
+final astraCryptoServiceProvider = Provider<AstraCryptoService>((ref) {
+  return AstraCryptoService();
+});
+
+/// Provider for [IAstraBackupStorageService].
+final astraBackupStorageServiceProvider = Provider<IAstraBackupStorageService>((ref) {
+  return const AstraBackupStorageService();
+});
+
 /// Provider for [AstraBackupService].
 final astraBackupServiceProvider = Provider<AstraBackupService>((ref) {
   final db = ref.watch(databaseProvider);
-  return AstraBackupService(db);
+  final crypto = ref.watch(astraCryptoServiceProvider);
+  return AstraBackupService(db, cryptoService: crypto);
 });
 
 /// Provider for [AstraRestoreService].
 final astraRestoreServiceProvider = Provider<AstraRestoreService>((ref) {
   final db = ref.watch(databaseProvider);
-  return AstraRestoreService(db);
+  final crypto = ref.watch(astraCryptoServiceProvider);
+  return AstraRestoreService(db, cryptoService: crypto);
 });
 
 /// Provider for querying local database statistics.
@@ -29,10 +43,11 @@ final databaseStatsProvider = FutureProvider<AstraDatabaseStats>((ref) async {
 /// Executes full restore and refreshes all active Riverpod states cleanly.
 Future<AstraRestoreResult> executeAstraRestore(
   WidgetRef ref,
-  Uint8List backupBytes,
-) async {
+  Uint8List backupBytes, {
+  String? password,
+}) async {
   final restoreService = ref.read(astraRestoreServiceProvider);
-  final result = await restoreService.restoreBackup(backupBytes);
+  final result = await restoreService.restoreBackup(backupBytes, password: password);
 
   // 1. Invalidate reactive stream & state providers
   ref.invalidate(taskListProvider);
