@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+import '../../services/haptics/astra_haptics.dart';
 import '../../theme/app_theme.dart';
 
 /// The single physical-material primitive used across all ASTRA 3D components.
@@ -66,7 +66,7 @@ class _Astra3DSurfaceState extends State<Astra3DSurface> {
   void _handleTapDown(TapDownDetails _) {
     if (!_hasAction) return;
     _setPressed(true);
-    if (widget.hapticOnPress) HapticFeedback.lightImpact();
+    if (widget.hapticOnPress) AstraHaptics.light();
   }
 
   void _handleTapUp(TapUpDetails _) {

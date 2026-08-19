@@ -39,7 +39,7 @@ class _PanchangScreenState extends ConsumerState<PanchangScreen> {
       backgroundColor: AstraColors.background,
       body: SafeArea(
         child: ListView(
-          padding: const EdgeInsets.fromLTRB(20, 18, 20, 32),
+          padding: const EdgeInsets.fromLTRB(20, 18, 20, 120),
           physics: const BouncingScrollPhysics(),
           children: [
             Text('PANCHANG', style: AstraText.displayL(size: 34)),

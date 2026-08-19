@@ -170,6 +170,13 @@ class GoogleCalendarWriterService {
         }
         break;
 
+      case RecurrenceFrequency.yearly:
+        base = 'RRULE:FREQ=YEARLY';
+        if (rule.interval > 1) {
+          base += ';INTERVAL=${rule.interval}';
+        }
+        break;
+
       case RecurrenceFrequency.custom:
       case RecurrenceFrequency.none:
         return null;

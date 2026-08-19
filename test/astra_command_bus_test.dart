@@ -260,9 +260,10 @@ void main() {
       expect(resp.lines.any((l) => l.value == 'Drink Water' && l.highlight), isTrue);
       expect(resp.lines.any((l) => l.label == 'Timezone' && l.value == 'Asia/Kolkata'), isTrue);
       expect(resp.lines.any((l) => l.label == 'Notification' && l.value == 'Scheduled'), isTrue);
-      expect(resp.actions.length, 2);
+      expect(resp.actions.length, 3);
       expect(resp.actions[0].label, 'DONE');
-      expect(resp.actions[1].label, 'SNOOZE 10m');
+      expect(resp.actions[1].label, '+10 MIN');
+      expect(resp.actions[2].label, 'VIEW TASK');
       expect(resp.toPlainText(), isNot(contains('***')));
     });
 

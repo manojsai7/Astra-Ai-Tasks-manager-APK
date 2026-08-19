@@ -1,17 +1,25 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
-import 'package:intl/intl.dart';
 import 'package:confetti/confetti.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import '../providers/task_provider.dart';
+
+import '../core/parser/task_parser.dart';
 import '../models/task.dart';
+import '../models/task_intent.dart';
+import '../providers/astra_command_executor_provider.dart';
+import '../providers/task_provider.dart';
+import '../services/haptics/astra_haptics.dart';
+import '../services/task/astra_task_filter.dart';
 import '../theme/app_theme.dart';
-import '../core/motion.dart';
 import '../services/notification_service.dart';
 import '../widgets/design_system/astra_section_header.dart';
 import '../widgets/design_system/astra_3d_button.dart';
-import '../widgets/design_system/astra_card.dart';
+import '../widgets/tasks/astra_task_card.dart';
+import '../widgets/tasks/quick_add_bar.dart';
+import '../widgets/tasks/tasks_view_tabs.dart';
+import '../widgets/tasks/astra_task_creation_sheet.dart';
 
 class TasksScreen extends ConsumerStatefulWidget {
   const TasksScreen({super.key});
@@ -21,17 +29,13 @@ class TasksScreen extends ConsumerStatefulWidget {
 }
 
 class _TasksScreenState extends ConsumerState<TasksScreen> {
-  final _titleController = TextEditingController();
-  final _descController = TextEditingController();
-  DateTime? _dueDate;
-  String _priority = 'medium';
+  TaskViewFilter _selectedView = TaskViewFilter.myDay;
   ConfettiController? _confettiController;
 
   @override
   void initState() {
     super.initState();
-    _confettiController =
-        ConfettiController(duration: const Duration(seconds: 2));
+    _confettiController = ConfettiController(duration: const Duration(milliseconds: 800));
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(taskNotifierProvider.notifier).loadTasks();
     });
@@ -39,668 +43,198 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
 
   @override
   void dispose() {
-    _titleController.dispose();
-    _descController.dispose();
     _confettiController?.dispose();
     super.dispose();
   }
 
   void _showAddTaskDialog() {
-    _titleController.clear();
-    _descController.clear();
-    _dueDate = null;
-    _priority = 'medium';
-
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: AppTheme.surface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (ctx) => StatefulBuilder(
-        builder: (context, setSheetState) {
-          return Padding(
-            padding: EdgeInsets.only(
-              bottom: MediaQuery.of(ctx).viewInsets.bottom,
-              left: 20,
-              right: 20,
-              top: 20,
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Handle
-                Center(
-                  child: Container(
-                    width: 36,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: AppTheme.borderSubtle,
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 20),
-                Text('New Task',
-                    style: Theme.of(context).textTheme.headlineMedium),
-                const SizedBox(height: 4),
-                Text(
-                  'Add it to your plan',
-                  style: TextStyle(
-                      fontSize: 12,
-                      color: AppTheme.textMuted,
-                      fontWeight: FontWeight.w400),
-                ),
-                const SizedBox(height: 20),
-
-                // Title field
-                TextField(
-                  controller: _titleController,
-                  autofocus: true,
-                  style: const TextStyle(
-                      color: AppTheme.textPrimary,
-                      fontSize: 15,
-                      fontWeight: FontWeight.w500),
-                  decoration: const InputDecoration(
-                    hintText: 'What needs to be done?',
-                    prefixIcon:
-                        Icon(LucideIcons.penLine, size: 18, color: AppTheme.textMuted),
-                  ),
-                ),
-                const SizedBox(height: 10),
-
-                // Description field
-                TextField(
-                  controller: _descController,
-                  style: const TextStyle(
-                      color: AppTheme.textPrimary, fontSize: 14),
-                  maxLines: 2,
-                  decoration: const InputDecoration(
-                    hintText: 'Notes (optional)',
-                    prefixIcon: Icon(LucideIcons.alignLeft,
-                        size: 18, color: AppTheme.textMuted),
-                  ),
-                ),
-                const SizedBox(height: 12),
-
-                // Date picker
-                GestureDetector(
-                  onTap: () async {
-                    final date = await showDatePicker(
-                      context: context,
-                      initialDate: DateTime.now(),
-                      firstDate: DateTime.now(),
-                      lastDate: DateTime(2030),
-                    );
-                    if (date != null) {
-                      if (!context.mounted) return;
-                      final time = await showTimePicker(
-                        context: context,
-                        initialTime: TimeOfDay.now(),
-                      );
-                      if (time != null) {
-                        setSheetState(() => _dueDate = DateTime(
-                              date.year,
-                              date.month,
-                              date.day,
-                              time.hour,
-                              time.minute,
-                            ));
-                      } else {
-                        setSheetState(() => _dueDate = date);
-                      }
-                    }
-                  },
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 14),
-                    decoration: BoxDecoration(
-                      color: AppTheme.surfaceElevated,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: AppTheme.borderSubtle),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(
-                          LucideIcons.calendar,
-                          color: _dueDate != null
-                              ? AppTheme.primary
-                              : AppTheme.textMuted,
-                          size: 18,
-                        ),
-                        const SizedBox(width: 10),
-                        Text(
-                          _dueDate == null
-                              ? 'Set due date & time'
-                              : DateFormat('MMM dd, yyyy · h:mm a')
-                                  .format(_dueDate!),
-                          style: TextStyle(
-                            color: _dueDate == null
-                                ? AppTheme.textMuted
-                                : AppTheme.textPrimary,
-                            fontSize: 14,
-                            fontWeight: FontWeight.w400,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 12),
-
-                // Priority pills
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'PRIORITY',
-                      style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w700,
-                          color: AppTheme.textMuted,
-                          letterSpacing: 1.2),
-                    ),
-                    const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        _PriorityPill(
-                          label: 'Low',
-                          color: AppTheme.accent,
-                          isSelected: _priority == 'low',
-                          onTap: () =>
-                              setSheetState(() => _priority = 'low'),
-                        ),
-                        const SizedBox(width: 8),
-                        _PriorityPill(
-                          label: 'Medium',
-                          color: AppTheme.warning,
-                          isSelected: _priority == 'medium',
-                          onTap: () =>
-                              setSheetState(() => _priority = 'medium'),
-                        ),
-                        const SizedBox(width: 8),
-                        _PriorityPill(
-                          label: 'High',
-                          color: AppTheme.error,
-                          isSelected: _priority == 'high',
-                          onTap: () =>
-                              setSheetState(() => _priority = 'high'),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-
-                const SizedBox(height: 24),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: () async {
-                      if (_titleController.text.trim().isEmpty) return;
-                      final task = Task(
-                        id: DateTime.now().millisecondsSinceEpoch.toString(),
-                        title: _titleController.text.trim(),
-                        description: _descController.text.trim().isEmpty
-                            ? null
-                            : _descController.text.trim(),
-                        dueDate: _dueDate,
-                        priority: _priority,
-                        createdAt: DateTime.now(),
-                      );
-                      ref.read(taskNotifierProvider.notifier).addTask(task);
-                      ref.invalidate(taskListProvider);
-
-                      if (task.dueDate != null) {
-                        final reminderTime = task.dueDate!
-                            .subtract(const Duration(days: 1));
-                        await NotificationService.scheduleTaskReminder(
-                          id: task.id.hashCode,
-                          title: 'Task Due Tomorrow: ${task.title}',
-                          body: 'Your task is due tomorrow. Stay ahead!',
-                          scheduledTime: reminderTime,
-                        );
-                        final finalReminder = task.dueDate!
-                            .subtract(const Duration(hours: 2));
-                        await NotificationService.scheduleTaskReminder(
-                          id: task.id.hashCode + 9999,
-                          title: 'Urgent: ${task.title}',
-                          body: 'This task is due in 2 hours!',
-                          scheduledTime: finalReminder,
-                        );
-                        final directReminder =
-                            task.dueDate!.isAfter(DateTime.now())
-                                ? task.dueDate!
-                                : DateTime.now()
-                                    .add(const Duration(minutes: 1));
-                        await NotificationService.scheduleTaskReminder(
-                          id: task.id.hashCode + 8888,
-                          title: 'ASTRA: ${task.title}',
-                          body:
-                              'Priority: ${task.priority.toUpperCase()} · Due now!',
-                          scheduledTime: directReminder,
-                        );
-                      }
-
-                      if (ctx.mounted) Navigator.pop(ctx);
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppTheme.primary,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                      elevation: 0,
-                    ),
-                    child: const Text(
-                      'Add to Plan',
-                      style: TextStyle(
-                          fontSize: 15, fontWeight: FontWeight.w600),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 24),
-              ],
-            ),
-          );
-        },
-      ),
+    DateTime? initialDate;
+    if (_selectedView == TaskViewFilter.myDay) {
+      initialDate = DateTime.now();
+    } else if (_selectedView == TaskViewFilter.upcoming) {
+      initialDate = DateTime.now().add(const Duration(days: 1));
+    }
+    AstraTaskDetailSheet.create(
+      context,
+      initialDate: initialDate,
+      initialPriority: _selectedView == TaskViewFilter.priority ? 'high' : 'medium',
     );
+  }
+
+  Future<void> _handleQuickAdd(String text) async {
+    if (text.trim().isEmpty) return;
+    AstraHaptics.medium();
+
+    final parsed = TaskParser.parse(text.trim());
+    final title = parsed.title.isNotEmpty ? parsed.title : text.trim();
+
+    DateTime? initialDate = parsed.remindAt;
+    if (initialDate == null && parsed.recurrenceRule == null) {
+      if (_selectedView == TaskViewFilter.myDay) {
+        initialDate = DateTime.now();
+      } else if (_selectedView == TaskViewFilter.upcoming) {
+        initialDate = DateTime.now().add(const Duration(days: 1));
+      }
+    }
+
+    final intent = TaskIntent(
+      title: title,
+      dueDate: initialDate,
+      dueTime: parsed.dueTime,
+      recurrenceRule: parsed.recurrenceRule,
+      priority: parsed.priority,
+      organization: parsed.organization,
+      subtasks: parsed.subtasks,
+      source: 'manual',
+    );
+
+    final executor = ref.read(astraCommandExecutorProvider);
+    await executor.executeTaskIntent(
+      ref: ref,
+      intent: intent,
+    );
+    ref.invalidate(taskListProvider);
   }
 
   void _showEditTaskDialog(Task task) {
-    _titleController.text = task.title;
-    _descController.text = task.description ?? '';
-    _dueDate = task.dueDate;
-    _priority = task.priority;
-
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: AppTheme.surface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (ctx) => StatefulBuilder(
-        builder: (context, setSheetState) {
-          return Padding(
-            padding: EdgeInsets.only(
-              bottom: MediaQuery.of(ctx).viewInsets.bottom,
-              left: 20, right: 20, top: 20,
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Center(
-                  child: Container(
-                    width: 36, height: 4,
-                    decoration: BoxDecoration(
-                      color: AppTheme.borderSubtle,
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Text('Edit Task', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: AppTheme.textPrimary)),
-                const SizedBox(height: 16),
-                TextField(
-                  controller: _titleController,
-                  autofocus: true,
-                  style: const TextStyle(color: AppTheme.textPrimary),
-                  decoration: InputDecoration(
-                    labelText: 'Task Title',
-                    labelStyle: TextStyle(color: AppTheme.textMuted),
-                    filled: true,
-                    fillColor: AppTheme.surfaceElevated,
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: _descController,
-                  style: const TextStyle(color: AppTheme.textPrimary, fontSize: 13),
-                  decoration: InputDecoration(
-                    labelText: 'Description (optional)',
-                    labelStyle: TextStyle(color: AppTheme.textMuted, fontSize: 13),
-                    filled: true,
-                    fillColor: AppTheme.surfaceElevated,
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                // Due date
-                GestureDetector(
-                  onTap: () async {
-                    final picked = await showDateTimePicker(ctx);
-                    if (picked != null) setSheetState(() => _dueDate = picked);
-                  },
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                    decoration: BoxDecoration(
-                      color: AppTheme.surfaceElevated,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Row(children: [
-                      Icon(Icons.schedule_rounded, size: 18, color: AppTheme.primary),
-                      const SizedBox(width: 10),
-                      Text(
-                        _dueDate == null ? 'Set due date & time' : '${_dueDate!.day}/${_dueDate!.month} at ${_dueDate!.hour}:${_dueDate!.minute.toString().padLeft(2, '0')}',
-                        style: TextStyle(color: _dueDate == null ? AppTheme.textMuted : AppTheme.textPrimary, fontSize: 14),
-                      ),
-                      if (_dueDate != null) ...[
-                        const Spacer(),
-                        GestureDetector(onTap: () => setSheetState(() => _dueDate = null), child: Icon(Icons.close, size: 16, color: AppTheme.textMuted)),
-                      ],
-                    ]),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: () async {
-                      if (_titleController.text.trim().isEmpty) return;
-                      final updated = task.copyWith(
-                        title: _titleController.text.trim(),
-                        description: _descController.text.trim().isEmpty ? null : _descController.text.trim(),
-                        dueDate: _dueDate,
-                        priority: _priority,
-                      );
-                      ref.read(taskNotifierProvider.notifier).updateTask(updated);
-                      ref.invalidate(taskListProvider);
-                      if (ctx.mounted) Navigator.pop(ctx);
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppTheme.primary,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                      elevation: 0,
-                    ),
-                    child: const Text('Save Changes', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
-                  ),
-                ),
-                const SizedBox(height: 24),
-              ],
-            ),
-          );
-        },
-      ),
+    AstraTaskDetailSheet.edit(
+      context,
+      task: task,
     );
-  }
-
-  Future<DateTime?> showDateTimePicker(BuildContext ctx) async {
-    final date = await showDatePicker(
-      context: ctx,
-      initialDate: _dueDate ?? DateTime.now(),
-      firstDate: DateTime.now().subtract(const Duration(days: 1)),
-      lastDate: DateTime.now().add(const Duration(days: 365)),
-      builder: (ctx, child) => Theme(
-        data: ThemeData.dark().copyWith(colorScheme: const ColorScheme.dark(primary: AppTheme.primary)),
-        child: child!,
-      ),
-    );
-    if (date == null) return null;
-    if (!ctx.mounted) return null;
-    final time = await showTimePicker(
-      context: ctx,
-      initialTime: TimeOfDay.fromDateTime(_dueDate ?? DateTime.now()),
-      builder: (ctx, child) => Theme(
-        data: ThemeData.dark().copyWith(colorScheme: const ColorScheme.dark(primary: AppTheme.primary)),
-        child: child!,
-      ),
-    );
-    if (time == null) return date;
-    return DateTime(date.year, date.month, date.day, time.hour, time.minute);
   }
 
   @override
   Widget build(BuildContext context) {
-
     final stateTasks = ref.watch(taskNotifierProvider);
     final tasksFuture = ref.watch(taskListProvider).asData?.value ?? [];
     final tasks = stateTasks.isNotEmpty ? stateTasks : tasksFuture;
+    final buckets = AstraTaskFilter.categorize(tasks);
+    final overdue = buckets.overdue;
+    final todayTasks = buckets.todayTasks;
+    final tomorrowTasks = buckets.tomorrowTasks;
+    final thisWeekTasks = buckets.thisWeekTasks;
+    final laterTasks = buckets.laterTasks;
+    final noDateTasks = buckets.noDateTasks;
+    final recurringTasks = buckets.recurringTasks;
+    final completedTasks = buckets.completedTasks;
 
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-
-    final overdue = tasks
-        .where((t) =>
-            !t.isCompleted &&
-            t.dueDate != null &&
-            t.dueDate!.isBefore(today))
-        .toList();
-    final todayTasks = tasks
-        .where((t) =>
-            !t.isCompleted &&
-            t.dueDate != null &&
-            t.dueDate!.isAfter(today.subtract(const Duration(seconds: 1))) &&
-            t.dueDate!.isBefore(today.add(const Duration(days: 1))))
-        .toList();
-    final upcoming = tasks
-        .where((t) =>
-            !t.isCompleted &&
-            (t.dueDate == null ||
-                t.dueDate!.isAfter(today.add(const Duration(days: 1)))))
-        .toList();
-    final completed = tasks.where((t) => t.isCompleted).toList();
+    // Counts Map for top tabs
+    final counts = <TaskViewFilter, int>{
+      TaskViewFilter.myDay: overdue.length + todayTasks.length,
+      TaskViewFilter.upcoming: buckets.upcomingCount,
+      TaskViewFilter.all: buckets.allActiveCount,
+      TaskViewFilter.important: tasks.where((t) => AstraTaskFilter.isActive(t) && (t.isImportant || t.priority == 'high' || t.priority == 'medium')).length,
+      TaskViewFilter.recurring: recurringTasks.length,
+      TaskViewFilter.completed: completedTasks.length,
+    };
 
     return Scaffold(
-      backgroundColor: AppTheme.background,
+      backgroundColor: AstraColors.background,
       body: Stack(
         children: [
-          CustomScrollView(
-            physics: const BouncingScrollPhysics(),
-            slivers: [
-              // ── Header ────────────────────────────────────────
-              SliverToBoxAdapter(
-                child: SafeArea(
-                  bottom: false,
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 18, 20, 0),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'TASKS',
-                                style: AstraText.displayL(size: 34),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                '${tasks.where((t) => !t.isCompleted).length} remaining · ${tasks.length} total',
-                                style: AstraText.body(size: 15, color: AstraColors.textMuted),
-                              ),
-                            ],
-                          ),
+          SafeArea(
+            bottom: false,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Top Header Row
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 14, 20, 4),
+                  child: Row(
+                    children: [
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('ASTRA', style: AstraText.label(size: 11, color: AstraColors.cyan)),
+                          const SizedBox(height: 2),
+                          Text('TASKS', style: AstraText.displayL(size: 36)),
+                        ],
+                      ),
+                      const Spacer(),
+                      // Count badge
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: AstraColors.surface,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: AstraColors.edgeSoft),
                         ),
-                        SizedBox(
-                          width: 58,
-                          height: 58,
-                          child: Astra3DButton(
-                            height: 52,
-                            depth: AstraDepth.medium,
-                            color: AstraColors.lime,
-                            depthColor: AstraDepthColors.limeDepth,
-                            borderColor: AstraDepthColors.limeBorder,
-                            onTap: _showAddTaskDialog,
-                            child: const Icon(Icons.add_rounded, size: 30, color: Colors.black),
-                          ),
+                        child: Text(
+                          '${buckets.allActiveCount} active',
+                          style: AstraText.label(size: 11, color: AstraColors.lime),
                         ),
-                      ],
-                    ),
-                  ),
-                ).animate().fadeIn(duration: 400.ms),
-              ),
-
-              SliverToBoxAdapter(child: const SizedBox(height: 24)),
-
-              // Task sections
-              if (tasks.isEmpty)
-                SliverFillRemaining(
-                  child: _buildEmptyState(context),
-                )
-              else
-                SliverPadding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  sliver: SliverList(
-                    delegate: SliverChildListDelegate([
-                      if (overdue.isNotEmpty) ...[
-                        const AstraSectionHeader(
-                          title: 'Overdue',
-                          showAccentBar: true,
-                          accentColor: AppTheme.error,
+                      ),
+                      const SizedBox(width: 8),
+                      // Add Button
+                      SizedBox(
+                        width: 44,
+                        height: 44,
+                        child: Astra3DButton(
+                          height: 42,
+                          depth: AstraDepth.small,
+                          color: AstraColors.lime,
+                          depthColor: AstraDepthColors.limeDepth,
+                          borderColor: AstraDepthColors.limeBorder,
+                          onTap: _showAddTaskDialog,
+                          child: const Icon(LucideIcons.plus, size: 20, color: Colors.black),
                         ),
-                        const SizedBox(height: 8),
-                        ...overdue.asMap().entries.map((e) => _TaskCard(
-                              task: e.value,
-                              onEdit: () => _showEditTaskDialog(e.value),
-                              onComplete: () {
-                                ref
-                                    .read(taskNotifierProvider.notifier)
-                                    .toggleComplete(e.value.id);
-                                ref.invalidate(taskListProvider);
-                                _confettiController?.play();
-                              },
-                              onDelete: () async {
-                                ref
-                                    .read(taskNotifierProvider.notifier)
-                                    .deleteTask(e.value.id);
-                                ref.invalidate(taskListProvider);
-                                await NotificationService.cancelNotification(
-                                    e.value.id.hashCode);
-                              },
-                            ).withPremiumEntry(delayMs: e.key * 40)),
-                        const SizedBox(height: 20),
-                      ],
-                      if (todayTasks.isNotEmpty) ...[
-                        const AstraSectionHeader(
-                          title: 'Today',
-                          showAccentBar: true,
-                        ),
-                        const SizedBox(height: 8),
-                        ...todayTasks.asMap().entries.map((e) => _TaskCard(
-                              task: e.value,
-                              onEdit: () => _showEditTaskDialog(e.value),
-                              onComplete: () {
-                                ref
-                                    .read(taskNotifierProvider.notifier)
-                                    .toggleComplete(e.value.id);
-                                ref.invalidate(taskListProvider);
-                                _confettiController?.play();
-                              },
-                              onDelete: () async {
-                                ref
-                                    .read(taskNotifierProvider.notifier)
-                                    .deleteTask(e.value.id);
-                                ref.invalidate(taskListProvider);
-                                await NotificationService.cancelNotification(
-                                    e.value.id.hashCode);
-                              },
-                            ).withPremiumEntry(delayMs: e.key * 40)),
-                        const SizedBox(height: 20),
-                      ],
-                      if (upcoming.isNotEmpty) ...[
-                        const AstraSectionHeader(
-                          title: 'Upcoming',
-                          showAccentBar: true,
-                          accentColor: AppTheme.secondary,
-                        ),
-                        const SizedBox(height: 8),
-                        ...upcoming.asMap().entries.map((e) => _TaskCard(
-                              task: e.value,
-                              onEdit: () => _showEditTaskDialog(e.value),
-                              onComplete: () {
-                                ref
-                                    .read(taskNotifierProvider.notifier)
-                                    .toggleComplete(e.value.id);
-                                ref.invalidate(taskListProvider);
-                                _confettiController?.play();
-                              },
-                              onDelete: () async {
-                                ref
-                                    .read(taskNotifierProvider.notifier)
-                                    .deleteTask(e.value.id);
-                                ref.invalidate(taskListProvider);
-                                await NotificationService.cancelNotification(
-                                    e.value.id.hashCode);
-                              },
-                            ).withPremiumEntry(delayMs: e.key * 40)),
-                        const SizedBox(height: 20),
-                      ],
-                      if (completed.isNotEmpty) ...[
-                        AstraSectionHeader(
-                          title: 'Completed',
-                          showAccentBar: true,
-                          // primaryMuted keeps brand lime but reduces visual noise
-                          accentColor: AstraAccent.primaryMuted,
-                          trailing: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: AstraAccent.primaryMuted.withAlpha(20),
-                              borderRadius: BorderRadius.circular(20),
-                              border: Border.all(color: AstraAccent.primaryMuted.withAlpha(50)),
-                            ),
-                            child: Text(
-                              '${completed.length} done',
-                              style: TextStyle(
-                                  fontSize: 10,
-                                  color: AstraAccent.primaryMuted,
-                                  fontWeight: FontWeight.w700),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        ...completed.map((t) => _TaskCard(
-                              task: t,
-                              onEdit: () => _showEditTaskDialog(t),
-                              onComplete: () {
-                                ref
-                                    .read(taskNotifierProvider.notifier)
-                                    .toggleComplete(t.id);
-                                ref.invalidate(taskListProvider);
-                              },
-                              onDelete: () async {
-                                ref
-                                    .read(taskNotifierProvider.notifier)
-                                    .deleteTask(t.id);
-                                ref.invalidate(taskListProvider);
-                                await NotificationService.cancelNotification(
-                                    t.id.hashCode);
-                              },
-                            )),
-                        const SizedBox(height: 24),
-                      ],
-                    ]),
+                      ),
+                    ],
                   ),
                 ),
-            ],
+
+                // View Tabs (Horizontal Scrolling)
+                TasksViewTabs(
+                  selectedView: _selectedView,
+                  onSelectView: (view) => setState(() => _selectedView = view),
+                  counts: counts,
+                ),
+
+                const SizedBox(height: 6),
+
+                // Task List View based on Filter
+                Expanded(
+                  child: _buildViewContent(
+                    overdue: overdue,
+                    todayTasks: todayTasks,
+                    tomorrowTasks: tomorrowTasks,
+                    thisWeekTasks: thisWeekTasks,
+                    laterTasks: laterTasks,
+                    noDateTasks: noDateTasks,
+                    recurringTasks: recurringTasks,
+                    completedTasks: completedTasks,
+                    allTasks: tasks,
+                  ),
+                ),
+              ],
+            ),
           ),
 
-          // Confetti
+          // Floating Quick Add Bar
+          Align(
+            alignment: Alignment.bottomCenter,
+            child: QuickAddBar(
+              hintText: 'Add task... (e.g. Study DSA at 7pm)',
+              onAddTask: _handleQuickAdd,
+              onExpand: _showAddTaskDialog,
+            ),
+          ),
+
+          // Confetti Celebration (Subtle & Bounded)
           Align(
             alignment: Alignment.topCenter,
             child: ConfettiWidget(
               confettiController: _confettiController!,
               blastDirectionality: BlastDirectionality.explosive,
-              particleDrag: 0.05,
-              emissionFrequency: 0.03,
-              numberOfParticles: 40,
-              gravity: 0.1,
+              particleDrag: 0.08,
+              emissionFrequency: 0.015,
+              numberOfParticles: 16,
+              gravity: 0.25,
               shouldLoop: false,
               colors: const [
-                AppTheme.primary,
-                AppTheme.accentGreen,
-                AppTheme.accentPurple,
-                AppTheme.accent,
-                AppTheme.secondary,
-                AppTheme.warning,
+                AstraColors.lime,
+                AstraColors.softGreen,
+                AstraColors.cyan,
               ],
             ),
           ),
@@ -709,418 +243,353 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
     );
   }
 
-  Widget _buildEmptyState(BuildContext context) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            width: 96,
-            height: 96,
-            decoration: BoxDecoration(
-              color: AstraColors.surface,
-              borderRadius: BorderRadius.circular(30),
-              border: Border.all(color: AstraColors.edgeSoft),
-              boxShadow: const [
-                BoxShadow(color: AstraColors.depth, offset: Offset(0, 6), blurRadius: 0),
-              ],
+  Widget _buildViewContent({
+    required List<Task> overdue,
+    required List<Task> todayTasks,
+    required List<Task> tomorrowTasks,
+    required List<Task> thisWeekTasks,
+    required List<Task> laterTasks,
+    required List<Task> noDateTasks,
+    required List<Task> recurringTasks,
+    required List<Task> completedTasks,
+    required List<Task> allTasks,
+  }) {
+    switch (_selectedView) {
+      case TaskViewFilter.myDay:
+        final myDayList = [...overdue, ...todayTasks, ...noDateTasks];
+        if (myDayList.isEmpty) {
+          return _buildEmptyState(
+            icon: LucideIcons.sunMedium,
+            title: 'MY DAY IS CLEAR',
+            subtitle: 'No tasks scheduled for today.\nTap + above to add your focus.',
+          );
+        }
+        return ListView(
+          physics: const BouncingScrollPhysics(),
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 110),
+          children: [
+            if (overdue.isNotEmpty) ...[
+              const AstraSectionHeader(
+                title: 'Overdue',
+                showAccentBar: true,
+                accentColor: AstraColors.red,
+              ),
+              const SizedBox(height: 8),
+              ...overdue.map((t) => _buildTaskCard(t)),
+              const SizedBox(height: 16),
+            ],
+            if (todayTasks.isNotEmpty) ...[
+              const AstraSectionHeader(
+                title: 'Today',
+                showAccentBar: true,
+                accentColor: AstraColors.lime,
+              ),
+              const SizedBox(height: 8),
+              ...todayTasks.map((t) => _buildTaskCard(t)),
+              const SizedBox(height: 16),
+            ],
+            if (noDateTasks.isNotEmpty) ...[
+              const AstraSectionHeader(
+                title: 'No Due Date',
+                showAccentBar: true,
+                accentColor: AstraColors.cyan,
+              ),
+              const SizedBox(height: 8),
+              ...noDateTasks.map((t) => _buildTaskCard(t)),
+            ],
+          ],
+        );
+
+      case TaskViewFilter.upcoming:
+        final hasUpcoming = tomorrowTasks.isNotEmpty || thisWeekTasks.isNotEmpty || laterTasks.isNotEmpty;
+        if (!hasUpcoming) {
+          return _buildEmptyState(
+            icon: LucideIcons.calendarDays,
+            title: 'NO UPCOMING TASKS',
+            subtitle: 'You are all caught up for the days ahead.',
+          );
+        }
+        return ListView(
+          physics: const BouncingScrollPhysics(),
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 110),
+          children: [
+            if (tomorrowTasks.isNotEmpty) ...[
+              const AstraSectionHeader(
+                title: 'Tomorrow',
+                showAccentBar: true,
+                accentColor: AstraColors.amber,
+              ),
+              const SizedBox(height: 8),
+              ...tomorrowTasks.map((t) => _buildTaskCard(t)),
+              const SizedBox(height: 16),
+            ],
+            if (thisWeekTasks.isNotEmpty) ...[
+              const AstraSectionHeader(
+                title: 'This Week',
+                showAccentBar: true,
+                accentColor: AstraColors.cyan,
+              ),
+              const SizedBox(height: 8),
+              ...thisWeekTasks.map((t) => _buildTaskCard(t)),
+              const SizedBox(height: 16),
+            ],
+            if (laterTasks.isNotEmpty) ...[
+              const AstraSectionHeader(
+                title: 'Later',
+                showAccentBar: true,
+                accentColor: AstraColors.textMuted,
+              ),
+              const SizedBox(height: 8),
+              ...laterTasks.map((t) => _buildTaskCard(t)),
+            ],
+          ],
+        );
+
+      case TaskViewFilter.important:
+        final starred = allTasks.where((t) => !t.isCompleted && t.isImportant).toList();
+        final high = allTasks.where((t) => !t.isCompleted && !t.isImportant && t.priority == 'high').toList();
+        final medium = allTasks.where((t) => !t.isCompleted && !t.isImportant && t.priority == 'medium').toList();
+        final low = allTasks.where((t) => !t.isCompleted && !t.isImportant && t.priority == 'low').toList();
+
+        if (starred.isEmpty && high.isEmpty && medium.isEmpty && low.isEmpty) {
+          return _buildEmptyState(
+            icon: LucideIcons.star,
+            title: 'NO IMPORTANT TASKS',
+            subtitle: 'Mark tasks as important or high priority to see them here.',
+          );
+        }
+        return ListView(
+          physics: const BouncingScrollPhysics(),
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 110),
+          children: [
+            if (starred.isNotEmpty) ...[
+              const AstraSectionHeader(
+                title: 'Starred & Urgent',
+                showAccentBar: true,
+                accentColor: Color(0xFFFEF08A),
+              ),
+              const SizedBox(height: 8),
+              ...starred.map((t) => _buildTaskCard(t)),
+              const SizedBox(height: 16),
+            ],
+            if (high.isNotEmpty) ...[
+              const AstraSectionHeader(
+                title: 'High Priority',
+                showAccentBar: true,
+                accentColor: AstraColors.red,
+              ),
+              const SizedBox(height: 8),
+              ...high.map((t) => _buildTaskCard(t)),
+              const SizedBox(height: 16),
+            ],
+            if (medium.isNotEmpty) ...[
+              const AstraSectionHeader(
+                title: 'Medium Priority',
+                showAccentBar: true,
+                accentColor: AstraColors.amber,
+              ),
+              const SizedBox(height: 8),
+              ...medium.map((t) => _buildTaskCard(t)),
+              const SizedBox(height: 16),
+            ],
+            if (low.isNotEmpty) ...[
+              const AstraSectionHeader(
+                title: 'Low Priority',
+                showAccentBar: true,
+                accentColor: AstraColors.cyan,
+              ),
+              const SizedBox(height: 8),
+              ...low.map((t) => _buildTaskCard(t)),
+            ],
+          ],
+        );
+
+      case TaskViewFilter.recurring:
+        if (recurringTasks.isEmpty) {
+          return _buildEmptyState(
+            icon: LucideIcons.repeat,
+            title: 'NO RECURRING TASKS',
+            subtitle: 'Automated routines and repeating schedules appear here.',
+          );
+        }
+        return ListView(
+          physics: const BouncingScrollPhysics(),
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 110),
+          children: [
+            const AstraSectionHeader(
+              title: 'Routines & Habits',
+              showAccentBar: true,
+              accentColor: AstraColors.cyan,
             ),
-            child: const Icon(Icons.task_alt_rounded, color: AstraColors.lime, size: 52),
-          ),
-          const SizedBox(height: 22),
-          Text(
-            'NO TASKS YET',
-            style: AstraText.displayM(size: 28),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Your plan is empty.\nTap + to add your first task.',
-            textAlign: TextAlign.center,
-            style: AstraText.body(size: 15, color: AstraColors.textMuted),
-          ),
-          const SizedBox(height: 24),
-          SizedBox(
-            width: 220,
-            child: Astra3DButton(
-              height: 54,
-              depth: AstraDepth.medium,
-              color: AstraColors.lime,
-              textColor: Colors.black,
-              onTap: _showAddTaskDialog,
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(Icons.add_rounded, color: Colors.black, size: 22),
-                  const SizedBox(width: 8),
-                  Text('ADD FIRST TASK', style: AstraText.label(size: 12, color: Colors.black)),
-                ],
+            const SizedBox(height: 8),
+            ...recurringTasks.map((t) => _buildTaskCard(t)),
+          ],
+        );
+
+      case TaskViewFilter.completed:
+        if (completedTasks.isEmpty) {
+          return _buildEmptyState(
+            icon: LucideIcons.checkCircle2,
+            title: 'NO COMPLETED TASKS',
+            subtitle: 'Tasks you complete will be archived here.',
+          );
+        }
+        return ListView(
+          physics: const BouncingScrollPhysics(),
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 110),
+          children: [
+            AstraSectionHeader(
+              title: 'Completed',
+              showAccentBar: true,
+              accentColor: AstraAccent.primaryMuted,
+              trailing: Text(
+                '${completedTasks.length} done',
+                style: AstraText.label(size: 11, color: AstraAccent.primaryMuted),
               ),
             ),
-          ),
-        ],
-      ),
-    ).animate().fadeIn(duration: 500.ms);
+            const SizedBox(height: 8),
+            ...completedTasks.map((t) => _buildTaskCard(t)),
+          ],
+        );
+
+      case TaskViewFilter.all:
+        final activeTasks = allTasks.where((t) => !t.isCompleted).toList();
+        if (activeTasks.isEmpty && completedTasks.isEmpty) {
+          return _buildEmptyState(
+            icon: LucideIcons.layoutList,
+            title: 'NO TASKS YET',
+            subtitle: 'Your workspace is empty.\nTap + above to add your first task.',
+          );
+        }
+        return ListView(
+          physics: const BouncingScrollPhysics(),
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 110),
+          children: [
+            if (overdue.isNotEmpty) ...[
+              const AstraSectionHeader(
+                title: 'Overdue',
+                showAccentBar: true,
+                accentColor: AstraColors.red,
+              ),
+              const SizedBox(height: 8),
+              ...overdue.map((t) => _buildTaskCard(t)),
+              const SizedBox(height: 16),
+            ],
+            if (todayTasks.isNotEmpty) ...[
+              const AstraSectionHeader(
+                title: 'Today',
+                showAccentBar: true,
+                accentColor: AstraColors.lime,
+              ),
+              const SizedBox(height: 8),
+              ...todayTasks.map((t) => _buildTaskCard(t)),
+              const SizedBox(height: 16),
+            ],
+            if (tomorrowTasks.isNotEmpty || thisWeekTasks.isNotEmpty || laterTasks.isNotEmpty) ...[
+              const AstraSectionHeader(
+                title: 'Upcoming',
+                showAccentBar: true,
+                accentColor: AstraColors.amber,
+              ),
+              const SizedBox(height: 8),
+              ...tomorrowTasks.map((t) => _buildTaskCard(t)),
+              ...thisWeekTasks.map((t) => _buildTaskCard(t)),
+              ...laterTasks.map((t) => _buildTaskCard(t)),
+              const SizedBox(height: 16),
+            ],
+            if (noDateTasks.isNotEmpty) ...[
+              const AstraSectionHeader(
+                title: 'No Due Date',
+                showAccentBar: true,
+                accentColor: AstraColors.cyan,
+              ),
+              const SizedBox(height: 8),
+              ...noDateTasks.map((t) => _buildTaskCard(t)),
+              const SizedBox(height: 16),
+            ],
+            if (completedTasks.isNotEmpty) ...[
+              AstraSectionHeader(
+                title: 'Completed',
+                showAccentBar: true,
+                accentColor: AstraAccent.primaryMuted,
+                trailing: Text(
+                  '${completedTasks.length} done',
+                  style: AstraText.label(size: 11, color: AstraAccent.primaryMuted),
+                ),
+              ),
+              const SizedBox(height: 8),
+              ...completedTasks.map((t) => _buildTaskCard(t)),
+            ],
+          ],
+        );
+    }
   }
-}
 
-// ─── Priority Pill ──────────────────────────────────────────────────────────
+  Widget _buildTaskCard(Task task) {
+    return AstraTaskCard(
+      task: task,
+      onComplete: () {
+        HapticFeedback.selectionClick();
+        ref.read(taskNotifierProvider.notifier).toggleComplete(task.id);
+        ref.invalidate(taskListProvider);
+        if (!task.isCompleted) {
+          _confettiController?.play();
+        }
+      },
+      onEdit: () => _showEditTaskDialog(task),
+      onDelete: () async {
+        HapticFeedback.lightImpact();
+        ref.read(taskNotifierProvider.notifier).deleteTask(task.id);
+        ref.invalidate(taskListProvider);
+        await NotificationService.cancelNotification(task.id.hashCode);
+      },
+      onStatusCycle: () {
+        final next = task.status.nextStatus();
+        ref.read(taskNotifierProvider.notifier).setStatus(task.id, next);
+        ref.invalidate(taskListProvider);
+      },
+      onToggleSubtask: (subId) {
+        ref.read(taskNotifierProvider.notifier).toggleSubtask(task.id, subId);
+        ref.invalidate(taskListProvider);
+      },
+    );
+  }
 
-class _PriorityPill extends StatelessWidget {
-  final String label;
-  final Color color;
-  final bool isSelected;
-  final VoidCallback onTap;
-
-  const _PriorityPill({
-    required this.label,
-    required this.color,
-    required this.isSelected,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        decoration: BoxDecoration(
-          color: isSelected ? color.withAlpha(30) : AppTheme.surfaceElevated,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: isSelected ? color : AppTheme.borderSubtle,
-            width: 1.5,
-          ),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
+  Widget _buildEmptyState({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+  }) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.only(bottom: 80),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Container(
-              width: 6,
-              height: 6,
+              width: 72,
+              height: 72,
               decoration: BoxDecoration(
-                  color: isSelected ? color : AppTheme.textMuted,
-                  shape: BoxShape.circle),
+                color: AstraColors.surface,
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(color: AstraColors.edgeSoft),
+                boxShadow: const [
+                  BoxShadow(color: AstraColors.depth, offset: Offset(0, 4), blurRadius: 0),
+                ],
+              ),
+              child: Icon(icon, color: AstraColors.lime, size: 34),
             ),
-            const SizedBox(width: 6),
+            const SizedBox(height: 18),
+            Text(title, style: AstraText.displayM(size: 24)),
+            const SizedBox(height: 6),
             Text(
-              label,
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: isSelected ? color : AppTheme.textMuted,
-              ),
+              subtitle,
+              textAlign: TextAlign.center,
+              style: AstraText.body(size: 13.5, color: AstraColors.textMuted),
             ),
           ],
         ),
       ),
-    );
-  }
-}
-
-// ─── Task Card ──────────────────────────────────────────────────────────────
-
-class _TaskCard extends StatelessWidget {
-  final Task task;
-  final VoidCallback onComplete;
-  final VoidCallback onDelete;
-  final VoidCallback? onEdit;
-
-  const _TaskCard({
-    required this.task,
-    required this.onComplete,
-    required this.onDelete,
-    this.onEdit,
-  });
-
-  Color _priorityColor() => switch (task.priority) {
-        'high' => AppTheme.error,
-        'medium' => AppTheme.warning,
-        _ => AppTheme.accent,
-      };
-
-  @override
-  Widget build(BuildContext context) {
-    final color = _priorityColor();
-    final isOverdue = !task.isCompleted &&
-        task.dueDate != null &&
-        task.dueDate!.isBefore(DateTime.now());
-
-    return GestureDetector(
-      onTap: onEdit,
-      child: Padding(
-        padding: const EdgeInsets.only(bottom: 10),
-        child: AstraCard(
-          padding: EdgeInsets.zero,
-          borderColor: task.isCompleted
-              ? AstraColors.borderSoft
-              : isOverdue
-                  ? AstraDepthColors.redBorder
-                  : AstraColors.edgeSoft,
-          child: Row(
-        children: [
-          // Priority strip
-          Container(
-            width: 4,
-            height: 72,
-            decoration: BoxDecoration(
-              color: task.isCompleted
-                  ? AstraColors.softGreen.withAlpha(50)
-                  : isOverdue
-                      ? AstraColors.red
-                      : color,
-              borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(16),
-                bottomLeft: Radius.circular(16),
-              ),
-            ),
-          ),
-          const SizedBox(width: 12),
-
-          // Checkbox
-          GestureDetector(
-            onTap: onComplete,
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              width: 22,
-              height: 22,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: task.isCompleted ? AstraColors.softGreen : color,
-                  width: 2,
-                ),
-                color: task.isCompleted ? AstraColors.softGreen : Colors.transparent,
-                // No glow shadow — physical depth does the work
-              ),
-              child: task.isCompleted
-                  ? const Icon(LucideIcons.check, size: 13, color: Colors.black)
-                  : null,
-            ),
-          ),
-          const SizedBox(width: 12),
-
-            // Content
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            task.title,
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
-                              color: task.isCompleted
-                                  ? AstraColors.textMuted
-                                  : AstraColors.text,
-                              decoration: task.isCompleted
-                                  ? TextDecoration.lineThrough
-                                  : null,
-                              decorationColor: AstraColors.textMuted,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        if (task.organization != null) ...[
-                          const SizedBox(width: 6),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: AstraColors.surface2,
-                              borderRadius: BorderRadius.circular(6),
-                              border: Border.all(color: AstraColors.edgeSoft),
-                            ),
-                            child: Text(
-                              '🏢 ${task.organization}',
-                              style: const TextStyle(fontSize: 9, color: AstraColors.textMuted),
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
-                    if (task.description != null &&
-                        task.description!.isNotEmpty) ...[
-                      const SizedBox(height: 2),
-                      Text(
-                        task.description!,
-                        style: TextStyle(
-                            fontSize: 11, color: AstraColors.textMuted),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
-                    if (task.isDuration) ...[
-                      const SizedBox(height: 4),
-                      Row(
-                        children: [
-                          const Icon(
-                            LucideIcons.calendarRange,
-                            size: 11,
-                            color: AstraColors.cyan,
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            '${DateFormat('d MMM').format(task.startAt!)} – ${DateFormat('d MMM yyyy').format(task.endAt!)} · ${task.endAt!.difference(task.startAt!).inDays + 1} Days',
-                            style: const TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.w600,
-                              color: AstraColors.cyan,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ] else if (task.dueDate != null) ...[
-                      const SizedBox(height: 4),
-                      Row(
-                        children: [
-                          Icon(
-                            LucideIcons.clock,
-                            size: 11,
-                            color: isOverdue
-                                ? AstraColors.red
-                                : AstraColors.textMuted,
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            DateFormat('MMM d · h:mm a').format(task.dueDate!),
-                            style: TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.w500,
-                              color: isOverdue
-                                  ? AstraColors.red
-                                  : AstraColors.textMuted,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                    if (task.subtasks.isNotEmpty) ...[
-                      const SizedBox(height: 8),
-                      // Subtask progress bar
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(4),
-                        child: LinearProgressIndicator(
-                          value: task.subtasks.completionRatio,
-                          minHeight: 3,
-                          backgroundColor: AstraColors.surface2,
-                          color: AstraColors.lime,
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      // Subtasks list
-                      ...task.subtasks.map((sub) => Consumer(
-                            builder: (context, ref, _) => GestureDetector(
-                              onTap: () {
-                                ref
-                                    .read(taskNotifierProvider.notifier)
-                                    .toggleSubtask(task.id, sub.id);
-                                ref.invalidate(taskListProvider);
-                              },
-                              child: Padding(
-                                padding: const EdgeInsets.only(top: 3),
-                                child: Row(
-                                  children: [
-                                    Icon(
-                                      sub.isCompleted
-                                          ? LucideIcons.checkSquare
-                                          : LucideIcons.square,
-                                      size: 12,
-                                      color: sub.isCompleted
-                                          ? AstraColors.lime
-                                          : AstraColors.textMuted,
-                                    ),
-                                    const SizedBox(width: 6),
-                                    Expanded(
-                                      child: Text(
-                                        sub.name,
-                                        style: TextStyle(
-                                          fontSize: 11,
-                                          color: sub.isCompleted
-                                              ? AstraColors.textMuted
-                                              : AstraColors.text,
-                                          decoration: sub.isCompleted
-                                              ? TextDecoration.lineThrough
-                                              : null,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          )),
-                    ],
-                  ],
-                ),
-              ),
-            ),
-
-            // Priority & Status badges + delete
-            Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Consumer(
-                  builder: (context, ref, _) => GestureDetector(
-                    onTap: () {
-                      final next = task.status.nextStatus();
-                      ref.read(taskNotifierProvider.notifier).setStatus(task.id, next);
-                      ref.invalidate(taskListProvider);
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                      decoration: BoxDecoration(
-                        color: AstraColors.surface2,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: AstraColors.edgeSoft, width: 1),
-                      ),
-                      child: Text(
-                        '${task.status.emoji} ${task.status.displayName}',
-                        style: TextStyle(
-                            fontSize: 9,
-                            fontWeight: FontWeight.w700,
-                            color: task.isCompleted ? AstraColors.lime : color),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                  decoration: BoxDecoration(
-                    color: AstraColors.surface2,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: AstraColors.edgeSoft, width: 1),
-                  ),
-                  child: Text(
-                    task.priority.toUpperCase(),
-                    style: TextStyle(
-                        fontSize: 9,
-                        fontWeight: FontWeight.w700,
-                        color: task.isCompleted ? AstraColors.textMuted : color),
-                  ),
-                ),
-                IconButton(
-                  icon: const Icon(LucideIcons.trash2,
-                      size: 16, color: AppTheme.textMuted),
-                  onPressed: onDelete,
-                  padding: EdgeInsets.zero,
-                  visualDensity: VisualDensity.compact,
-                ),
-              ],
-            ),
-            const SizedBox(width: 8),
-          ],
-        ),
-      ),
-      ),
-      );
+    ).animate().fadeIn(duration: 350.ms);
   }
 }

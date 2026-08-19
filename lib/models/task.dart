@@ -9,7 +9,7 @@ class SubTask {
   final String name;
   final bool isCompleted;
 
-  SubTask({
+  const SubTask({
     required this.id,
     required this.name,
     this.isCompleted = false,
@@ -53,6 +53,7 @@ class Task {
   final String title;
   final String? description;
   final DateTime? dueDate;
+  final String? dueTime; // 'HH:mm' e.g. '20:00'
   final DateTime? startAt;
   final DateTime? endAt;
   final String status; // 'pending' | 'active' | 'completed' | 'cancelled'
@@ -73,6 +74,7 @@ class Task {
     required this.title,
     this.description,
     this.dueDate,
+    this.dueTime,
     this.startAt,
     this.endAt,
     this.status = 'pending',
@@ -91,10 +93,15 @@ class Task {
 
   // Backward compatibility getter
   bool get isCompleted => status == 'completed';
+  bool get isActive => status != 'completed' && status != 'cancelled' && !isCompleted;
+  bool get isImportant => priority == 'high' || priority == 'critical';
+  bool get hasDate => dueDate != null || startAt != null || (recurrenceRule != null && recurrenceRule!.frequency != RecurrenceFrequency.none);
+  bool get isNoDate => !hasDate;
 
   // Duration & deadline helper getters
   bool get isDuration => startAt != null && endAt != null;
   bool get isDeadline => dueDate != null && startAt == null;
+  DateTime? get effectiveTargetDate => startAt ?? dueDate;
 
   String? get durationFormatted {
     if (!isDuration) return null;
@@ -108,6 +115,7 @@ class Task {
     required String title,
     String? description,
     DateTime? dueDate,
+    String? dueTime,
     DateTime? startAt,
     DateTime? endAt,
     String priority = 'medium',
@@ -126,6 +134,7 @@ class Task {
       title: title,
       description: description,
       dueDate: dueDate,
+      dueTime: dueTime,
       startAt: startAt,
       endAt: endAt,
       priority: priority,
@@ -148,6 +157,7 @@ class Task {
     String? title,
     String? description,
     DateTime? dueDate,
+    String? dueTime,
     DateTime? startAt,
     DateTime? endAt,
     String? status,
@@ -171,6 +181,7 @@ class Task {
       title: title ?? this.title,
       description: description ?? this.description,
       dueDate: dueDate ?? this.dueDate,
+      dueTime: dueTime ?? this.dueTime,
       startAt: startAt ?? this.startAt,
       endAt: endAt ?? this.endAt,
       status: newStatus,
@@ -193,6 +204,7 @@ class Task {
         'title': title,
         'description': description,
         'dueDate': dueDate?.toIso8601String(),
+        'dueTime': dueTime,
         'startAt': startAt?.toIso8601String(),
         'endAt': endAt?.toIso8601String(),
         'status': status,
@@ -239,6 +251,7 @@ class Task {
       title: json['title'] as String,
       description: json['description'] as String?,
       dueDate: json['dueDate'] != null ? DateTime.parse(json['dueDate'] as String) : null,
+      dueTime: json['dueTime'] as String?,
       startAt: json['startAt'] != null ? DateTime.parse(json['startAt'] as String) : null,
       endAt: json['endAt'] != null ? DateTime.parse(json['endAt'] as String) : null,
       status: parsedStatus,

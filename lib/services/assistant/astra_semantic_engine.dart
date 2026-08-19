@@ -361,9 +361,16 @@ class AstraSemanticEngine {
 
     const prefixes = [
       'remind me to ',
+      'remind me about ',
+      'remind me on ',
+      'remind me for ',
       'reminder to ',
+      'reminder for ',
+      'reminder about ',
       'notify me to ',
+      'notify me about ',
       'alert me to ',
+      'alert me about ',
       'remind me ',
     ];
 
@@ -399,12 +406,12 @@ class AstraSemanticEngine {
       RegExp(r'\s+daily\b.*$', caseSensitive: false),
       RegExp(r'\s+weekly\b.*$', caseSensitive: false),
       RegExp(r'\s+monthly\b.*$', caseSensitive: false),
-      RegExp(r'\s+(?:in|after|next)?\s*(?:the\s+)?(?:next|one|\d+)?\s*(?:mins?|minutes?|hours?|hrs?|days?|secs?|seconds?)(?:\s+from\s+now)?\b.*$', caseSensitive: false),
+      RegExp(r'\s+(?:in|after|for|within)?\s*(?:the\s+)?(?:next\s+)?(?:\d+|one|two|three|four|five|ten|twenty)?\s*(?:mins?|minutes?|hours?|hrs?|days?|secs?|seconds?)(?:\s+from\s+now)?\b.*$', caseSensitive: false),
       RegExp(r'\s+at\s+\d{1,2}(?:(?:\s*:\s*|\s+)\d{2})?\s*(?:am|pm)?\b.*$', caseSensitive: false),
       RegExp(r'\s+by\s+\d{1,2}(?:(?:\s*:\s*|\s+)\d{2})?\s*(?:am|pm)?\b.*$', caseSensitive: false),
       RegExp(r'\s+before\s+\d{1,2}(?:(?:\s*:\s*|\s+)\d{2})?\s*(?:am|pm)?\b.*$', caseSensitive: false),
       RegExp(r'\s+(?:today|tomorrow|day after tomorrow)\s*(?:at\s+\d{1,2}(?:(?:\s*:\s*|\s+)\d{2})?\s*(?:am|pm))?.*$', caseSensitive: false),
-      RegExp(r'\s+on\s+(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b.*$', caseSensitive: false),
+      RegExp(r'\s+(?:on\s+)?(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)\s*(?:at\s+\d{1,2}(?:(?:\s*:\s*|\s+)\d{2})?\s*(?:am|pm))?.*$', caseSensitive: false),
     ];
 
     for (final pattern in trailingPatterns) {

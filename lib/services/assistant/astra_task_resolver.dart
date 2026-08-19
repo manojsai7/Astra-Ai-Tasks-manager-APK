@@ -165,11 +165,17 @@ class AstraTaskResolver {
       final normalizedOrg = task.organization != null ? _normalize(task.organization!) : '';
       if (normalizedTitle.contains(normalizedQuery) || (normalizedOrg.isNotEmpty && normalizedOrg.contains(normalizedQuery))) {
         score += 10;
+      } else if (normalizedTitle.isNotEmpty && normalizedQuery.contains(normalizedTitle)) {
+        // Reverse containment: query contains title (e.g. query: "project meeting", title: "Meeting")
+        score += 8;
       }
 
       // If all query tokens matched in task tokens
       if (matchedQueryTokens == queryTokens.length) {
         score += 5;
+      } else if (taskTitleTokens.isNotEmpty && taskTitleTokens.every((t) => queryTokens.contains(t))) {
+        // Task tokens are subset of query tokens
+        score += 6;
       } else if (matchedQueryTokens > 0 && queryTokens.length == 1) {
         score += matchedQueryTokens * 2;
       }

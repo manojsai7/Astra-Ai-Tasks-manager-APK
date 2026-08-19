@@ -2,48 +2,47 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 abstract final class AstraColors {
-  static const background = Color(0xFF151515);
+  static const background = Color(0xFF0F1216);
 
-  static const surface0 = Color(0xFF1B1B1B);
-  static const surface1 = Color(0xFF242424);
-  static const surface = Color(0xFF242424);
-  static const surface2 = Color(0xFF2B2B2B);
-  static const surfaceElevated = Color(0xFF2B2B2B);
-  static const surface3 = Color(0xFF303030);
-  static const surfaceGlass = Color(0xFF303030);
-  static const surfaceRaised = Color(0xFF363636);
+  static const surface0 = Color(0xFF13161C);
+  static const surface1 = Color(0xFF181D26);
+  static const surface = Color(0xFF181D26);
+  static const surface2 = Color(0xFF202734);
+  static const surfaceElevated = Color(0xFF202734);
+  static const surface3 = Color(0xFF283242);
+  static const surfaceGlass = Color(0xFF1B2230);
+  static const surfaceRaised = Color(0xFF283242);
 
-  static const border = Color(0xFF464646);
-  static const borderSubtle = Color(0xFF4A4A4A);
-  static const edge = Color(0xFF4A4A4A);
-  static const borderSoft = Color(0xFF363636);
-  static const borderFaint = Color(0xFF383838);
-  static const edgeSoft = Color(0xFF383838);
+  static const border = Color(0xFF2A3446);
+  static const borderSubtle = Color(0xFF242C3C);
+  static const edge = Color(0xFF2A3446);
+  static const borderSoft = Color(0xFF1E2532);
+  static const borderFaint = Color(0xFF19202C);
+  static const edgeSoft = Color(0xFF1E2532);
+  static const borderGlow = Color(0xFF00E5FF);
 
-  static const depth = Color(0xFF0C0C0C);
+  static const depth = Color(0xFF090B0E);
 
-  static const textPrimary = Color(0xFFF2F2EE);
-  static const text = Color(0xFFF2F2EE);
-  static const textSecondary = Color(0xFF969696);
-  static const textMuted = Color(0xFF8C8C8C);
-  static const textDisabled = Color(0xFF5F5F5F);
-  static const textDim = Color(0xFF666666);
+  static const textPrimary = Color(0xFFF8FAFC);
+  static const text = Color(0xFFF8FAFC);
+  static const textSecondary = Color(0xFF94A3B8);
+  static const textMuted = Color(0xFF64748B);
+  static const textDisabled = Color(0xFF475569);
+  static const textDim = Color(0xFF475569);
 
-  // ── Accent palette ─────────────────────────────────────────
-  static const lime      = Color(0xFFB6FF00); // ASTRA brand / primary action
-  static const softGreen = Color(0xFFB0FB62); // streak / invites / secondary positive
-  static const cyan      = Color(0xFF20B7D8); // AI system / info
-  static const amber     = Color(0xFFFFC64D); // sunrise / solar / soft warning
-  static const violet    = Color(0xFF8F7BFF); // Panchang lunar / special
-  static const orange    = Color(0xFFFF661B); // promotion / streak / celebration
-  static const red       = Color(0xFFF04A4A); // error / destructive
+  // ── Accent palette (Restrained Signal System) ───────────────
+  static const lime      = Color(0xFFCEFF00); // ASTRA primary action / completion signal
+  static const softGreen = Color(0xFF10B981); // streak / secondary positive / success
+  static const cyan      = Color(0xFF00E5FF); // AI system / edge light / schedule
+  static const amber     = Color(0xFFF59E0B); // sunrise / solar / soft warning
+  static const violet    = Color(0xFF8B5CF6); // Panchang lunar / special
+  static const orange    = Color(0xFFF97316); // promotion / streak / celebration
+  static const red       = Color(0xFFEF4444); // error / overdue / destructive
 }
 
 abstract final class AstraAccent {
   static const primary = AstraColors.lime;
-  // Slightly muted lime for secondary emphasis (tasks, chips, completed badges).
-  // Keeps brand lime #B6FF00 canonical while reducing visual noise.
-  static const primaryMuted = Color(0xFF9ED600);
+  static const primaryMuted = Color(0xFFA5CC00);
   static const panchangLunar = AstraColors.violet;
   static const sunrise = AstraColors.amber;
   static const urgent = AstraColors.red;
@@ -51,59 +50,56 @@ abstract final class AstraAccent {
 }
 
 /// Pre-computed opaque depth/border values for the face→depth→border system.
-/// Rule: no component may derive depth via withOpacity, withValues(alpha:),
-/// blending, or transparent overlays. Use these tokens directly.
 abstract final class AstraDepthColors {
-  // ── Lime (primary brand) ──────────────────────────────────────────
-  static const limeFace   = AstraColors.lime;          // #B6FF00
-  static const limeDepth  = Color(0xFF637F00);         // dark olive extrusion
-  static const limeBorder = Color(0xFF4C4C42);         // neutral grey-lime edge
+  // ── Lime (primary brand signal) ───────────────────────────────────
+  static const limeFace   = AstraColors.lime;          // #CEFF00
+  static const limeDepth  = Color(0xFF6D8700);         // dark olive extrusion
+  static const limeBorder = Color(0xFF384318);         // restrained edge
 
   // ── Violet (Panchang lunar / Tithi) ──────────────────────────────
-  static const violetFace   = AstraColors.violet;      // #8F7BFF
-  static const violetDepth  = Color(0xFF4A3E9F);       // deep violet extrusion
-  static const violetBorder = Color(0xFF3E3C50);       // muted violet-grey edge
+  static const violetFace   = AstraColors.violet;      // #8B5CF6
+  static const violetDepth  = Color(0xFF4C1D95);       // deep violet extrusion
+  static const violetBorder = Color(0xFF2E1065);       // muted violet-grey edge
 
   // ── Amber (sunrise / solar) ───────────────────────────────────────
-  static const amberFace   = AstraColors.amber;        // #FFC64D
-  static const amberDepth  = Color(0xFF8A6300);        // dark amber extrusion
-  static const amberBorder = Color(0xFF504430);        // muted amber-grey edge
+  static const amberFace   = AstraColors.amber;        // #F59E0B
+  static const amberDepth  = Color(0xFF92400E);        // dark amber extrusion
+  static const amberBorder = Color(0xFF451A03);        // muted amber-grey edge
 
-  // ── Cyan (info / system) ─────────────────────────────────────────
-  static const cyanFace   = AstraColors.cyan;          // #20B7D8
-  static const cyanDepth  = Color(0xFF0E6478);         // deep teal extrusion
-  static const cyanBorder = Color(0xFF2B4048);         // muted teal-grey edge
+  // ── Cyan (info / system edge) ────────────────────────────────────
+  static const cyanFace   = AstraColors.cyan;          // #00E5FF
+  static const cyanDepth  = Color(0xFF0369A1);         // deep teal extrusion
+  static const cyanBorder = Color(0xFF0C4A6E);         // muted teal-grey edge
 
-  // ── Red (error / warning) ────────────────────────────────────────
-  static const redFace   = AstraColors.red;            // #F04A4A
-  static const redDepth  = Color(0xFF7A1E1E);          // dark red extrusion
-  static const redBorder = Color(0xFF4A2A2A);          // muted red-grey edge
+  // ── Red (error / overdue) ────────────────────────────────────────
+  static const redFace   = AstraColors.red;            // #EF4444
+  static const redDepth  = Color(0xFF991B1B);          // dark red extrusion
+  static const redBorder = Color(0xFF450A0A);          // muted red-grey edge
 
-  // ── Neutral (grey/black buttons — secondary actions) ─────────────
-  static const neutralFace   = Color(0xFF242424);      // charcoal face
-  static const neutralDepth  = Color(0xFF111111);      // near-black extrusion
-  static const neutralBorder = Color(0xFF4A4A4A);      // grey edge
+  // ── Neutral (grey/graphite surfaces — secondary actions) ─────────
+  static const neutralFace   = Color(0xFF181D26);      // graphite face
+  static const neutralDepth  = Color(0xFF0F1218);      // deep extrusion
+  static const neutralBorder = Color(0xFF2A3446);      // slate edge
 
   // ── Neutral dark (ghost / tertiary) ──────────────────────────────
-  static const ghostFace   = Color(0xFF1B1B1B);
-  static const ghostDepth  = Color(0xFF0D0D0D);
-  static const ghostBorder = Color(0xFF3A3A3A);
+  static const ghostFace   = Color(0xFF13161C);
+  static const ghostDepth  = Color(0xFF090B0E);
+  static const ghostBorder = Color(0xFF1E2532);
 
   // ── Orange (promotion / streak / celebration) ─────────────────────
-  static const orangeFace   = AstraColors.orange;      // #FF661B
-  static const orangeDepth  = Color(0xFFA73D10);       // dark burnt orange extrusion
-  static const orangeBorder = Color(0xFF5E4638);       // muted orange-grey edge
+  static const orangeFace   = AstraColors.orange;      // #F97316
+  static const orangeDepth  = Color(0xFF9A3412);       // dark burnt orange extrusion
+  static const orangeBorder = Color(0xFF431407);       // muted orange-grey edge
 
   // ── Soft Green (streak / invites / secondary positive) ───────────
-  static const softGreenFace   = AstraColors.softGreen; // #B0FB62
-  static const softGreenDepth  = Color(0xFF648F3A);     // forest green extrusion
-  static const softGreenBorder = Color(0xFF526B46);     // muted green-grey edge
+  static const softGreenFace   = AstraColors.softGreen; // #10B981
+  static const softGreenDepth  = Color(0xFF065F46);     // forest green extrusion
+  static const softGreenBorder = Color(0xFF022C22);     // muted green-grey edge
 
-  // ── Dark (back-button reference style — grey underside) ──────────
-  // face near-black, depth intentionally grey — not black, not lime
-  static const darkFace   = Color(0xFF171717);
-  static const darkDepth  = Color(0xFF777777); // the grey physical underside
-  static const darkBorder = Color(0xFF777777);
+  // ── Dark (back-button reference style) ───────────────────────────
+  static const darkFace   = Color(0xFF13161C);
+  static const darkDepth  = Color(0xFF242C3C);
+  static const darkBorder = Color(0xFF242C3C);
 }
 
 abstract final class AstraDepth {
@@ -290,36 +286,41 @@ class AstraTheme {
 }
 
 class AppTheme {
-  // ─── Colors (Matiks-inspired) ──────────────────────────
-  static const Color background = Color(0xFF151515);
-  static const Color surface = Color(0xFF242424);
-  static const Color surfaceElevated = Color(0xFF2B2B2B);
-  static const Color surfaceGlass = Color(0xFF303030);
-  static const Color surfaceRaised = Color(0xFF363636);
+  // ─── Colors (Graphite + Glass + Cyan Edge System) ─────────
+  static const Color background = Color(0xFF0F1216);
+  static const Color surface0 = Color(0xFF13161C);
+  static const Color surface1 = Color(0xFF181D26);
+  static const Color surface = Color(0xFF181D26);
+  static const Color surface2 = Color(0xFF202734);
+  static const Color surfaceElevated = Color(0xFF202734);
+  static const Color surfaceGlass = Color(0xFF1B2230);
+  static const Color surfaceRaised = Color(0xFF283242);
 
-  // Solidified Lime (tactile & balanced, not blinding neon)
-  static const Color primary = Color(0xFFAEDB00);
-  static const Color primaryLight = Color(0xFFC6ED52);
-  static const Color primaryDark = Color(0xFF6D8900);
+  // Restrained Lime (tactile signal, primary CTA)
+  static const Color primary = Color(0xFFCEFF00);
+  static const Color primaryLight = Color(0xFFE2FF66);
+  static const Color primaryDark = Color(0xFF6D8700);
 
-  static const Color secondary = Color(0xFF20B7D8);
-  static const Color secondaryLight = Color(0xFF76DCF1);
+  // Technical Cyan (AI system, timeline, edge lighting)
+  static const Color secondary = Color(0xFF00E5FF);
+  static const Color secondaryLight = Color(0xFF66EFFF);
 
-  static const Color accent = Color(0xFFFFC64D);
-  static const Color accentGreen = Color(0xFFAEDB00);
-  static const Color accentOrange = Color(0xFFC9874F);
-  static const Color accentPurple = Color(0xFF8F7BFF);
+  static const Color accent = Color(0xFFF59E0B);
+  static const Color accentGreen = Color(0xFF10B981);
+  static const Color accentOrange = Color(0xFFF97316);
+  static const Color accentPurple = Color(0xFF8B5CF6);
 
-  static const Color success = Color(0xFF6EAE87);
-  static const Color warning = Color(0xFFFFC64D);
-  static const Color error = Color(0xFFF04A4A);
+  static const Color success = Color(0xFF10B981);
+  static const Color warning = Color(0xFFF59E0B);
+  static const Color error = Color(0xFFEF4444);
 
-  static const Color textPrimary = Color(0xFFF9F9F4);
-  static const Color textSecondary = Color(0xFFB8B8B0);
-  static const Color textMuted = Color(0xFF8C8C8C);
+  static const Color textPrimary = Color(0xFFF8FAFC);
+  static const Color textSecondary = Color(0xFF94A3B8);
+  static const Color textMuted = Color(0xFF64748B);
 
-  static const Color borderSubtle = Color(0xFF4A4A4A);
-  static const Color borderFaint = Color(0xFF383838);
+  static const Color borderSubtle = Color(0xFF242C3C);
+  static const Color borderFaint = Color(0xFF19202C);
+  static const Color borderGlow = Color(0xFF00E5FF);
 
   // ─── Typography ──────────────────────────────────────────
   static const String displayFont = 'BebasNeue';
@@ -351,14 +352,14 @@ class AppTheme {
         color: surface,
         borderRadius: BorderRadius.circular(r20),
         border: Border.all(
-          color: Colors.white.withValues(alpha: 0.08),
+          color: borderSubtle,
           width: 1,
         ),
-        boxShadow: [
+        boxShadow: const [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.3),
+            color: Color(0xFF090B0E),
             blurRadius: 0,
-            offset: const Offset(0, 4),
+            offset: Offset(0, 4),
           ),
         ],
       );
@@ -368,24 +369,24 @@ class AppTheme {
       color: surface,
       borderRadius: BorderRadius.circular(r20),
       border: Border.all(
-        color: (accent ?? Colors.white).withValues(alpha: 0.08),
+        color: (accent ?? secondary).withValues(alpha: 0.25),
         width: 1,
       ),
-      boxShadow: [
+      boxShadow: const [
         BoxShadow(
-          color: Colors.black.withValues(alpha: 0.3),
+          color: Color(0xFF090B0E),
           blurRadius: 0,
-          offset: const Offset(0, 4),
+          offset: Offset(0, 4),
         ),
       ],
     );
   }
 
   static BoxDecoration get aiCard => BoxDecoration(
-      color: surface,
+        color: surface,
         borderRadius: BorderRadius.circular(r20),
         border: Border.all(
-          color: secondary.withValues(alpha: 0.3),
+          color: secondary.withValues(alpha: 0.35),
           width: 1,
         ),
       );
@@ -394,16 +395,14 @@ class AppTheme {
     color: surface,
     borderRadius: BorderRadius.circular(r20),
     border: Border.all(
-      // Reduced alpha: accent communicates state, not the whole card
-      color: primary.withValues(alpha: 0.15),
+      color: primary.withValues(alpha: 0.2),
       width: 1,
     ),
     boxShadow: const [
-      // Opaque depth shadow — no glow, just grounding
       BoxShadow(
-        color: Color(0xFF0C0C0C),
+        color: Color(0xFF090B0E),
         blurRadius: 0,
-        offset: Offset(0, 5),
+        offset: Offset(0, 4),
       ),
     ],
   );
@@ -415,10 +414,11 @@ class AppTheme {
       color: accentGreen.withValues(alpha: 0.25),
       width: 1,
     ),
-    boxShadow: [
+    boxShadow: const [
       BoxShadow(
-        color: accentGreen.withValues(alpha: 0.1),
+        color: Color(0xFF090B0E),
         blurRadius: 0,
+        offset: Offset(0, 4),
       ),
     ],
   );

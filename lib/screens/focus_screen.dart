@@ -160,7 +160,7 @@ class _FocusScreenState extends ConsumerState<FocusScreen>
       backgroundColor: AstraColors.background,
       body: SafeArea(
         child: ListView(
-          padding: const EdgeInsets.fromLTRB(20, 18, 20, 18),
+          padding: const EdgeInsets.fromLTRB(20, 18, 20, 120),
           physics: const BouncingScrollPhysics(),
           children: [
             // ── Top Header & Stats Row ──────────────────────

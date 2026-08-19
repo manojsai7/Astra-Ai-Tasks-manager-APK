@@ -99,7 +99,7 @@ void main() {
 
       expect(payload.metadata.signature, 'ASTRA_BACKUP_V1');
       expect(payload.metadata.backupVersion, 1);
-      expect(payload.metadata.schemaVersion, 9);
+      expect(payload.metadata.schemaVersion, AstraBackupMetadata.currentSchemaVersion);
       expect(payload.metadata.appVersion, '2.1.3');
       expect(payload.metadata.taskCount, 1);
       expect(payload.metadata.sessionCount, 1);
@@ -151,7 +151,7 @@ void main() {
 
       expect(encryptedPayload.metadata.signature, 'ASTRA_ENCRYPTED_V2');
       expect(encryptedPayload.metadata.backupVersion, 2);
-      expect(encryptedPayload.metadata.schemaVersion, 9);
+      expect(encryptedPayload.metadata.schemaVersion, AstraBackupMetadata.currentSchemaVersion);
       expect(encryptedPayload.encryptedPackage.cipher, 'AES-256-GCM');
       expect(encryptedPayload.encryptedPackage.kdf, 'PBKDF2_HMAC_SHA256');
       expect(encryptedPayload.encryptedPackage.saltBase64.isNotEmpty, isTrue);

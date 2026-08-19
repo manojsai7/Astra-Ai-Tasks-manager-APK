@@ -53,6 +53,14 @@ class AstraIntentResolver {
       );
     }
 
+    if (_isCalendarQuery(t)) {
+      return AstraResolvedIntent(
+        intent: 'GET_CALENDAR',
+        mlConfidence: ml?.confidence ?? 0.0,
+        reason: 'deterministic_calendar_query_rule',
+      );
+    }
+
     if (_isTaskListing(t)) {
       return AstraResolvedIntent(
         intent: 'LIST_TASKS',
@@ -61,11 +69,11 @@ class AstraIntentResolver {
       );
     }
 
-    if (_isCalendarQuery(t)) {
+    if (_isTaskQuery(t)) {
       return AstraResolvedIntent(
-        intent: 'GET_CALENDAR',
+        intent: 'QUERY_TASK',
         mlConfidence: ml?.confidence ?? 0.0,
-        reason: 'deterministic_calendar_query_rule',
+        reason: 'deterministic_task_query_rule',
       );
     }
 
@@ -118,9 +126,9 @@ class AstraIntentResolver {
     }
 
     // Offline heuristic fallback when ML client is unavailable:
-    // If text contains an event keyword (interview, exam, meeting, standup, assignment) with date/time, treat as CREATE_TASK.
-    if (RegExp(r'\b(interview|exam|standup|meeting|assignment|session|deadline)\b', caseSensitive: false).hasMatch(t) &&
-        (t.contains(' at ') || t.contains(' on ') || t.contains('tomorrow') || t.contains('today') || t.contains('monday') || t.contains('tuesday') || t.contains('wednesday') || t.contains('thursday') || t.contains('friday') || t.contains('saturday') || t.contains('sunday'))) {
+    // If text contains an event keyword (interview, exam, meeting, standup, assignment, hackathon) with date/time, treat as CREATE_TASK.
+    if (RegExp(r'\b(interview|exam|standup|meeting|assignment|session|deadline|hackathon|workshop)\b', caseSensitive: false).hasMatch(t) &&
+        (t.contains(' at ') || t.contains(' on ') || t.contains('tomorrow') || t.contains('today') || t.contains('next ') || t.contains('in ') || t.contains('monday') || t.contains('tuesday') || t.contains('wednesday') || t.contains('thursday') || t.contains('friday') || t.contains('saturday') || t.contains('sunday'))) {
       return const AstraResolvedIntent(
         intent: 'CREATE_TASK',
         mlConfidence: 0.88,
@@ -232,9 +240,29 @@ class AstraIntentResolver {
       'set reminder',
       'notify me',
       'alert me',
+      'don\'t let me forget',
+      'dont let me forget',
+      'remember to',
+      'please remember to',
+      'please remember',
     };
 
     return phrases.any(t.contains);
+  }
+
+  bool _isTaskQuery(String t) {
+    if (t.contains('meeting') || t.contains('calendar') || t.contains('appointment') || t.contains('event')) {
+      return false;
+    }
+    if (RegExp(r'\b(?:what\s+is\s+my|when\s+is\s+my|what(?:\x27s|\s+is)\s+my|check\s+my|what\s+time\s+is\s+my)\s+(?:[a-zA-Z0-9\s]+)?\b(?:deadline|exam|test|assignment|task)\b', caseSensitive: false).hasMatch(t)) {
+      return true;
+    }
+    if (t.contains('my deadline') || t.contains('my exam') || t.contains('my assignment')) {
+      if (t.contains('what') || t.contains('when') || t.contains('check')) {
+        return true;
+      }
+    }
+    return false;
   }
 
   bool _isTaskListing(String t) {
@@ -305,6 +333,10 @@ class AstraIntentResolver {
 
     if (phrases.any(t.contains)) return true;
 
+    if (RegExp(r'\b(?:bruh|bro|hey|dude)?\s*(?:i|we)\s+(?:have|got)\s+(?:an?|my)?\s*(?:exam|interview|meeting|standup|assignment|hackathon|workshop|session|class|test|appointment|call|event|doctor)\b', caseSensitive: false).hasMatch(t)) {
+      return true;
+    }
+
     // Recurrence intent: Phrases like "standup every weekday at 10am" or "water plants daily at 8am"
     if (t.contains('every weekday') ||
         t.contains('every day') ||
@@ -329,6 +361,10 @@ class AstraIntentResolver {
   }
 
   bool _isCompletion(String t) {
+    if (t.startsWith('complete ') || t.startsWith('finish ') || t.startsWith('done ')) {
+      return true;
+    }
+
     const phrases = {
       'mark as done',
       'mark it done',
@@ -386,8 +422,8 @@ class AstraIntentResolver {
       return true;
     }
 
-    // Conversational follow-ups: "make it 11", "make it 2pm", "set it to 11am", "change it to 2pm"
-    if (RegExp(r'^(?:make|set|change|shift|move)\s+(?:it|that|this)\s+(?:to\s+|at\s+)?(\d{1,2}(?::\d{2})?\s*(?:am|pm)?|\d{1,2})$', caseSensitive: false).hasMatch(t)) {
+    // Conversational follow-ups: "make it 11", "actually make it 2pm", "set it to 11am", "change it to 2pm"
+    if (RegExp(r'^(?:actually\s+|please\s+)?(?:make|set|change|shift|move)\s+(?:it|that|this)\s+(?:to\s+|at\s+)?(\d{1,2}(?::\d{2})?\s*(?:am|pm)?|\d{1,2})$', caseSensitive: false).hasMatch(t)) {
       return true;
     }
 

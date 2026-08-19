@@ -78,6 +78,7 @@ class TaskNotifier extends StateNotifier<List<Task>> {
             order: Value(task.order),
             subtasksJson: Value(subtasksJson),
             dueAt: Value(task.dueDate),
+            dueTime: Value(task.dueTime),
             startAt: Value(task.startAt),
             endAt: Value(task.endAt),
             completedAt: Value(task.completedAt),
@@ -207,6 +208,7 @@ class TaskNotifier extends StateNotifier<List<Task>> {
         order: Value(updated.order),
         subtasksJson: Value(subtasksJson),
         dueAt: Value(updated.dueDate),
+        dueTime: Value(updated.dueTime),
         startAt: Value(updated.startAt),
         endAt: Value(updated.endAt),
         completedAt: Value(updated.completedAt),
@@ -250,6 +252,8 @@ List<Task> sortTasks(List<Task> tasks, SortMode mode) {
 
 // ─── Conversion Helper ────────────────────────────────────────────────────────
 
+Task taskEntryToTask(TaskEntry row) => _rowToTask(row);
+
 Task _rowToTask(TaskEntry row) {
   List<SubTask> subtasks = [];
   if (row.subtasksJson.isNotEmpty && row.subtasksJson != '[]') {
@@ -273,6 +277,7 @@ Task _rowToTask(TaskEntry row) {
     title: row.title,
     description: row.description,
     dueDate: row.dueAt,
+    dueTime: row.dueTime,
     startAt: row.startAt,
     endAt: row.endAt,
     status: row.status,

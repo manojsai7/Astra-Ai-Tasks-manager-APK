@@ -21,6 +21,10 @@ class AstraTimeService {
   String _timezone;
 
   String get timezone => _timezone;
+  AstraClock get clock => _clock;
+
+  /// Returns current canonical time from the underlying clock.
+  DateTime now() => _clock.now();
 
   void setTimezone(String value) {
     _ensureTimezones();

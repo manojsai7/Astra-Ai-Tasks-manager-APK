@@ -17,12 +17,23 @@ enum NotificationScheduleResult {
   failed,
 }
 
+/// Reminder permission and exact alarm readiness state.
+enum ReminderReadinessState {
+  ready,
+  notificationPermissionRequired,
+  exactAlarmPermissionRequired,
+  restricted,
+}
+
 typedef NotificationActionCallback = Future<void> Function(String actionId, String? payload);
 
 /// Background isolate notification response entry-point.
 @pragma('vm:entry-point')
 void astraNotificationBackgroundHandler(NotificationResponse response) async {
   WidgetsFlutterBinding.ensureInitialized();
+  try {
+    tz.initializeTimeZones();
+  } catch (_) {}
   await NotificationService.handleNotificationActionResponse(response, isBackground: true);
 }
 
@@ -46,6 +57,58 @@ class NotificationService {
 
   static void setTimezone(String timezone) {
     _timezone = timezone;
+  }
+
+  /// Checks the current platform notification and exact alarm readiness state.
+  static Future<ReminderReadinessState> checkReminderReadiness() async {
+    try {
+      final androidImpl = _plugin.resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin>();
+      if (androidImpl != null) {
+        final notifAllowed = await androidImpl.areNotificationsEnabled() ?? false;
+        if (!notifAllowed) {
+          return ReminderReadinessState.notificationPermissionRequired;
+        }
+        final exactAllowed = await androidImpl.canScheduleExactNotifications() ?? false;
+        if (!exactAllowed) {
+          return ReminderReadinessState.exactAlarmPermissionRequired;
+        }
+        return ReminderReadinessState.ready;
+      }
+      return ReminderReadinessState.ready;
+    } catch (_) {
+      return ReminderReadinessState.ready;
+    }
+  }
+
+  /// Requests the OS notification permission.
+  static Future<bool> requestNotificationPermission() async {
+    try {
+      final androidImpl = _plugin.resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin>();
+      if (androidImpl != null) {
+        final granted = await androidImpl.requestNotificationsPermission();
+        return granted ?? false;
+      }
+      return true;
+    } catch (_) {
+      return true;
+    }
+  }
+
+  /// Requests the OS exact alarm permission (opens system settings if needed on Android 13/14+).
+  static Future<bool> requestExactAlarmPermission() async {
+    try {
+      final androidImpl = _plugin.resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin>();
+      if (androidImpl != null) {
+        final granted = await androidImpl.requestExactAlarmsPermission();
+        return granted ?? false;
+      }
+      return true;
+    } catch (_) {
+      return true;
+    }
   }
 
   // ─── Initialization ───────────────────────────────────────────────────────
@@ -103,16 +166,14 @@ class NotificationService {
     final actionId = response.actionId ?? NotificationService.actionOpenTask;
     final payload = response.payload;
 
-    debugPrint(
-      '[ASTRA NOTIF ACTION RECEIVED]\n'
-      'action=$actionId\n'
-      'payload=$payload',
-    );
+    String? taskId;
+    String? reminderId;
 
     if (payload != null && payload.isNotEmpty) {
       try {
         final data = jsonDecode(payload) as Map<String, dynamic>;
-        final taskId = data['taskId'] as String? ?? 'unknown';
+        taskId = data['taskId'] as String?;
+        reminderId = data['reminderId'] as String?;
         final scheduledAtStr = data['scheduledAt'] as String? ?? data['occurrence'] as String? ?? '';
         int driftMs = 0;
         if (scheduledAtStr.isNotEmpty) {
@@ -122,54 +183,36 @@ class NotificationService {
           }
         }
         debugPrint(
+          '[ASTRA NOTIFICATION FIRED]\n'
+          'taskId=$taskId\n'
+          'reminderId=$reminderId\n'
+          'scheduledAt=$scheduledAtStr\n'
+          'actualAt=$now\n'
+          'delayMs=$driftMs',
+        );
+        debugPrint(
           '[ASTRA ALARM FIRED]\n'
           'taskId=$taskId\n'
           'scheduledAt=$scheduledAtStr\n'
           'firedAt=$now\n'
           'driftMs=$driftMs',
         );
-        debugPrint(
-          '[ASTRA NOTIFICATION SHOWN]\n'
-          'task=$taskId\n'
-          'shownAt=$now\n'
-          'endToEndDriftMs=$driftMs',
-        );
       } catch (_) {}
     }
+
+    debugPrint(
+      '[ASTRA ACTION]\n'
+      'action=$actionId\n'
+      'taskId=$taskId\n'
+      'reminderId=$reminderId\n'
+      'payloadValid=${payload != null && payload.isNotEmpty}\n'
+      'isBackground=$isBackground',
+    );
 
     if (payload == null || payload.isEmpty) {
       debugPrint('[ASTRA NOTIF ACTION COMPLETE]\nsuccess=false\nnewScheduledAt=null');
       return;
     }
-
-    String? taskId;
-    String? reminderId;
-
-    try {
-      final data = jsonDecode(payload) as Map<String, dynamic>;
-      taskId = data['taskId'] as String?;
-      reminderId = data['reminderId'] as String?;
-    } catch (_) {}
-
-    final actionTag = actionId == NotificationService.actionDone
-        ? 'DONE'
-        : (actionId == NotificationService.actionSnooze10m ? 'SNOOZE' : actionId);
-
-    debugPrint('[ASTRA NOTIFICATION ACTION] action=$actionTag taskId=$taskId reminderId=$reminderId');
-    if (isBackground) {
-      debugPrint('[ASTRA NOTIFICATION ACTION] background_callback=true');
-    }
-
-    debugPrint(
-      '[ASTRA NOTIF ACTION PARSED]\n'
-      'taskId=$taskId\n'
-      'reminderId=$reminderId',
-    );
-
-    debugPrint(
-      '[ASTRA NOTIF ACTION EXECUTING]\n'
-      'action=$actionId',
-    );
 
     bool success = false;
     DateTime? newScheduledAt;
@@ -261,7 +304,7 @@ class NotificationService {
         ),
         AndroidNotificationAction(
           actionSnooze10m,
-          'SNOOZE 10m',
+          '+10 MIN',
           showsUserInterface: false,
           cancelNotification: true,
         ),
@@ -292,6 +335,18 @@ class NotificationService {
     final tId = taskId ?? (payload != null ? _extractTaskId(payload) : '$id');
     final occ = occurrence ?? scheduledTime;
     final off = offsetStr ?? '0m';
+
+    debugPrint(
+      '[ASTRA NOTIFICATION TRACE]\n'
+      'taskId=$tId\n'
+      'requestedAt=$nowTz\n'
+      'scheduledAt=$scheduledTz\n'
+      'nowAtSchedule=$nowTz\n'
+      'timezone=$_timezone\n'
+      'exactAlarmPermission=$exactAllowed\n'
+      'scheduleMode=exactAllowWhileIdle\n'
+      'notificationId=$id',
+    );
 
     debugPrint(
       '[ASTRA ALARM SCHEDULED]\n'

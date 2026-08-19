@@ -76,7 +76,7 @@ class AstraDocumentAnalysis {
 
 /// 100% on-device deterministic document analyzer.
 ///
-/// Parses complex multi-track trainings, date ranges, deadlines, and form actions
+/// Parses complex multi-track trainings, date ranges, deadlines, and multi-sentence circulars
 /// with zero external network or LLM calls.
 class AstraDocumentAnalyzer {
   final AstraTemporalEngine temporalEngine;
@@ -94,26 +94,38 @@ class AstraDocumentAnalyzer {
     final items = <AstraDocumentItem>[];
     final warnings = <String>[];
 
-    // 1. Extract Organization / Batch
-    final organization = _extractOrganization(trimmed);
+    // 1. Extract Global Organization / Batch
+    final globalOrg = _extractOrganization(trimmed);
 
     // 2. Extract Multi-Track Training / Date-Range Events
-    final trainingItems = _extractTrainingRanges(trimmed, organization: organization, now: reference);
+    final trainingItems = _extractTrainingRanges(trimmed, organization: globalOrg, now: reference);
     items.addAll(trainingItems);
 
     // 3. Extract Form Submission / Immediate Action Deadlines
-    final actionItems = _extractActionAndFormDeadlines(trimmed, organization: organization, now: reference);
-    items.addAll(actionItems);
+    final actionItems = _extractActionAndFormDeadlines(trimmed, organization: globalOrg, now: reference);
+    for (final item in actionItems) {
+      if (!items.any((existing) => existing.title.toLowerCase() == item.title.toLowerCase())) {
+        items.add(item);
+      }
+    }
 
-    // 4. Extract Generic Date Ranges / Meetings if not already covered
+    // 4. Extract Multi-Candidate Sentence-Level Events (for multi-statement circulars / emails)
+    final sentenceItems = _extractSentenceLevelCandidates(trimmed, globalOrg: globalOrg, now: reference);
+    for (final item in sentenceItems) {
+      if (!items.any((existing) => _isDuplicateCandidate(existing, item))) {
+        items.add(item);
+      }
+    }
+
+    // 5. Extract Generic Date Ranges / Meetings if still empty
     if (items.isEmpty) {
-      final genericItems = _extractGenericEvents(trimmed, organization: organization, now: reference);
+      final genericItems = _extractGenericEvents(trimmed, organization: globalOrg, now: reference);
       items.addAll(genericItems);
     }
 
-    // 5. Build Document Title & Summary
-    final docTitle = _generateDocumentTitle(trimmed, organization, items);
-    final summary = _generateSummary(trimmed, items, organization);
+    // 6. Build Document Title & Summary
+    final docTitle = _generateDocumentTitle(trimmed, globalOrg, items);
+    final summary = _generateSummary(trimmed, items, globalOrg);
     final importance = _determineOverallImportance(items, lower);
 
     return AstraDocumentAnalysis(
@@ -127,7 +139,121 @@ class AstraDocumentAnalyzer {
     );
   }
 
-  // ─── Extraction Helpers ───────────────────────────────────────────────────
+  bool _isDuplicateCandidate(AstraDocumentItem a, AstraDocumentItem b) {
+    final aTitle = a.title.toLowerCase();
+    final bTitle = b.title.toLowerCase();
+    if (aTitle == bTitle) return true;
+    if (a.startAt != null && b.startAt != null && a.startAt == b.startAt) return true;
+    if (a.dueAt != null && b.dueAt != null && a.dueAt == b.dueAt && (a.type == b.type || a.organization == b.organization)) return true;
+    if (a.description.toLowerCase().contains(bTitle) || b.description.toLowerCase().contains(aTitle)) return true;
+    return false;
+  }
+
+  // ─── Sentence-by-Sentence Candidate Extraction ─────────────────────────────
+
+  List<AstraDocumentItem> _extractSentenceLevelCandidates(
+    String text, {
+    String? globalOrg,
+    required DateTime now,
+  }) {
+    final items = <AstraDocumentItem>[];
+
+    // Strip top-level salutations
+    var content = text.replaceAll(
+      RegExp(r'^(?:dear\s+[a-zA-Z\s,]+|hello\s+[a-zA-Z\s,]+|hi\s+[a-zA-Z\s,]+|notice|circular|announcement)[\n,:;]+', caseSensitive: false),
+      '',
+    ).trim();
+
+    // Split by lines and sentence terminators
+    final sentences = content
+        .split(RegExp(r'(?:\r?\n)+|(?<=[.!?])\s+'))
+        .map((s) => s.trim())
+        .where((s) => s.length >= 8)
+        .toList();
+
+    int candidateIdx = 1;
+    for (final sentence in sentences) {
+      final lowerSentence = sentence.toLowerCase();
+
+      // Skip generic noise lines
+      if (lowerSentence.startsWith('regards') ||
+          lowerSentence.startsWith('thanks') ||
+          lowerSentence.startsWith('all the best') ||
+          lowerSentence.startsWith('sincerely') ||
+          lowerSentence.startsWith('please find attached')) {
+        continue;
+      }
+
+      // Check for candidate keywords
+      final isAssessment = RegExp(r'\b(?:assessment|exam|test|quiz|coding\s+round|interview|shortlist)\b', caseSensitive: false).hasMatch(sentence);
+      final isForm = RegExp(r'\b(?:form|feedback|survey|registration\s+form|application\s+form)\b', caseSensitive: false).hasMatch(sentence);
+      final isHackathon = RegExp(r'\b(?:hackathon|coding\s+challenge|contest|competition)\b', caseSensitive: false).hasMatch(sentence);
+      final isWorkshop = RegExp(r'\b(?:workshop|webinar|seminar|training|bootcamp|session|class)\b', caseSensitive: false).hasMatch(sentence);
+      final hasBringAction = RegExp(r'\b(?:bring|carry|submit|fill|complete|register|attend|join)\b', caseSensitive: false).hasMatch(sentence);
+
+      if (!isAssessment && !isForm && !isHackathon && !isWorkshop && !hasBringAction) {
+        continue;
+      }
+
+      // Parse temporal for this sentence
+      final temp = temporalEngine.parse(sentence, now: now, isDeadline: true);
+      final sentenceOrg = _extractOrganization(sentence) ?? globalOrg;
+
+      String itemType = 'event';
+      String title = '';
+      String action = '';
+
+      if (isAssessment) {
+        itemType = 'exam';
+        action = 'Complete assessment';
+        title = sentenceOrg != null ? '$sentenceOrg Assessment' : 'Assessment';
+      } else if (isForm) {
+        itemType = 'form';
+        action = 'Fill form';
+        title = sentenceOrg != null ? '$sentenceOrg Form' : 'Form Submission';
+      } else if (isHackathon) {
+        itemType = 'event';
+        action = 'Register for hackathon';
+        title = sentenceOrg != null ? '$sentenceOrg Hackathon' : 'Hackathon Registration';
+      } else if (isWorkshop && hasBringAction) {
+        itemType = 'event';
+        action = 'Bring ID for workshop';
+        title = 'Bring ID for Workshop';
+      } else if (isWorkshop) {
+        itemType = 'training';
+        action = 'Attend workshop';
+        title = sentenceOrg != null ? '$sentenceOrg Workshop' : 'Workshop';
+      } else if (hasBringAction) {
+        itemType = 'task';
+        action = 'Action required';
+        title = _toTitleCase(sentence.length > 35 ? sentence.substring(0, 35) : sentence);
+      }
+
+      final dateStr = temp.deadline != null
+          ? DateFormat('EEE, MMM d · h:mm a').format(temp.deadline!)
+          : (temp.eventStart != null ? DateFormat('EEE, MMM d · h:mm a').format(temp.eventStart!) : '');
+
+      items.add(
+        AstraDocumentItem(
+          id: 'doc_item_candidate_${candidateIdx++}',
+          type: itemType,
+          title: _toTitleCase(title),
+          description: '$sentence${dateStr.isNotEmpty ? " (Due $dateStr)" : ""}',
+          organization: sentenceOrg,
+          startAt: temp.eventStart,
+          endAt: temp.eventEnd,
+          dueAt: temp.deadline ?? temp.eventStart,
+          actionRequired: isAssessment || isForm || hasBringAction,
+          confidence: 0.94,
+          reasons: ['Extracted candidate from circular: "$action"'],
+        ),
+      );
+    }
+
+    return items;
+  }
+
+  // ─── Multi-Track Training Ranges ──────────────────────────────────────────
 
   List<AstraDocumentItem> _extractTrainingRanges(
     String text, {
@@ -136,10 +262,6 @@ class AstraDocumentAnalyzer {
   }) {
     final items = <AstraDocumentItem>[];
 
-    // Match patterns like:
-    // "17-08-2026 to 22-08-2026(6 Days) for Apptitude"
-    // "17-08-2026 to 25-08-2026(8 days) for Fullstack"
-    // "17-08-2026 to 22-08-2026 for Aptitude"
     final rangeRegex = RegExp(
       r'(\d{1,2}[-/.](?:\d{1,2}|[A-Za-z]{3})[-/.]\d{2,4})\s*(?:to|[-–—]|until)\s*(\d{1,2}[-/.](?:\d{1,2}|[A-Za-z]{3})[-/.]\d{2,4})(?:\s*\(\s*(\d+)\s*days?\s*\))?\s*(?:for|:|-)?\s*([A-Za-z0-9\s/]+?)(?=(?:\s+and\s+\d{1,2}|\s*\.|\s*,|\s*\n|\s+we\s+have|\s+therefore|$))',
       caseSensitive: false,
@@ -152,11 +274,9 @@ class AstraDocumentAnalyzer {
       final rawDays = match.group(3);
       var trackName = (match.group(4) ?? '').trim();
 
-      // Clean track name
       trackName = trackName.replaceAll(RegExp(r'\s+and$', caseSensitive: false), '').trim();
       if (trackName.isEmpty) trackName = 'Track $trackIdx';
 
-      // Fix common typos like "Apptitude" -> "Aptitude"
       if (trackName.toLowerCase().contains('apptitude')) {
         trackName = trackName.replaceAll(RegExp(r'apptitude', caseSensitive: false), 'Aptitude');
       }
@@ -198,33 +318,31 @@ class AstraDocumentAnalyzer {
       );
 
       for (final match in rangeRegex2.allMatches(text)) {
-        var trackName = (match.group(1) ?? '').trim();
+        final trackPrefix = (match.group(1) ?? '').trim();
         final rawStart = match.group(2)!;
         final rawEnd = match.group(3)!;
         final rawDays = match.group(4);
 
-        if (trackName.toLowerCase().contains('apptitude')) {
-          trackName = trackName.replaceAll(RegExp(r'apptitude', caseSensitive: false), 'Aptitude');
-        }
+        var trackName = trackPrefix.isNotEmpty ? trackPrefix : 'Training';
+        trackName = trackName.replaceAll(RegExp(r'\b(?:sbt|gb\s*\d{4})\b', caseSensitive: false), '').trim();
+        if (trackName.isEmpty) trackName = 'Training';
 
         final startParsed = _parseFormattedDate(rawStart, defaultHour: 9);
         final endParsed = _parseFormattedDate(rawEnd, defaultHour: 17);
         final days = rawDays != null ? int.tryParse(rawDays) : (startParsed != null && endParsed != null ? endParsed.difference(startParsed).inDays + 1 : null);
 
-        final title = trackName.isNotEmpty
-            ? '${organization != null ? "$organization " : ""}$trackName Training'.replaceAll(RegExp(r'\s+'), ' ').trim()
-            : '${organization != null ? "$organization " : ""}Training';
-
+        final orgPrefix = organization != null ? '$organization ' : '';
+        final title = '$orgPrefix$trackName'.replaceAll(RegExp(r'\s+'), ' ').trim();
         final dateStr = startParsed != null && endParsed != null
             ? '${DateFormat("d MMM").format(startParsed)} – ${DateFormat("d MMM yyyy").format(endParsed)}'
             : '$rawStart to $rawEnd';
 
         items.add(
           AstraDocumentItem(
-            id: 'doc_item_track_$trackIdx',
+            id: 'doc_item_track_1',
             type: 'training',
-            title: _toTitleCase(title),
-            description: '${trackName.isNotEmpty ? trackName : "Scheduled"} Training ($dateStr${days != null ? ' · $days Days' : ''})',
+            title: _toTitleCase(title.endsWith('Training') ? title : '$title Training'),
+            description: '$trackName Training ($dateStr${days != null ? ' · $days Days' : ''})',
             organization: organization,
             startAt: startParsed,
             endAt: endParsed,
@@ -232,10 +350,9 @@ class AstraDocumentAnalyzer {
             durationDays: days,
             actionRequired: false,
             confidence: 0.96,
-            reasons: ['Extracted multi-day training range ($dateStr)'],
+            reasons: ['Extracted training range ($dateStr)'],
           ),
         );
-        trackIdx++;
       }
     }
 
@@ -250,10 +367,6 @@ class AstraDocumentAnalyzer {
     final items = <AstraDocumentItem>[];
     final lower = text.toLowerCase();
 
-    // Check for form response requirement:
-    // "respond to the form immediately, before today evening"
-    // "fill the form before 5pm"
-    // "submit the application by Friday"
     final formMatch = RegExp(
       r'(?:respond\s+to\s+(?:the\s+)?form|fill\s+(?:the\s+)?form|submit\s+(?:the\s+)?form|register\s+(?:through|via|on|in)\s+(?:the\s+)?form)(?:[^\n.]+?)(?:before|by|until)\s+([^\n.,;]+)',
       caseSensitive: false,
@@ -283,7 +396,6 @@ class AstraDocumentAnalyzer {
         ),
       );
     } else if (lower.contains('form') && (lower.contains('immediately') || lower.contains('respond') || lower.contains('fill') || lower.contains('submit'))) {
-      // Form mentioned with urgency but without explicit "before" clause
       DateTime? evening;
       if (lower.contains('today evening') || lower.contains('this evening')) {
         evening = DateTime(now.year, now.month, now.day, 18, 0);
@@ -348,7 +460,6 @@ class AstraDocumentAnalyzer {
 
   DateTime? _parseFormattedDate(String dateStr, {int defaultHour = 9}) {
     final cleaned = dateStr.trim();
-    // 1. Try DD-MM-YYYY or DD/MM/YYYY
     final dmyMatch = RegExp(r'^(\d{1,2})[-/.](\d{1,2})[-/.](\d{2,4})$').firstMatch(cleaned);
     if (dmyMatch != null) {
       final day = int.parse(dmyMatch.group(1)!);
@@ -358,7 +469,6 @@ class AstraDocumentAnalyzer {
       return DateTime(year, month, day, defaultHour, 0);
     }
 
-    // 2. Try "17 Aug 2026" or "17 August"
     final namedMonthMatch = RegExp(r'^(\d{1,2})(?:st|nd|rd|th)?\s+([A-Za-z]{3,9})(?:\s+(\d{4}))?$').firstMatch(cleaned);
     if (namedMonthMatch != null) {
       final day = int.parse(namedMonthMatch.group(1)!);
@@ -413,7 +523,7 @@ class AstraDocumentAnalyzer {
     final patterns = [
       RegExp(r'\b(GB\s*2027(?:\s*Batch)?)\b', caseSensitive: false),
       RegExp(r'\b(SBT(?:\s*Training)?)\b', caseSensitive: false),
-      RegExp(r'\b(Microsoft|Google|Amazon|TCS|Infosys|Wipro|Cognizant|Capgemini|Accenture)\b', caseSensitive: false),
+      RegExp(r'\b(Microsoft|Google|Amazon|TCS|Infosys|Wipro|Cognizant|Capgemini|Accenture|NPTEL)\b', caseSensitive: false),
       RegExp(r'\b(Placement\s+Cell|Training\s+and\s+Placement|Dept\s+of\s+[A-Za-z]+)\b', caseSensitive: false),
     ];
 

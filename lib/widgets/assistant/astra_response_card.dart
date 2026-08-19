@@ -4,8 +4,10 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../core/commands/astra_response.dart';
 import '../../providers/assistant_provider.dart';
+import '../../services/haptics/astra_haptics.dart';
 import '../../theme/app_theme.dart';
 import '../design_system/astra_3d_surface.dart';
+import '../tasks/astra_task_detail_sheet.dart';
 
 /// Renders a structured [AstraResponse] inside the existing ASTRA chat card style.
 class AstraResponseCard extends ConsumerWidget {
@@ -100,7 +102,17 @@ class AstraResponseCard extends ConsumerWidget {
                               depthOffset: AstraDepth.small,
                               borderRadius: 8,
                               onTap: () {
-                                ref.read(assistantStateProvider.notifier).handleResponseAction(a.id);
+                                AstraHaptics.light();
+                                if (a.label == 'VIEW TASK' || a.id.startsWith('view_task:') || a.id.startsWith('view:')) {
+                                  final tId = a.id.contains(':')
+                                      ? a.id.substring(a.id.indexOf(':') + 1)
+                                      : (response.data?['taskId'] as String?);
+                                  if (tId != null && tId.isNotEmpty) {
+                                    AstraTaskDetailSheet.show(context, taskId: tId);
+                                  }
+                                } else {
+                                  ref.read(assistantStateProvider.notifier).handleResponseAction(a.id);
+                                }
                               },
                               child: Padding(
                                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),

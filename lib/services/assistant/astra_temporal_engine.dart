@@ -206,17 +206,17 @@ class AstraTemporalEngine {
     String lower,
     DateTime now,
   ) {
-    // 1. "next minute", "in next minute", "in the next minute", "in a minute", "after a minute"
-    if (RegExp(r'\b(?:in\s+|after\s+)?(?:the\s+)?next\s+minute\b', caseSensitive: false).hasMatch(lower) ||
-        RegExp(r'\b(?:in\s+|after\s+)a\s+minute\b', caseSensitive: false).hasMatch(lower) ||
-        RegExp(r'\b1\s+minute\s+from\s+now\b', caseSensitive: false).hasMatch(lower) ||
-        RegExp(r'\bone\s+minute\s+from\s+now\b', caseSensitive: false).hasMatch(lower)) {
+    // 1. Singular 1-minute / next-minute variants: "next minute", "in next minute", "in the next minute", "in next min", "in 1 min", "in a minute"
+    if (RegExp(r'\b(?:in\s+|after\s+)?(?:the\s+)?next\s+(?:minute|min)\b', caseSensitive: false).hasMatch(lower) ||
+        RegExp(r'\b(?:in\s+|after\s+)?(?:the\s+)?(?:1|one)\s+(?:minute|min)\b', caseSensitive: false).hasMatch(lower) ||
+        RegExp(r'\b(?:in\s+|after\s+)a\s+(?:minute|min)\b', caseSensitive: false).hasMatch(lower) ||
+        RegExp(r'\b(?:1|one)\s+(?:minute|min)\s+from\s+now\b', caseSensitive: false).hasMatch(lower)) {
       return now.add(const Duration(minutes: 1));
     }
 
-    // 2. Numeric word variants: "in one minute", "next one minute", "after one minute", "in two minutes", "next two minutes"
+    // 2. Numeric word variants: "in two minutes", "in two mins", "next two mins", "in five minutes", "after ten mins"
     final wordMatch = RegExp(
-      r'\b(?:in\s+|after\s+|next\s+)?(?:the\s+)?(one|two|three|four|five|ten|fifteen|twenty|thirty)\s*(mins?|minutes?|hours?|hrs?|days?|secs?|seconds?)(?:\s+from\s+now)?\b',
+      r'\b(?:in\s+|after\s+|for\s+|within\s+)?(?:the\s+)?(?:next\s+)?(one|two|three|four|five|six|seven|eight|nine|ten|fifteen|twenty|thirty|forty-five|sixty)\s*(mins?|minutes?|hours?|hrs?|days?|secs?|seconds?)(?:\s+from\s+now)?\b',
       caseSensitive: false,
     ).firstMatch(lower);
 
@@ -227,10 +227,16 @@ class AstraTemporalEngine {
         'three': 3,
         'four': 4,
         'five': 5,
+        'six': 6,
+        'seven': 7,
+        'eight': 8,
+        'nine': 9,
         'ten': 10,
         'fifteen': 15,
         'twenty': 20,
         'thirty': 30,
+        'forty-five': 45,
+        'sixty': 60,
       };
       final amount = wordMap[wordMatch.group(1)!.toLowerCase()];
       if (amount != null) {
@@ -247,9 +253,9 @@ class AstraTemporalEngine {
       }
     }
 
-    // 3. Digit variants: "in 1 minute", "next 1 minute", "after 1 minute", "1 minute from now", "in 2 mins", "2 mins from now"
+    // 3. Digit variants: "in 2 minutes", "in 2 mins", "next 2 mins", "in next 2 minutes", "in the next 5 mins", "10 mins from now"
     final match = RegExp(
-      r'\b(?:in\s+|after\s+|next\s+)?(?:the\s+)?(\d+)\s*(mins?|minutes?|hours?|hrs?|days?|secs?|seconds?)(?:\s+from\s+now)?\b',
+      r'\b(?:in\s+|after\s+|for\s+|within\s+)?(?:the\s+)?(?:next\s+)?(\d+)\s*(mins?|minutes?|hours?|hrs?|days?|secs?|seconds?)(?:\s+from\s+now)?\b',
       caseSensitive: false,
     ).firstMatch(lower);
 

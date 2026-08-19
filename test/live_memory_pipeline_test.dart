@@ -177,7 +177,7 @@ void main() {
       );
 
       final assistant = container.read(assistantStateProvider.notifier);
-      await assistant.sendCommand('move the exam to 7pm');
+      await assistant.sendCommand('move the exam to tomorrow at 7pm');
 
       final state = container.read(assistantStateProvider);
       expect(state.messages.last.isUser, isFalse);

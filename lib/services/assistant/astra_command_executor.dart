@@ -5,6 +5,7 @@ import 'package:drift/drift.dart';
 import '../../core/database/database.dart';
 import '../../core/reminders/reminder_strategy.dart';
 import '../../models/task.dart';
+import '../../models/task_intent.dart';
 import '../../features/scheduler/data/services/google_auth_service.dart';
 import '../../features/scheduler/data/services/google_calendar_writer_service.dart';
 import '../../providers/google_calendar_writer_provider.dart';
@@ -80,6 +81,87 @@ class AstraCommandExecutor {
           'intent: ${command.intent}',
         );
     }
+  }
+
+  /// Canonical unified execution for [TaskIntent] from UI and conversational flows.
+  Future<AstraExecutionResult> executeTaskIntent({
+    required dynamic ref,
+    required TaskIntent intent,
+  }) async {
+    final task = intent.toTask();
+    final db = ref.read(databaseProvider) as AppDatabase;
+
+    // 1. Add to Drift database via TaskNotifier
+    await ref.read(taskNotifierProvider.notifier).addTask(task);
+    ref.invalidate(taskListProvider);
+
+    // 2. Schedule reminders / notifications if target date exists
+    final scheduledAt = task.effectiveTargetDate ?? task.dueDate;
+    if (scheduledAt != null) {
+      final now = DateTime.now();
+      final reminderId = DateTime.now().millisecondsSinceEpoch.toString();
+      await db.upsertReminder(
+        RemindersCompanion(
+          id: Value(reminderId),
+          taskId: Value(task.id),
+          scheduledAt: Value(scheduledAt),
+          timezone: const Value('Asia/Kolkata'),
+          notificationId: Value(task.id.hashCode),
+          status: const Value('scheduled'),
+          createdAt: Value(now),
+          updatedAt: Value(now),
+        ),
+      );
+
+      final strategy = ReminderStrategyX.resolve(
+        priority: task.priority,
+        isDeadline: task.isDeadline,
+      );
+
+      try {
+        await ref?.read(reminderServiceProvider).scheduleReminder(
+              taskId: task.id,
+              taskTitle: task.title,
+              scheduledAt: scheduledAt,
+              strategy: strategy,
+            );
+      } catch (_) {}
+    }
+
+    // 3. Best-effort Google Calendar sync for events
+    bool calendarSynced = false;
+    String? googleEventId;
+    if (intent.taskType == 'event' && intent.startAt != null) {
+      try {
+        final authService = googleAuthService ?? GoogleAuthService.instance;
+        final client = await authService.getAuthenticatedClient();
+        if (client != null) {
+          final writer = googleCalendarWriterService ??
+              (ref.read(googleCalendarWriterServiceProvider) as GoogleCalendarWriterService);
+          final event = await writer.createEvent(
+            client,
+            title: task.title,
+            startTime: intent.startAt!,
+            endTime: intent.endAt ?? intent.startAt!.add(const Duration(hours: 1)),
+            description: task.description,
+            location: task.organization,
+          );
+          calendarSynced = true;
+          googleEventId = event.id;
+        }
+      } catch (_) {}
+    }
+
+    return AstraExecutionResult(
+      success: true,
+      operation: 'CREATE_TASK_INTENT',
+      taskId: task.id,
+      title: task.title,
+      scheduledAt: scheduledAt,
+      message: 'Created ${task.title}',
+      calendarSynced: calendarSynced,
+      googleEventId: googleEventId,
+    );
   }
 
   /// Safely executes an [AstraUpdateCommand] using [taskResolver].
@@ -223,13 +305,36 @@ class AstraCommandExecutor {
     required dynamic ref,
     required AstraCommand command,
   }) async {
-    final taskId =
-        DateTime.now().millisecondsSinceEpoch.toString();
-
     final now = DateTime.now();
 
+    // Check if this is CREATE_REMINDER for an existing task to avoid duplicate task creation
+    Task? existingTask;
+    final db = ref.read(databaseProvider) as AppDatabase;
+    if (command.intent == 'CREATE_REMINDER') {
+      try {
+        final dbTasks = await (db.select(db.tasks)..where((t) => t.status.isIn(['pending', 'active']))).get();
+        for (final t in dbTasks) {
+          final tTitle = t.title.toLowerCase().trim();
+          final qTitle = command.title.toLowerCase().trim();
+          if (tTitle == qTitle || tTitle.contains(qTitle) || qTitle.contains(tTitle)) {
+            existingTask = Task(
+              id: t.id,
+              title: t.title,
+              dueDate: t.dueAt,
+              createdAt: t.createdAt,
+              status: t.status,
+            );
+            break;
+          }
+        }
+      } catch (_) {}
+    }
+
+    final taskId = existingTask?.id ?? DateTime.now().millisecondsSinceEpoch.toString();
+    final taskTitle = existingTask?.title ?? command.title;
+
     // 1. Build RecurrenceRule if command has recurrence
-    final recurrenceRule = _buildRecurrenceRule(command);
+    final recurrenceRule = _buildRecurrenceRule(command) ?? existingTask?.recurrenceRule;
 
     // 2. Determine initial scheduledAt / dueDate
     DateTime? scheduledAt;
@@ -239,66 +344,68 @@ class AstraCommandExecutor {
       scheduledAt = command.temporal.eventStart ?? command.temporal.deadline;
     }
 
-    final taskDescription = _buildDescription(command);
+    if (existingTask == null) {
+      final taskDescription = _buildDescription(command);
 
-    final task = Task(
-      id: taskId,
-      title: command.title,
-      description: taskDescription,
-      dueDate: scheduledAt,
-      startAt: command.temporal.eventStart,
-      endAt: command.temporal.eventEnd,
-      priority: _normalizePriority(
-        command.priority,
-      ),
-      status: scheduledAt != null || command.temporal.eventStart != null
-          ? 'active'
-          : 'pending',
-      createdAt: now,
-      source: 'assistant',
-      organization: command.organization,
-      recurrenceRule: recurrenceRule,
-    );
+      final task = Task(
+        id: taskId,
+        title: command.title,
+        description: taskDescription,
+        dueDate: scheduledAt,
+        startAt: command.temporal.eventStart,
+        endAt: command.temporal.eventEnd,
+        priority: _normalizePriority(
+          command.priority,
+        ),
+        status: scheduledAt != null || command.temporal.eventStart != null
+            ? 'active'
+            : 'pending',
+        createdAt: now,
+        source: 'assistant',
+        organization: command.organization,
+        recurrenceRule: recurrenceRule,
+      );
 
-    final db = ref.read(databaseProvider);
-    final subtasksJson = jsonEncode(task.subtasks.map((s) => s.toJson()).toList());
+      final subtasksJson = jsonEncode(task.subtasks.map((s) => s.toJson()).toList());
 
-    await db.into(db.tasks).insertOnConflictUpdate(
-          TasksCompanion(
-            id: Value(task.id),
-            title: Value(task.title),
-            description: Value(task.description),
-            taskType: const Value('reminder'),
-            priority: Value(task.priority),
-            status: Value(task.status),
-            order: Value(task.order),
-            subtasksJson: Value(subtasksJson),
-            dueAt: Value(task.dueDate),
-            startAt: Value(task.startAt),
-            endAt: Value(task.endAt),
-            completedAt: Value(task.completedAt),
-            createdAt: Value(task.createdAt),
-            updatedAt: Value(task.updatedAt ?? now),
-            source: Value(task.source),
-            sourceId: Value(task.sourceId),
-            category: Value(task.category),
-            organization: Value(task.organization),
-            recurrenceRuleJson: Value(task.recurrenceRule?.toJson()),
-          ),
-        );
+      await db.into(db.tasks).insertOnConflictUpdate(
+            TasksCompanion(
+              id: Value(task.id),
+              title: Value(task.title),
+              description: Value(task.description),
+              taskType: const Value('reminder'),
+              priority: Value(task.priority),
+              status: Value(task.status),
+              order: Value(task.order),
+              subtasksJson: Value(subtasksJson),
+              dueAt: Value(task.dueDate),
+              dueTime: Value(task.dueTime),
+              startAt: Value(task.startAt),
+              endAt: Value(task.endAt),
+              completedAt: Value(task.completedAt),
+              createdAt: Value(task.createdAt),
+              updatedAt: Value(task.updatedAt ?? now),
+              source: Value(task.source),
+              sourceId: Value(task.sourceId),
+              category: Value(task.category),
+              organization: Value(task.organization),
+              recurrenceRuleJson: Value(task.recurrenceRule?.toJson()),
+            ),
+          );
 
-    await ref.read(taskNotifierProvider.notifier).loadTasks();
-    ref.invalidate(taskListProvider);
+      await ref.read(taskNotifierProvider.notifier).loadTasks();
+      ref.invalidate(taskListProvider);
+    }
 
     if (scheduledAt != null) {
       final reminderId = DateTime.now().millisecondsSinceEpoch.toString();
       await db.upsertReminder(
         RemindersCompanion(
           id: Value(reminderId),
-          taskId: Value(task.id),
+          taskId: Value(taskId),
           scheduledAt: Value(scheduledAt),
           timezone: Value(command.temporal.timezone),
-          notificationId: Value(task.id.hashCode),
+          notificationId: Value(taskId.hashCode),
           status: const Value('scheduled'),
           createdAt: Value(now),
           updatedAt: Value(now),
@@ -316,8 +423,8 @@ class AstraCommandExecutor {
         await ref
             ?.read(reminderServiceProvider)
             .scheduleReminder(
-              taskId: task.id,
-              taskTitle: task.title,
+              taskId: taskId,
+              taskTitle: taskTitle,
               scheduledAt: scheduledAt,
               strategy: strategy,
             );
@@ -383,8 +490,8 @@ class AstraCommandExecutor {
     return AstraExecutionResult(
       success: true,
       operation: command.intent,
-      taskId: task.id,
-      title: task.title,
+      taskId: taskId,
+      title: taskTitle,
       scheduledAt: scheduledAt,
       message: _successMessage(
         command,

@@ -245,7 +245,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
                   onSecondary: () => setState(
                       () => _quoteIndex = (_quoteIndex + 1) % _insights.length),
                 ).animate().fadeIn(duration: 500.ms, delay: 250.ms),
-                const SizedBox(height: 30),
+                const SizedBox(height: 120),
               ]),
             ),
           ),

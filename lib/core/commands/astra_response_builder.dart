@@ -56,10 +56,50 @@ class AstraResponseBuilder {
       actions: taskId != null
           ? [
               AstraAction(id: 'complete_$taskId', label: 'DONE'),
-              AstraAction(id: 'snooze_$taskId', label: 'SNOOZE 10m'),
+              AstraAction(id: 'snooze_$taskId', label: '+10 MIN'),
+              AstraAction(id: 'view_task:$taskId', label: 'VIEW TASK'),
             ]
           : const [],
       data: {'taskId': taskId, 'dueAt': dueAt?.toIso8601String()},
+    );
+  }
+
+  static AstraResponse taskUpdated({
+    required String title,
+    DateTime? oldDueAt,
+    DateTime? newDueAt,
+    String? taskId,
+    String? changeDescription,
+  }) {
+    final lines = <AstraResponseLine>[
+      AstraResponseLine(label: '', value: title, highlight: true),
+    ];
+
+    if (oldDueAt != null && newDueAt != null) {
+      final oldStr = DateFormat('h:mm a').format(oldDueAt);
+      final newStr = DateFormat('EEE, MMM d · h:mm a').format(newDueAt);
+      lines.add(AstraResponseLine(label: 'Updated to', value: '$oldStr → $newStr'));
+    } else if (newDueAt != null) {
+      lines.add(AstraResponseLine(
+        label: 'Reminder',
+        value: DateFormat('EEE, MMM d · h:mm a').format(newDueAt),
+      ));
+    }
+
+    if (changeDescription != null && changeDescription.isNotEmpty) {
+      lines.add(AstraResponseLine(label: 'Changes', value: changeDescription));
+    }
+
+    return AstraResponse(
+      type: AstraResponseType.taskCreated,
+      headline: 'Task updated',
+      lines: lines,
+      actions: taskId != null
+          ? [
+              AstraAction(id: 'view_task:$taskId', label: 'VIEW TASK'),
+            ]
+          : const [],
+      data: {'taskId': taskId, 'dueAt': newDueAt?.toIso8601String()},
     );
   }
 

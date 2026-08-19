@@ -6,6 +6,17 @@ import '../../core/database/database.dart';
 import 'astra_backup_service.dart';
 import 'astra_crypto_service.dart';
 
+/// Strategy applied during backup restoration when local data already exists.
+enum RestoreStrategy {
+  merge('Merge with Local Data', 'Adds incoming records and updates older local entries without deleting existing local data'),
+  replaceSelected('Replace Selected Categories', 'Clears local records for selected categories and replaces them with backup data');
+
+  final String title;
+  final String description;
+
+  const RestoreStrategy(this.title, this.description);
+}
+
 /// Exceptions thrown during backup restoration or validation.
 class AstraRestoreException implements Exception {
   final String message;
@@ -21,20 +32,26 @@ class AstraRestoreException implements Exception {
 class AstraRestoreResult {
   final bool success;
   final AstraBackupMetadata metadata;
+  final RestoreStrategy strategy;
+  final List<String> categoriesRestored;
   final int tasksRestored;
   final int messagesRestored;
   final int sessionsRestored;
   final int memoriesRestored;
   final int remindersRestored;
+  final int ritualRulesRestored;
 
   const AstraRestoreResult({
     required this.success,
     required this.metadata,
+    this.strategy = RestoreStrategy.merge,
+    this.categoriesRestored = const [],
     required this.tasksRestored,
     required this.messagesRestored,
     required this.sessionsRestored,
     required this.memoriesRestored,
     required this.remindersRestored,
+    this.ritualRulesRestored = 0,
   });
 }
 
@@ -115,24 +132,14 @@ class AstraRestoreService {
     return metadata;
   }
 
-  /// Restores data from an encrypted (V2) or legacy (V1) backup archive into the active [AppDatabase].
-  ///
-  /// Invariants:
-  /// - Full decryption, envelope inspection, and schema parsing execute before any database write.
-  /// - If password is wrong or archive is corrupt, live database remains 100% untouched.
-  /// - Restoration executes in a single atomic transaction.
-  Future<AstraRestoreResult> restoreBackup(
+  /// Decrypts and extracts raw data payload from a backup archive.
+  Future<Map<String, dynamic>> extractBackupData(
     Uint8List bytes, {
     String? password,
-    bool clearExisting = true,
   }) async {
-    // 1. Validate envelope signature and schema version
     final metadata = validateBackup(bytes);
-
     final jsonStr = utf8.decode(bytes);
     final json = jsonDecode(jsonStr) as Map<String, dynamic>;
-
-    final Map<String, dynamic> data;
 
     if (metadata.isEncryptedV2) {
       if (password == null || password.isEmpty) {
@@ -148,14 +155,44 @@ class AstraRestoreService {
       );
 
       try {
-        data = jsonDecode(decryptedJsonString) as Map<String, dynamic>;
+        return jsonDecode(decryptedJsonString) as Map<String, dynamic>;
       } catch (_) {
         throw const AstraRestoreException('Decrypted payload contains invalid data structure.', 'corrupt_decrypted_data');
       }
     } else {
       // Legacy V1 unencrypted archive
-      data = json['data'] as Map<String, dynamic>? ?? {};
+      return json['data'] as Map<String, dynamic>? ?? {};
     }
+  }
+
+  /// Restores data from an encrypted (V2) or legacy (V1) backup archive into the active [AppDatabase].
+  ///
+  /// Invariants:
+  /// - Full decryption, envelope inspection, and schema parsing execute before any database write.
+  /// - If password is wrong or archive is corrupt, live database remains 100% untouched.
+  /// - Selective category restoration allows restoring only chosen categories.
+  /// - Restoration executes in a single atomic transaction.
+  Future<AstraRestoreResult> restoreBackup(
+    Uint8List bytes, {
+    String? password,
+    RestoreStrategy strategy = RestoreStrategy.merge,
+    Set<AstraBackupCategory>? selectedCategories,
+    bool? clearExisting, // Legacy backward compatibility flag
+  }) async {
+    final effectiveStrategy = clearExisting == true ? RestoreStrategy.replaceSelected : strategy;
+    final metadata = validateBackup(bytes);
+    final data = await extractBackupData(bytes, password: password);
+
+    // Determine active categories to restore
+    final categoriesToRestore = selectedCategories ??
+        metadata.selectedCategories
+            .map((id) => AstraBackupCategory.fromId(id))
+            .whereType<AstraBackupCategory>()
+            .toSet();
+
+    final activeCategories = categoriesToRestore.isEmpty
+        ? AstraBackupCategory.defaultCategories
+        : categoriesToRestore;
 
     final rawTasks = data['tasks'] as List<dynamic>? ?? [];
     final rawSessions = data['chatSessions'] as List<dynamic>? ?? [];
@@ -164,159 +201,278 @@ class AstraRestoreService {
     final rawReminders = data['reminders'] as List<dynamic>? ?? [];
     final rawRitualRules = data['ritualRules'] as List<dynamic>? ?? [];
     final rawInboxItems = data['inboxItems'] as List<dynamic>? ?? [];
+    final rawPanchang = data['panchangEvents'] as List<dynamic>? ?? [];
 
-    // 2. Perform restoration in an atomic batch transaction
+    int tasksRestored = 0;
+    int sessionsRestored = 0;
+    int messagesRestored = 0;
+    int memoriesRestored = 0;
+    int remindersRestored = 0;
+    int ritualRulesRestored = 0;
+
+    // Execute everything in an atomic database transaction
     await _db.transaction(() async {
-      if (clearExisting) {
-        // Clear child tables first to respect foreign keys
-        await _db.delete(_db.chatMessages).go();
-        await _db.delete(_db.chatSessions).go();
-        await _db.delete(_db.reminders).go();
-        await _db.delete(_db.taskContexts).go();
-        await _db.delete(_db.tasks).go();
-        await _db.delete(_db.inboxItems).go();
-        await _db.delete(_db.ritualRules).go();
+      // 1. If strategy is replaceSelected, delete existing records for selected categories
+      if (effectiveStrategy == RestoreStrategy.replaceSelected) {
+        if (activeCategories.contains(AstraBackupCategory.chat)) {
+          await _db.delete(_db.chatMessages).go();
+          await _db.delete(_db.chatSessions).go();
+        }
+        if (activeCategories.contains(AstraBackupCategory.reminders)) {
+          await _db.delete(_db.reminders).go();
+        }
+        if (activeCategories.contains(AstraBackupCategory.memory)) {
+          await _db.delete(_db.taskContexts).go();
+        }
+        if (activeCategories.contains(AstraBackupCategory.tasks)) {
+          await _db.delete(_db.tasks).go();
+          await _db.delete(_db.inboxItems).go();
+        }
+        if (activeCategories.contains(AstraBackupCategory.streaks)) {
+          await _db.delete(_db.ritualRules).go();
+        }
+        if (activeCategories.contains(AstraBackupCategory.panchang)) {
+          await _db.delete(_db.panchangEvents).go();
+        }
       }
 
-      // Restore Inbox Items
-      for (final raw in rawInboxItems) {
-        final item = raw as Map<String, dynamic>;
-        await _db.into(_db.inboxItems).insertOnConflictUpdate(
-              InboxItemsCompanion(
-                id: Value(item['id'] as String),
-                rawText: Value(item['rawText'] as String),
-                sourceType: Value(item['sourceType'] as String),
-                processingStatus: Value(item['processingStatus'] as String),
-                receivedAt: Value(DateTime.parse(item['receivedAt'] as String)),
-                createdAt: Value(DateTime.parse(item['createdAt'] as String)),
-                updatedAt: Value(DateTime.parse(item['updatedAt'] as String)),
-              ),
-            );
+      // 2. Restore Inbox Items & Tasks
+      if (activeCategories.contains(AstraBackupCategory.tasks)) {
+        for (final raw in rawInboxItems) {
+          final item = raw as Map<String, dynamic>;
+          await _db.into(_db.inboxItems).insertOnConflictUpdate(
+                InboxItemsCompanion(
+                  id: Value(item['id'] as String),
+                  rawText: Value(item['rawText'] as String),
+                  sourceType: Value(item['sourceType'] as String),
+                  processingStatus: Value(item['processingStatus'] as String),
+                  receivedAt: Value(DateTime.parse(item['receivedAt'] as String)),
+                  createdAt: Value(DateTime.parse(item['createdAt'] as String)),
+                  updatedAt: Value(DateTime.parse(item['updatedAt'] as String)),
+                ),
+              );
+        }
+
+        for (final raw in rawTasks) {
+          final item = raw as Map<String, dynamic>;
+          final incomingId = item['id'] as String;
+          final incomingUpdatedAt = DateTime.parse(item['updatedAt'] as String);
+
+          if (effectiveStrategy == RestoreStrategy.merge) {
+            final localTask = await (_db.select(_db.tasks)..where((t) => t.id.equals(incomingId))).getSingleOrNull();
+            if (localTask != null) {
+              // Deterministic Merge: If local task is newer, preserve local state
+              if (localTask.updatedAt.isAfter(incomingUpdatedAt)) {
+                continue;
+              }
+              // If local task is completed and backup is pending, preserve completed status if local completed more recently
+              if (localTask.status == 'completed' && item['status'] != 'completed' && localTask.completedAt != null) {
+                if (localTask.completedAt!.isAfter(incomingUpdatedAt)) {
+                  continue;
+                }
+              }
+            }
+          }
+
+          await _db.into(_db.tasks).insertOnConflictUpdate(
+                TasksCompanion(
+                  id: Value(incomingId),
+                  inboxItemId: Value(item['inboxItemId'] as String?),
+                  title: Value(item['title'] as String),
+                  description: Value(item['description'] as String?),
+                  taskType: Value(item['taskType'] as String? ?? 'reminder'),
+                  priority: Value(item['priority'] as String? ?? 'medium'),
+                  status: Value(item['status'] as String? ?? 'pending'),
+                  order: Value(item['order'] as int? ?? 0),
+                  subtasksJson: Value(item['subtasksJson'] as String? ?? '[]'),
+                  dueAt: Value(item['dueAt'] != null ? DateTime.parse(item['dueAt'] as String) : null),
+                  dueTime: Value(item['dueTime'] as String?),
+                  startAt: Value(item['startAt'] != null ? DateTime.parse(item['startAt'] as String) : null),
+                  endAt: Value(item['endAt'] != null ? DateTime.parse(item['endAt'] as String) : null),
+                  completedAt: Value(item['completedAt'] != null ? DateTime.parse(item['completedAt'] as String) : null),
+                  createdAt: Value(DateTime.parse(item['createdAt'] as String)),
+                  updatedAt: Value(incomingUpdatedAt),
+                  source: Value(item['source'] as String?),
+                  sourceId: Value(item['sourceId'] as String?),
+                  category: Value(item['category'] as String?),
+                  organization: Value(item['organization'] as String?),
+                  recurrenceRuleJson: Value(item['recurrenceRuleJson'] as String?),
+                ),
+              );
+          tasksRestored++;
+        }
       }
 
-      // Restore Tasks
-      for (final raw in rawTasks) {
-        final item = raw as Map<String, dynamic>;
-        await _db.into(_db.tasks).insertOnConflictUpdate(
-              TasksCompanion(
-                id: Value(item['id'] as String),
-                inboxItemId: Value(item['inboxItemId'] as String?),
-                title: Value(item['title'] as String),
-                description: Value(item['description'] as String?),
-                taskType: Value(item['taskType'] as String? ?? 'todo'),
-                priority: Value(item['priority'] as String? ?? 'medium'),
-                status: Value(item['status'] as String? ?? 'active'),
-                order: Value(item['order'] as int? ?? 0),
-                subtasksJson: Value(item['subtasksJson'] as String? ?? '[]'),
-                dueAt: Value(item['dueAt'] != null ? DateTime.parse(item['dueAt'] as String) : null),
-                startAt: Value(item['startAt'] != null ? DateTime.parse(item['startAt'] as String) : null),
-                endAt: Value(item['endAt'] != null ? DateTime.parse(item['endAt'] as String) : null),
-                completedAt: Value(item['completedAt'] != null ? DateTime.parse(item['completedAt'] as String) : null),
-                createdAt: Value(DateTime.parse(item['createdAt'] as String)),
-                updatedAt: Value(DateTime.parse(item['updatedAt'] as String)),
-                source: Value(item['source'] as String?),
-                sourceId: Value(item['sourceId'] as String?),
-                category: Value(item['category'] as String?),
-                organization: Value(item['organization'] as String?),
-                recurrenceRuleJson: Value(item['recurrenceRuleJson'] as String?),
-              ),
-            );
+      // 3. Restore Chat Sessions & Messages
+      if (activeCategories.contains(AstraBackupCategory.chat)) {
+        for (final raw in rawSessions) {
+          final item = raw as Map<String, dynamic>;
+          final sessionId = item['id'] as int;
+
+          await _db.into(_db.chatSessions).insertOnConflictUpdate(
+                ChatSessionsCompanion(
+                  id: Value(sessionId),
+                  title: Value(item['title'] as String? ?? 'New Chat'),
+                  createdAt: Value(DateTime.parse(item['createdAt'] as String)),
+                  updatedAt: Value(DateTime.parse(item['updatedAt'] as String)),
+                ),
+              );
+          sessionsRestored++;
+        }
+
+        for (final raw in rawMessages) {
+          final item = raw as Map<String, dynamic>;
+          final sessionId = item['sessionId'] as int;
+          final timestamp = DateTime.parse(item['timestamp'] as String);
+          final content = item['content'] as String;
+
+          if (effectiveStrategy == RestoreStrategy.merge) {
+            // Deduplicate messages with same timestamp and content in session
+            final existing = await (_db.select(_db.chatMessages)
+                  ..where((m) => m.sessionId.equals(sessionId) & m.timestamp.equals(timestamp) & m.content.equals(content)))
+                .getSingleOrNull();
+            if (existing != null) continue;
+          }
+
+          await _db.into(_db.chatMessages).insertOnConflictUpdate(
+                ChatMessagesCompanion(
+                  id: Value(item['id'] as int),
+                  sessionId: Value(sessionId),
+                  role: Value(item['role'] as String),
+                  content: Value(content),
+                  messageType: Value(item['messageType'] as String? ?? 'text'),
+                  timestamp: Value(timestamp),
+                ),
+              );
+          messagesRestored++;
+        }
       }
 
-      // Restore Chat Sessions
-      for (final raw in rawSessions) {
-        final item = raw as Map<String, dynamic>;
-        await _db.into(_db.chatSessions).insertOnConflictUpdate(
-              ChatSessionsCompanion(
-                id: Value(item['id'] as int),
-                title: Value(item['title'] as String? ?? 'New Chat'),
-                createdAt: Value(DateTime.parse(item['createdAt'] as String)),
-                updatedAt: Value(DateTime.parse(item['updatedAt'] as String)),
-              ),
-            );
+      // 4. Restore Memory (Task Contexts)
+      if (activeCategories.contains(AstraBackupCategory.memory)) {
+        for (final raw in rawMemories) {
+          final item = raw as Map<String, dynamic>;
+          final taskId = item['taskId'] as String? ?? '';
+
+          if (effectiveStrategy == RestoreStrategy.merge && taskId.isNotEmpty) {
+            final existing = await (_db.select(_db.taskContexts)..where((c) => c.taskId.equals(taskId))).getSingleOrNull();
+            if (existing != null) {
+              // Update with richer context if incoming is populated
+              if (existing.hasApplied && item['hasApplied'] != true) {
+                continue;
+              }
+            }
+          }
+
+          await _db.into(_db.taskContexts).insertOnConflictUpdate(
+                TaskContextsCompanion(
+                  id: Value(item['id'] as int),
+                  taskId: Value(taskId),
+                  companyName: Value(item['companyName'] as String?),
+                  role: Value(item['role'] as String?),
+                  requirements: Value(item['requirements'] as String?),
+                  applicationLink: Value(item['applicationLink'] as String?),
+                  emailSnippet: Value(item['emailSnippet'] as String?),
+                  fullEmail: Value(item['fullEmail'] as String?),
+                  hasApplied: Value(item['hasApplied'] as bool? ?? false),
+                  appliedAt: Value(item['appliedAt'] != null ? DateTime.parse(item['appliedAt'] as String) : null),
+                  eventType: Value(item['eventType'] as String?),
+                  location: Value(item['location'] as String?),
+                  stipend: Value(item['stipend'] as String?),
+                  actionItems: Value(item['actionItems'] as String?),
+                  source: Value(item['source'] as String? ?? 'chat'),
+                ),
+              );
+          memoriesRestored++;
+        }
       }
 
-      // Restore Chat Messages
-      for (final raw in rawMessages) {
-        final item = raw as Map<String, dynamic>;
-        await _db.into(_db.chatMessages).insertOnConflictUpdate(
-              ChatMessagesCompanion(
-                id: Value(item['id'] as int),
-                sessionId: Value(item['sessionId'] as int),
-                role: Value(item['role'] as String),
-                content: Value(item['content'] as String),
-                messageType: Value(item['messageType'] as String? ?? 'normal'),
-                timestamp: Value(DateTime.parse(item['timestamp'] as String)),
-              ),
-            );
+      // 5. Restore Reminders
+      if (activeCategories.contains(AstraBackupCategory.reminders)) {
+        for (final raw in rawReminders) {
+          final item = raw as Map<String, dynamic>;
+          final reminderId = item['id'] as String;
+          final taskId = item['taskId'] as String;
+          final incomingUpdatedAt = DateTime.parse(item['updatedAt'] as String);
+
+          if (effectiveStrategy == RestoreStrategy.merge) {
+            final localReminder = await (_db.select(_db.reminders)..where((r) => r.id.equals(reminderId))).getSingleOrNull();
+            if (localReminder != null && localReminder.updatedAt.isAfter(incomingUpdatedAt)) {
+              continue;
+            }
+          }
+
+          await _db.into(_db.reminders).insertOnConflictUpdate(
+                RemindersCompanion(
+                  id: Value(reminderId),
+                  taskId: Value(taskId),
+                  scheduledAt: Value(DateTime.parse(item['scheduledAt'] as String)),
+                  timezone: Value(item['timezone'] as String? ?? 'Asia/Kolkata'),
+                  notificationId: Value(item['notificationId'] as int),
+                  status: Value(item['status'] as String? ?? 'scheduled'),
+                  createdAt: Value(DateTime.parse(item['createdAt'] as String)),
+                  updatedAt: Value(incomingUpdatedAt),
+                ),
+              );
+          remindersRestored++;
+        }
       }
 
-      // Restore Task Contexts (Memories)
-      for (final raw in rawMemories) {
-        final item = raw as Map<String, dynamic>;
-        await _db.into(_db.taskContexts).insertOnConflictUpdate(
-              TaskContextsCompanion(
-                id: Value(item['id'] as int),
-                taskId: Value(item['taskId'] as String? ?? ''),
-                companyName: Value(item['companyName'] as String?),
-                role: Value(item['role'] as String?),
-                requirements: Value(item['requirements'] as String?),
-                applicationLink: Value(item['applicationLink'] as String?),
-                emailSnippet: Value(item['emailSnippet'] as String?),
-                fullEmail: Value(item['fullEmail'] as String?),
-                hasApplied: Value(item['hasApplied'] as bool? ?? false),
-                appliedAt: Value(item['appliedAt'] != null ? DateTime.parse(item['appliedAt'] as String) : null),
-                eventType: Value(item['eventType'] as String?),
-                location: Value(item['location'] as String?),
-                stipend: Value(item['stipend'] as String?),
-                actionItems: Value(item['actionItems'] as String?),
-                source: Value(item['source'] as String? ?? 'chat'),
-              ),
-            );
+      // 6. Restore Ritual Rules (Streaks)
+      if (activeCategories.contains(AstraBackupCategory.streaks)) {
+        for (final raw in rawRitualRules) {
+          final item = raw as Map<String, dynamic>;
+          final id = item['id'] is int ? item['id'] as int : int.tryParse(item['id'].toString()) ?? 1;
+
+          await _db.into(_db.ritualRules).insertOnConflictUpdate(
+                RitualRulesCompanion(
+                  id: Value(id),
+                  eventType: Value(item['eventType'] as String),
+                  title: Value(item['title'] as String),
+                  instructions: Value(item['instructions'] as String?),
+                  remindDaysBefore: Value(item['remindDaysBefore'] as int? ?? 1),
+                  remindAtTime: Value(item['remindAtTime'] as String? ?? '06:00'),
+                  isActive: Value(item['isActive'] as bool? ?? true),
+                ),
+              );
+          ritualRulesRestored++;
+        }
       }
 
-      // Restore Reminders
-      for (final raw in rawReminders) {
-        final item = raw as Map<String, dynamic>;
-        await _db.into(_db.reminders).insertOnConflictUpdate(
-              RemindersCompanion(
-                id: Value(item['id'] as String),
-                taskId: Value(item['taskId'] as String),
-                scheduledAt: Value(DateTime.parse(item['scheduledAt'] as String)),
-                timezone: Value(item['timezone'] as String? ?? 'Asia/Kolkata'),
-                notificationId: Value(item['notificationId'] as int),
-                status: Value(item['status'] as String? ?? 'scheduled'),
-                createdAt: Value(DateTime.parse(item['createdAt'] as String)),
-                updatedAt: Value(DateTime.parse(item['updatedAt'] as String)),
-              ),
-            );
-      }
+      // 7. Restore Panchang Events (Optional)
+      if (activeCategories.contains(AstraBackupCategory.panchang)) {
+        for (final raw in rawPanchang) {
+          final item = raw as Map<String, dynamic>;
+          final id = item['id'] is int ? item['id'] as int : int.tryParse(item['id'].toString()) ?? 1;
 
-      // Restore Ritual Rules
-      for (final raw in rawRitualRules) {
-        final item = raw as Map<String, dynamic>;
-        await _db.into(_db.ritualRules).insertOnConflictUpdate(
-              RitualRulesCompanion(
-                id: Value(item['id'] is int ? item['id'] as int : int.tryParse(item['id'].toString()) ?? 1),
-                eventType: Value(item['eventType'] as String),
-                title: Value(item['title'] as String),
-                instructions: Value(item['instructions'] as String),
-                remindDaysBefore: Value(item['remindDaysBefore'] as int),
-                remindAtTime: Value(item['remindAtTime'] as String),
-                isActive: Value(item['isActive'] as bool? ?? true),
-              ),
-            );
+          await _db.into(_db.panchangEvents).insertOnConflictUpdate(
+                PanchangEventsCompanion(
+                  id: Value(id),
+                  eventName: Value(item['eventName'] as String),
+                  displayName: Value(item['displayName'] as String),
+                  eventDate: Value(DateTime.parse(item['eventDate'] as String)),
+                  paksha: Value(item['paksha'] as String),
+                  lunarMonth: Value(item['lunarMonth'] as String),
+                  description: Value(item['description'] as String?),
+                  calendarYear: Value(item['calendarYear'] as int? ?? DateTime.now().year),
+                  notificationScheduled: Value(item['notificationScheduled'] as bool? ?? false),
+                ),
+              );
+        }
       }
     });
 
     return AstraRestoreResult(
       success: true,
       metadata: metadata,
-      tasksRestored: rawTasks.length,
-      messagesRestored: rawMessages.length,
-      sessionsRestored: rawSessions.length,
-      memoriesRestored: rawMemories.length,
-      remindersRestored: rawReminders.length,
+      strategy: effectiveStrategy,
+      categoriesRestored: activeCategories.map((c) => c.id).toList(),
+      tasksRestored: tasksRestored,
+      messagesRestored: messagesRestored,
+      sessionsRestored: sessionsRestored,
+      memoriesRestored: memoriesRestored,
+      remindersRestored: remindersRestored,
+      ritualRulesRestored: ritualRulesRestored,
     );
   }
 }

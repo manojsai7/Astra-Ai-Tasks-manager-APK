@@ -722,7 +722,7 @@ void main() {
 
   group('AstraCommandExecutor UPDATE_TASK Integration Tests (Phase 2Y-4)', () {
     const updateParser = AstraUpdateParser();
-    final now = DateTime.now().toLocal();
+    final now = DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day + 1, 10, 0);
 
     test('A. Reschedule exact task: dueDate updated, reminder rescheduled, no duplicate task', () async {
       final taskNotifier = container.read(taskNotifierProvider.notifier);
@@ -771,7 +771,7 @@ void main() {
         id: 'interview-1',
         title: 'Microsoft Interview',
         organization: 'Microsoft',
-        dueDate: DateTime(2026, 8, 17, 11, 0),
+        dueDate: DateTime(now.year, now.month, now.day, 11, 0),
         priority: 'high',
         status: 'active',
         createdAt: now,
@@ -785,7 +785,7 @@ void main() {
 
       expect(result.success, isTrue);
       final updated = (await testDb.select(testDb.tasks).get()).firstWhere((t) => t.id == 'interview-1');
-      expect(updated.dueAt, DateTime(2026, 8, 17, 14, 0));
+      expect(updated.dueAt, DateTime(now.year, now.month, now.day, 14, 0));
     });
 
     test('C. Change priority: "make the interview high priority" updates only priority', () async {

@@ -50,12 +50,13 @@ class AstraMemoryItem {
       );
 }
 
-/// Lightweight memory engine for managing working memory and structured entity memory.
 class AstraMemoryEngine {
-  final AppDatabase _db;
+  final AppDatabase? _db;
   final Map<String, AstraMemoryItem> _workingMemory = {};
 
-  AstraMemoryEngine(this._db);
+  AstraMemoryEngine([this._db]);
+
+  List<AstraMemoryItem> get memories => getAllWorkingMemories();
 
   /// Saves a message into the current SQLite chat session.
   Future<void> saveMessage({
@@ -64,8 +65,10 @@ class AstraMemoryEngine {
     required String content,
     String messageType = 'text',
   }) async {
+    final db = _db;
+    if (db == null) return;
     final now = DateTime.now();
-    await _db.into(_db.chatMessages).insert(
+    await db.into(db.chatMessages).insert(
           ChatMessagesCompanion(
             sessionId: Value(sessionId),
             role: Value(role),
@@ -81,7 +84,9 @@ class AstraMemoryEngine {
     required int sessionId,
     int limit = 20,
   }) async {
-    final query = _db.select(_db.chatMessages)
+    final db = _db;
+    if (db == null) return [];
+    final query = db.select(db.chatMessages)
       ..where((t) => t.sessionId.equals(sessionId))
       ..orderBy([(t) => OrderingTerm(expression: t.id, mode: OrderingMode.desc)])
       ..limit(limit);

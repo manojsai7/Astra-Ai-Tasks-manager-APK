@@ -381,16 +381,31 @@ class AssistantNotifier extends StateNotifier<AssistantState> {
     );
 
     debugPrint(
-      '[ASTRA MEMORY] session=$currentSessionId '
-      'recent=${localContext.recentMessages.length} '
-      'activeTasks=${localContext.activeTasks.length} '
+      '[ASTRA BRAIN]\n'
+      'context=LOCAL\n'
+      'messages=${localContext.recentMessages.length}\n'
+      'tasks=${localContext.activeTasks.length}\n'
       'memories=${localContext.structuredMemories.length}',
     );
 
     // 2. Resolve Contextual References (e.g. "it", "the exam", "make it 11", "remind me about it Thursday at 8pm")
     final refResult = referenceResolver.resolveReference(trimmed, localContext);
     if (refResult.isResolved) {
-      debugPrint('[ASTRA REFERENCE] resolved="${refResult.resolvedTitle}" type=${refResult.resolvedType} confidence=${refResult.confidence.toStringAsFixed(2)}');
+      debugPrint(
+        '[ASTRA REFERENCE]\n'
+        'query="$trimmed"\n'
+        'resolved="${refResult.resolvedTitle}"\n'
+        'confidence=${refResult.confidence.toStringAsFixed(2)}\n'
+        'reason=${refResult.reason}',
+      );
+    } else if (refResult.reason.contains('Ambiguous')) {
+      debugPrint(
+        '[ASTRA REFERENCE]\n'
+        'query="$trimmed"\n'
+        'resolved=AMBIGUOUS\n'
+        'confidence=0.0\n'
+        'reason=${refResult.reason}',
+      );
     }
 
     // 3. Resolve Intent via Set A on-device classifier & deterministic rules
@@ -413,7 +428,7 @@ class AssistantNotifier extends StateNotifier<AssistantState> {
 
     // If text contains pronoun/definite reference to update or remind, ensure intent aligns
     if (refResult.isResolved) {
-      if (RegExp(r'^(?:make|set|change|shift|move)\s+(?:it|that|this)\b', caseSensitive: false).hasMatch(trimmed)) {
+      if (RegExp(r'^(?:actually\s+|please\s+)?(?:make|set|change|shift|move)\s+(?:it|that|this)\b', caseSensitive: false).hasMatch(trimmed)) {
         resolvedIntent = const AstraResolvedIntent(
           intent: 'UPDATE_TASK',
           mlConfidence: 0.95,
@@ -428,15 +443,12 @@ class AssistantNotifier extends StateNotifier<AssistantState> {
       }
     }
 
-    if (resolvedIntent != null) {
-      debugPrint(
-        '[ASTRA INTENT] '
-        '${resolvedIntent.intent} '
-        'confidence='
-        '${resolvedIntent.mlConfidence.toStringAsFixed(3)} '
-        'reason=${resolvedIntent.reason}',
-      );
-    }
+    debugPrint(
+      '[ASTRA ROUTE]\n'
+      'local=${resolvedIntent != null}\n'
+      'intent=${resolvedIntent?.intent}\n'
+      'fallback=${resolvedIntent == null ? "gemini_llm" : "none"}',
+    );
 
     addMessage(trimmed, isUser: true);
     state = state.copyWith(isLoading: true, error: null);
@@ -447,6 +459,12 @@ class AssistantNotifier extends StateNotifier<AssistantState> {
           case 'LIST_TASKS':
             debugPrint('[ASTRA ROUTER] intent=LIST_TASKS source=set_a_resolver mode=AUTHORITATIVE');
             await handleListTasks();
+            if (requestGen != _activeRequestGeneration) return;
+            return;
+
+          case 'QUERY_TASK':
+            debugPrint('[ASTRA ROUTER] intent=QUERY_TASK source=set_a_resolver mode=AUTHORITATIVE');
+            await handleQueryTask(trimmed);
             if (requestGen != _activeRequestGeneration) return;
             return;
 
@@ -1534,7 +1552,11 @@ class AssistantNotifier extends StateNotifier<AssistantState> {
   }
 
   Future<void> handleCompleteTask(String input) async {
-    final tasks = ref.read(taskNotifierProvider);
+    var tasks = ref.read(taskNotifierProvider);
+    if (tasks.isEmpty) {
+      await ref.read(taskNotifierProvider.notifier).loadTasks();
+      tasks = ref.read(taskNotifierProvider);
+    }
     final pending = tasks.where((t) => !t.isCompleted).toList();
 
     if (pending.isEmpty) {
@@ -1595,7 +1617,7 @@ class AssistantNotifier extends StateNotifier<AssistantState> {
   }
 
   Task? _findTaskFromQuery(String input, String pattern) {
-    final tasks = ref.read(taskNotifierProvider).where((t) => !t.isCompleted).toList();
+    final tasks = ref.read(taskNotifierProvider);
     if (tasks.isEmpty) return null;
 
     final match = RegExp(pattern, caseSensitive: false).firstMatch(input);
@@ -1609,34 +1631,79 @@ class AssistantNotifier extends StateNotifier<AssistantState> {
   }
 
   Future<void> handleQueryTask(String input) async {
-    final tasks = ref.read(taskNotifierProvider);
+    var tasks = ref.read(taskNotifierProvider);
+    if (tasks.isEmpty) {
+      await ref.read(taskNotifierProvider.notifier).loadTasks();
+      tasks = ref.read(taskNotifierProvider);
+    }
     final pending = tasks.where((t) => !t.isCompleted).toList();
 
-    if (pending.isEmpty) {
+    // Extract query keywords (e.g. "what is my Microsoft deadline?" -> ["microsoft", "deadline"])
+    final cleanQuery = input
+        .toLowerCase()
+        .replaceAll(RegExp(r"^(?:what\s+(?:is|are|time\s+is)|when\s+is|what'?s?|tell\s+me\s+about|show\s+me)\s+(?:my\s+)?", caseSensitive: false), '')
+        .replaceAll('?', '')
+        .trim();
+
+    final queryWords = cleanQuery.split(RegExp(r'\s+')).where((w) => w.length >= 3).toList();
+
+    Task? target;
+    if (queryWords.isNotEmpty && pending.isNotEmpty) {
+      final matches = pending.where((t) {
+        final tTitle = t.title.toLowerCase();
+        final tOrg = t.organization?.toLowerCase() ?? '';
+        final tDesc = t.description?.toLowerCase() ?? '';
+        return queryWords.any((w) => tTitle.contains(w) || tOrg.contains(w) || tDesc.contains(w));
+      }).toList();
+
+      if (matches.isNotEmpty) {
+        // Score matches based on keyword hits
+        matches.sort((a, b) {
+          final aScore = queryWords.where((w) => a.title.toLowerCase().contains(w) || (a.organization?.toLowerCase().contains(w) ?? false)).length;
+          final bScore = queryWords.where((w) => b.title.toLowerCase().contains(w) || (b.organization?.toLowerCase().contains(w) ?? false)).length;
+          return bScore.compareTo(aScore);
+        });
+        target = matches.first;
+      }
+    }
+
+    target ??= pending.isNotEmpty ? pending.first : null;
+
+    // Memory fallback if target not found in live tasks
+    if (target == null && queryWords.isNotEmpty) {
+      final memories = ref.read(astraMemoryEngineProvider).memories;
+      final memMatch = memories.cast<AstraMemoryItem?>().firstWhere(
+        (m) => queryWords.any((w) => m!.value.toLowerCase().contains(w) || (m.metadata?['organization']?.toString().toLowerCase().contains(w) ?? false)),
+        orElse: () => null,
+      );
+      if (memMatch != null) {
+        final dueAtStr = memMatch.metadata?['dueAt']?.toString();
+        final dueAt = dueAtStr != null ? DateTime.tryParse(dueAtStr) : null;
+        final org = memMatch.metadata?['organization']?.toString();
+        addStructuredResponse(AstraResponse(
+          type: AstraResponseType.taskQuery,
+          headline: memMatch.value,
+          lines: [
+            if (dueAt != null)
+              AstraResponseLine(
+                label: 'Deadline',
+                value: DateFormat('EEEE, MMM d, yyyy · h:mm a').format(dueAt),
+                highlight: true,
+              )
+            else
+              const AstraResponseLine(label: 'Status', value: 'Stored in memory'),
+            if (org != null && org.isNotEmpty)
+              AstraResponseLine(label: 'Organization', value: org),
+          ],
+        ));
+        return;
+      }
+    }
+
+    if (target == null) {
       addStructuredResponse(AstraResponseBuilder.info('No matching tasks found.'));
       return;
     }
-
-    // Extract subject after "my" — e.g. "what time is my exam"
-    String? subject;
-    final match = RegExp(
-      r"(?:what\s+time\s+is\s+my|when\s+is\s+my|what'?s?\s+my)\s+(.+?)(?:\?|$)",
-      caseSensitive: false,
-    ).firstMatch(input);
-    if (match != null) {
-      subject = match.group(1)?.trim().toLowerCase();
-    }
-
-    Task? target;
-    if (subject != null && subject.isNotEmpty) {
-      final matches = pending
-          .where((t) =>
-              t.title.toLowerCase().contains(subject!) ||
-              (t.organization?.toLowerCase().contains(subject) ?? false))
-          .toList();
-      if (matches.isNotEmpty) target = matches.first;
-    }
-    target ??= pending.first;
 
     addStructuredResponse(AstraResponse(
       type: AstraResponseType.taskQuery,

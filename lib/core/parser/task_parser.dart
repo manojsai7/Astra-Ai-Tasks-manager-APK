@@ -1,6 +1,8 @@
 import 'package:intl/intl.dart';
 
 import '../../models/task.dart';
+import '../../models/task_intent.dart';
+import '../../services/assistant/astra_recurrence_engine.dart';
 import '../time/astra_clock.dart';
 import '../time/astra_time_service.dart';
 
@@ -191,28 +193,85 @@ class TaskParser {
 
     final subtasks = _extractSubtasks(message);
 
+    // 1. Extract Recurrence & Window (e.g., "daily", "weekdays", "from tomorrow till next Wednesday")
+    final recurrenceResult = _extractRecurrence(body) ?? _extractRecurrence(lower);
+    if (recurrenceResult != null) {
+      if (recurrenceResult.frequencyRaw != null) {
+        body = body.replaceFirst(RegExp(RegExp.escape(recurrenceResult.frequencyRaw!), caseSensitive: false), ' ').trim();
+      }
+      if (recurrenceResult.windowRaw != null) {
+        body = body.replaceFirst(RegExp(RegExp.escape(recurrenceResult.windowRaw!), caseSensitive: false), ' ').trim();
+      }
+      body = body.replaceFirst(recurrenceResult.raw, ' ').trim();
+    }
+
+    // 2. Extract Time / Date
     final timeResult = _extractTime(body) ?? _extractTime(lower);
     if (timeResult != null) {
-      body = body.replaceFirst(timeResult.raw, '').trim();
+      body = body.replaceFirst(RegExp(RegExp.escape(timeResult.raw), caseSensitive: false), ' ').trim();
     }
 
     if (orgRaw != null) {
-      body = body.replaceFirst(orgRaw, '').trim();
+      body = body.replaceFirst(orgRaw, ' ').trim();
     }
 
     body = _cleanBody(body);
 
     final priority = _extractPriority(lower);
-    final title = _titleCase(body.isEmpty ? message : body);
+    final title = _titleCase(body.isEmpty ? message : body, original: message);
+
+    RecurrenceRule? recurrenceRule;
+    String? dueTime;
+    DateTime? remindAt = timeResult?.dt;
+
+    if (timeResult?.hour != null) {
+      final h = timeResult!.hour!;
+      final m = timeResult.minute ?? 0;
+      dueTime = '${h.toString().padLeft(2, '0')}:${m.toString().padLeft(2, '0')}';
+    }
+
+    if (recurrenceResult != null) {
+      final hour = timeResult?.hour ?? 20; // Default 8:00 PM
+      final minute = timeResult?.minute ?? 0;
+      dueTime ??= '${hour.toString().padLeft(2, '0')}:${minute.toString().padLeft(2, '0')}';
+
+      recurrenceRule = RecurrenceRule(
+        frequency: recurrenceResult.frequency,
+        byWeekdays: recurrenceResult.byWeekdays,
+        startDate: recurrenceResult.startDate,
+        endDate: recurrenceResult.endDate,
+        hour: hour,
+        minute: minute,
+      );
+
+      // Determine initial anchor
+      if (recurrenceResult.startDate != null) {
+        remindAt = DateTime(
+          recurrenceResult.startDate!.year,
+          recurrenceResult.startDate!.month,
+          recurrenceResult.startDate!.day,
+          hour,
+          minute,
+        );
+      } else if (remindAt == null) {
+        final now = _timeService.nowTZ();
+        final nextOcc = const AstraRecurrenceEngine().nextOccurrence(recurrenceRule, now);
+        remindAt = nextOcc;
+      }
+    }
 
     return ParsedTask(
       title: title,
-      remindAt: timeResult?.dt,
+      remindAt: remindAt,
+      dueTime: dueTime,
+      recurrenceRule: recurrenceRule,
+      recurrenceStartDate: recurrenceResult?.startDate,
+      recurrenceEndDate: recurrenceResult?.endDate,
       priority: priority,
       organization: organization,
       subtasks: subtasks,
       originalMessage: message,
-      detectedExpression: timeResult?.raw,
+      detectedExpression: timeResult?.raw ?? recurrenceResult?.raw,
       timezone: _timeService.timezone,
     );
   }
@@ -345,13 +404,8 @@ class TaskParser {
       final after = text.substring(mMonthDay.end);
       final atM = _findTimeMatch(after) ?? _findTimeMatch(text);
       if (atM != null) {
-        final dt = _buildTZDate(dateBase, atM);
-        if (dt != null) {
-          return _TimeResult(
-            raw: '${mMonthDay.group(0)!} ${atM.group(0)!.trim()}'.trim(),
-            dt: dt,
-          );
-        }
+        final res = _buildTZDate(dateBase, atM, rawPrefix: mMonthDay.group(0)!);
+        if (res != null) return res;
       }
       return _TimeResult(raw: mMonthDay.group(0)!, dt: dateBase);
     }
@@ -361,10 +415,8 @@ class TaskParser {
       final tBase = now.add(const Duration(days: 1));
       final atM = _findTimeMatch(text);
       if (atM != null) {
-        final dt = _buildTZDate(tBase, atM);
-        if (dt != null) {
-          return _TimeResult(raw: _combinedRaw('tomorrow', atM), dt: dt);
-        }
+        final res = _buildTZDate(tBase, atM, rawPrefix: 'tomorrow');
+        if (res != null) return res;
       }
       return _TimeResult(
         raw: 'tomorrow',
@@ -376,10 +428,8 @@ class TaskParser {
     if (RegExp(r'\btoday\b', caseSensitive: false).hasMatch(text)) {
       final atM = _findTimeMatch(text);
       if (atM != null) {
-        final dt = _buildTZDate(now, atM);
-        if (dt != null) {
-          return _TimeResult(raw: _combinedRaw('today', atM), dt: dt);
-        }
+        final res = _buildTZDate(now, atM, rawPrefix: 'today');
+        if (res != null) return res;
       }
       return _TimeResult(
         raw: 'today',
@@ -392,10 +442,8 @@ class TaskParser {
       final d = now.add(const Duration(days: 2));
       final atM = _findTimeMatch(text);
       if (atM != null) {
-        final dt = _buildTZDate(d, atM);
-        if (dt != null) {
-          return _TimeResult(raw: _combinedRaw('day after tomorrow', atM), dt: dt);
-        }
+        final res = _buildTZDate(d, atM, rawPrefix: 'day after tomorrow');
+        if (res != null) return res;
       }
       return _TimeResult(
         raw: 'day after tomorrow',
@@ -426,13 +474,9 @@ class TaskParser {
       final after = dayIndex >= 0 ? text.substring(dayIndex + dayName.length) : '';
       final atM = _findTimeMatch(after) ?? _findTimeMatch(text);
       if (atM != null) {
-        final dt = _buildTZDate(d, atM);
-        if (dt != null) {
-          return _TimeResult(
-            raw: '${forceNext ? 'next ' : ''}$dayName ${atM.group(0)!.trim()}'.trim(),
-            dt: dt,
-          );
-        }
+        final prefix = forceNext ? 'next $dayName' : dayName;
+        final res = _buildTZDate(d, atM, rawPrefix: prefix);
+        if (res != null) return res;
       }
       return _TimeResult(
         raw: forceNext ? 'next $dayName' : dayName,
@@ -443,10 +487,8 @@ class TaskParser {
     // ── Bare "at Xam/pm" or "at 7" ───────────────────────────────────────
     final atM = _findTimeMatch(text);
     if (atM != null) {
-      final dt = _buildTZDate(now, atM);
-      if (dt != null) {
-        return _TimeResult(raw: atM.group(0)!.trim(), dt: dt);
-      }
+      final res = _buildTZDate(now, atM);
+      if (res != null) return res;
     }
 
     // ── "at noon" / "at midnight" ──────────────────────────────────────────
@@ -506,11 +548,109 @@ class TaskParser {
     return null;
   }
 
-  static String _combinedRaw(String dayPart, RegExpMatch atM) {
-    return '$dayPart ${atM.group(0)!.trim()}';
+  static _RecurrenceResult? _extractRecurrence(String text) {
+    final lower = text.toLowerCase();
+
+    RecurrenceFrequency? freq;
+    List<int> byWeekdays = [];
+    String? matchedFreqString;
+
+    if (RegExp(r'\b(?:daily|every\s+day|everyday)\b', caseSensitive: false).hasMatch(lower)) {
+      freq = RecurrenceFrequency.daily;
+      matchedFreqString = RegExp(r'\b(?:daily|every\s+day|everyday)\b', caseSensitive: false).firstMatch(lower)!.group(0);
+    } else if (RegExp(r'\b(?:weekdays|every\s+weekday|on\s+weekdays|monday\s+to\s+friday|mon-fri)\b', caseSensitive: false).hasMatch(lower)) {
+      freq = RecurrenceFrequency.weekdays;
+      matchedFreqString = RegExp(r'\b(?:weekdays|every\s+weekday|on\s+weekdays|monday\s+to\s+friday|mon-fri)\b', caseSensitive: false).firstMatch(lower)!.group(0);
+    } else if (RegExp(r'\bevery\s+(monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b', caseSensitive: false).hasMatch(lower)) {
+      freq = RecurrenceFrequency.weekly;
+      final m = RegExp(r'\bevery\s+(monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b', caseSensitive: false).firstMatch(lower)!;
+      matchedFreqString = m.group(0);
+      final dayName = m.group(1)!.toLowerCase();
+      if (_weekdays.containsKey(dayName)) {
+        byWeekdays = [_weekdays[dayName]!];
+      }
+    } else if (RegExp(r'\b(?:weekly|every\s+week)\b', caseSensitive: false).hasMatch(lower)) {
+      freq = RecurrenceFrequency.weekly;
+      matchedFreqString = RegExp(r'\b(?:weekly|every\s+week)\b', caseSensitive: false).firstMatch(lower)!.group(0);
+    } else if (RegExp(r'\b(?:monthly|every\s+month)\b', caseSensitive: false).hasMatch(lower)) {
+      freq = RecurrenceFrequency.monthly;
+      matchedFreqString = RegExp(r'\b(?:monthly|every\s+month)\b', caseSensitive: false).firstMatch(lower)!.group(0);
+    } else if (RegExp(r'\b(?:yearly|every\s+year|annually)\b', caseSensitive: false).hasMatch(lower)) {
+      freq = RecurrenceFrequency.yearly;
+      matchedFreqString = RegExp(r'\b(?:yearly|every\s+year|annually)\b', caseSensitive: false).firstMatch(lower)!.group(0);
+    }
+
+    if (freq == null) return null;
+
+    DateTime? startDate;
+    DateTime? endDate;
+    String raw = matchedFreqString ?? '';
+    String? windowRaw;
+
+    // Check for "from X (till|until|to) Y"
+    final windowMatch = RegExp(
+      r'\bfrom\s+(tomorrow|today|next\s+[a-z]+|[a-z]+)\s+(?:till|until|to)\s+(tomorrow|today|next\s+[a-z]+|[a-z]+|\d{1,2}(?:st|nd|rd|th)?(?:\s+[a-z]+)?)\b',
+      caseSensitive: false,
+    ).firstMatch(lower);
+
+    if (windowMatch != null) {
+      windowRaw = windowMatch.group(0)!;
+      raw += ' $windowRaw';
+      final startStr = windowMatch.group(1)!;
+      final endStr = windowMatch.group(2)!;
+      startDate = _parseDateToken(startStr);
+      endDate = _parseDateToken(endStr);
+      if (endDate != null) {
+        endDate = DateTime(endDate.year, endDate.month, endDate.day, 23, 59, 59);
+      }
+    } else {
+      // Check for standalone "until X" / "till X"
+      final untilMatch = RegExp(
+        r'\b(?:until|till)\s+(tomorrow|today|next\s+[a-z]+|[a-z]+|\d{1,2}(?:st|nd|rd|th)?(?:\s+[a-z]+)?)\b',
+        caseSensitive: false,
+      ).firstMatch(lower);
+      if (untilMatch != null) {
+        windowRaw = untilMatch.group(0)!;
+        raw += ' $windowRaw';
+        endDate = _parseDateToken(untilMatch.group(1)!);
+        if (endDate != null) {
+          endDate = DateTime(endDate.year, endDate.month, endDate.day, 23, 59, 59);
+        }
+      }
+    }
+
+    return _RecurrenceResult(
+      frequency: freq,
+      byWeekdays: byWeekdays,
+      startDate: startDate,
+      endDate: endDate,
+      frequencyRaw: matchedFreqString,
+      windowRaw: windowRaw,
+      raw: raw.trim(),
+    );
   }
 
-  static DateTime? _buildTZDate(DateTime base, RegExpMatch m) {
+  static DateTime? _parseDateToken(String token) {
+    final clean = token.toLowerCase().trim();
+    final now = _timeService.nowTZ();
+    if (clean == 'today') return DateTime(now.year, now.month, now.day);
+    if (clean == 'tomorrow') return DateTime(now.year, now.month, now.day + 1);
+    if (clean == 'day after tomorrow') return DateTime(now.year, now.month, now.day + 2);
+
+    final weekdayMatch = _findWeekdayMatch(clean);
+    if (weekdayMatch != null) {
+      final dayName = weekdayMatch.key;
+      final forceNext = weekdayMatch.value;
+      final weekday = _weekdays[dayName]!;
+      var diff = weekday - now.weekday;
+      if (diff <= 0 || forceNext) diff += 7;
+      final d = now.add(Duration(days: diff));
+      return DateTime(d.year, d.month, d.day);
+    }
+    return null;
+  }
+
+  static _TimeResult? _buildTZDate(DateTime base, RegExpMatch m, {String? rawPrefix}) {
     try {
       int hour = int.parse(m.group(1)!);
       final minute = int.tryParse(m.group(2) ?? '') ?? 0;
@@ -528,7 +668,15 @@ class TaskParser {
         hour,
         minute,
       );
-      return _timeService.rollForwardIfPast(dt);
+      final rolled = _timeService.rollForwardIfPast(dt);
+      final raw = rawPrefix != null ? '$rawPrefix ${m.group(0)!.trim()}'.trim() : m.group(0)!.trim();
+      return _TimeResult(
+        raw: raw,
+        dt: rolled,
+        hour: hour,
+        minute: minute,
+        hasExplicitTime: true,
+      );
     } catch (_) {
       return null;
     }
@@ -553,7 +701,7 @@ class TaskParser {
 
   static String _cleanBody(String text) {
     var cleaned = text
-        .replaceAll(RegExp(r'\b(?:at|on|for)\s*$', caseSensitive: false), '')
+        .replaceAll(RegExp(r'\b(?:at|on|for|from|till|until|to)\s*$', caseSensitive: false), '')
         .replaceAll(RegExp(r'^(?:to|the|an?|your|my|our)\s+', caseSensitive: false), '')
         .replaceAll(RegExp(r'\s+'), ' ')
         .trim();
@@ -563,10 +711,23 @@ class TaskParser {
 
   // ─── Helpers ─────────────────────────────────────────────────────────────
 
-  static String _titleCase(String text) {
+  static String _titleCase(String text, {String? original}) {
     if (text.isEmpty) return text;
+    final origWords = (original ?? '').split(RegExp(r'\s+'));
+    final origUpperMap = <String, String>{};
+    for (final ow in origWords) {
+      final clean = ow.replaceAll(RegExp(r'[^\w]'), '');
+      if (clean.length >= 2 && clean == clean.toUpperCase() && RegExp(r'^[A-Z0-9]+$').hasMatch(clean)) {
+        origUpperMap[clean.toLowerCase()] = clean;
+      }
+    }
+
     return text.split(' ').map((w) {
       if (w.isEmpty) return '';
+      final clean = w.replaceAll(RegExp(r'[^\w]'), '').toLowerCase();
+      if (origUpperMap.containsKey(clean)) {
+        return origUpperMap[clean]!;
+      }
       return w[0].toUpperCase() + w.substring(1);
     }).join(' ');
   }
@@ -601,10 +762,40 @@ class TaskParser {
   }
 }
 
+class _RecurrenceResult {
+  final RecurrenceFrequency frequency;
+  final List<int> byWeekdays;
+  final DateTime? startDate;
+  final DateTime? endDate;
+  final String? frequencyRaw;
+  final String? windowRaw;
+  final String raw;
+
+  _RecurrenceResult({
+    required this.frequency,
+    this.byWeekdays = const [],
+    this.startDate,
+    this.endDate,
+    this.frequencyRaw,
+    this.windowRaw,
+    required this.raw,
+  });
+}
+
 class _TimeResult {
   final String raw;
   final DateTime dt;
-  _TimeResult({required this.raw, required this.dt});
+  final int? hour;
+  final int? minute;
+  final bool hasExplicitTime;
+
+  _TimeResult({
+    required this.raw,
+    required this.dt,
+    this.hour,
+    this.minute,
+    this.hasExplicitTime = false,
+  });
 }
 
 // ─── Public Result Model ──────────────────────────────────────────────────────
@@ -612,6 +803,10 @@ class _TimeResult {
 class ParsedTask {
   final String title;
   final DateTime? remindAt;
+  final String? dueTime;
+  final RecurrenceRule? recurrenceRule;
+  final DateTime? recurrenceStartDate;
+  final DateTime? recurrenceEndDate;
   final String priority;
   final String? organization;
   final List<SubTask> subtasks;
@@ -622,6 +817,10 @@ class ParsedTask {
   const ParsedTask({
     required this.title,
     this.remindAt,
+    this.dueTime,
+    this.recurrenceRule,
+    this.recurrenceStartDate,
+    this.recurrenceEndDate,
     required this.priority,
     this.organization,
     this.subtasks = const [],
@@ -631,10 +830,24 @@ class ParsedTask {
   });
 
   bool get hasReminder => remindAt != null;
+  bool get hasRecurrence => recurrenceRule != null && recurrenceRule!.frequency != RecurrenceFrequency.none;
 
   String get formattedReminder => remindAt == null
       ? 'No reminder set'
       : DateFormat('MMM d, yyyy h:mm a').format(remindAt!);
+
+  TaskIntent toTaskIntent({String? source}) {
+    return TaskIntent(
+      title: title,
+      dueDate: remindAt,
+      dueTime: dueTime,
+      recurrenceRule: recurrenceRule,
+      priority: priority,
+      organization: organization,
+      subtasks: subtasks,
+      source: source ?? 'assistant',
+    );
+  }
 
   String get taskDescription {
     final buf = StringBuffer('Created via ASTRA Assistant.');
@@ -649,5 +862,5 @@ class ParsedTask {
 
   @override
   String toString() =>
-      'ParsedTask(title: "$title", remindAt: $remindAt, priority: $priority, org: $organization, subtasks: ${subtasks.length})';
+      'ParsedTask(title: "$title", remindAt: $remindAt, dueTime: $dueTime, recurrence: ${recurrenceRule?.frequency.name}, priority: $priority, org: $organization, subtasks: ${subtasks.length})';
 }

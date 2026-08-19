@@ -219,6 +219,7 @@ class AstraReferenceResolver {
   List<String> _extractEntitiesFromMessages(List<ChatMessageEntry> messages) {
     final entities = <String>[];
     for (final msg in messages) {
+      if (msg.role != 'user') continue;
       final text = msg.content;
       // Heuristic extraction of common task subjects (e.g. "exam", "interview", "assignment", "meeting")
       final patterns = [

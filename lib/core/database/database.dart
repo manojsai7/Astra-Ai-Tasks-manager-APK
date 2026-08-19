@@ -32,6 +32,7 @@ class Tasks extends Table {
   IntColumn get order => integer().withDefault(const Constant(0))();
   TextColumn get subtasksJson => text().withDefault(const Constant('[]'))();
   DateTimeColumn get dueAt => dateTime().nullable()();
+  TextColumn get dueTime => text().nullable()();
   DateTimeColumn get startAt => dateTime().nullable()();
   DateTimeColumn get endAt => dateTime().nullable()();
   DateTimeColumn get completedAt => dateTime().nullable()();
@@ -135,7 +136,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 9;
+  int get schemaVersion => 10;
 
   Future<bool> _tableExists(String tableName) async {
     try {
@@ -222,6 +223,9 @@ class AppDatabase extends _$AppDatabase {
       if (from < 9) {
         await _safeAddColumn(m, tasks, tasks.startAt);
         await _safeAddColumn(m, tasks, tasks.endAt);
+      }
+      if (from < 10) {
+        await _safeAddColumn(m, tasks, tasks.dueTime);
       }
     },
   );

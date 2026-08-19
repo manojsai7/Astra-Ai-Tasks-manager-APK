@@ -130,10 +130,10 @@ class AstraUpdateParser {
     // e.g. "move my exam to tomorrow at 7pm", "reschedule my Microsoft interview to 2pm", "make it 11", "make it 2pm"
     if (newTitle == null && newPriority == null && newOrganization == null) {
       final moveMatch = RegExp(
-        r'^(?:move|reschedule|postpone|delay|shift|change|set)\s+(?:the\s+)?(?:my\s+)?(?:deadline\s+(?:of\s+|for\s+)?)?(.+?)(?:\s+deadline)?\s+(?:to|for|at|on|by|before|around)\s+(\d{1,2}(?::\d{2})?\s*(?:am|pm)?|\d{1,2}|.+)$',
+        r'^(?:actually\s+|please\s+|can\s+you\s+)?(?:move|reschedule|postpone|delay|shift|change|set)\s+(?:the\s+)?(?:my\s+)?(?:deadline\s+(?:of\s+|for\s+)?)?(.+?)(?:\s+deadline)?\s+(?:to|for|at|on|by|before|around)\s+(\d{1,2}(?::\d{2})?\s*(?:am|pm)?|\d{1,2}|.+)$',
         caseSensitive: false,
       ).firstMatch(trimmed) ?? RegExp(
-        r'^(?:make|set|change|shift|move)\s+(it|that|this)\s+(?:to\s+|at\s+)?(\d{1,2}(?::\d{2})?\s*(?:am|pm)?|\d{1,2}|.+)$',
+        r'^(?:actually\s+|please\s+|can\s+you\s+)?(?:make|set|change|shift|move)\s+(it|that|this)\s+(?:to\s+|at\s+)?(\d{1,2}(?::\d{2})?\s*(?:am|pm)?|\d{1,2}|.+)$',
         caseSensitive: false,
       ).firstMatch(trimmed);
 

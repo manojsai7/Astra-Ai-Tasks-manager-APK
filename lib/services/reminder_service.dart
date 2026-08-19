@@ -245,7 +245,21 @@ class ReminderService {
       ),
     );
 
-    debugPrint('[ASTRA SNOOZE]\ntaskUpdated=true\nreminderUpdated=true\nnotificationRescheduled=true');
+    final activeReminders = await (_db.select(_db.reminders)
+          ..where((r) => r.taskId.equals(entry.taskId))
+          ..where((r) => r.status.equals(ReminderStatus.scheduled.name) | r.status.equals(ReminderStatus.snoozed.name)))
+        .get();
+
+    debugPrint(
+      '[ASTRA SNOOZE]\n'
+      'oldTaskDueAt=$oldTaskDueAt\n'
+      'oldReminderScheduledAt=$oldReminderScheduledAt\n'
+      'newTime=$newTime\n'
+      'taskUpdated=true\n'
+      'reminderUpdated=true\n'
+      'notificationRescheduled=true\n'
+      'activeReminderCount=${activeReminders.length}',
+    );
   }
 
   /// On app startup: re-schedule any active reminders whose OS notification may be missing.
@@ -396,13 +410,28 @@ class ReminderService {
         }
       }
 
+      final task = await (_db.select(_db.tasks)..where((t) => t.id.equals(taskId))).getSingleOrNull();
+      final reminder = remId != null ? await _db.getReminderById(remId) : null;
+
+      debugPrint(
+        '[ASTRA ACTION]\n'
+        'action=$actionId\n'
+        'taskId=$taskId\n'
+        'reminderId=$remId\n'
+        'payloadValid=true\n'
+        'dbTaskFound=${task != null}\n'
+        'dbReminderFound=${reminder != null}\n'
+        'result=SUCCESS',
+      );
+
       switch (actionId) {
         case NotificationService.actionDone:
-          final task = await (_db.select(_db.tasks)..where((t) => t.id.equals(taskId))).getSingleOrNull();
           final isRecurring = task != null && task.recurrenceRuleJson != null && task.recurrenceRuleJson!.trim().isNotEmpty;
 
           if (remId != null) {
             await completeReminder(remId);
+          } else {
+            await _cancelAllNotificationOffsets(taskId);
           }
 
           // For non-recurring tasks, mark completed immediately.

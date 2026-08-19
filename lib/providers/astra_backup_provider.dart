@@ -40,14 +40,21 @@ final databaseStatsProvider = FutureProvider<AstraDatabaseStats>((ref) async {
   return service.getStats();
 });
 
-/// Executes full restore and refreshes all active Riverpod states cleanly.
+/// Executes restore and refreshes all active Riverpod states cleanly.
 Future<AstraRestoreResult> executeAstraRestore(
   WidgetRef ref,
   Uint8List backupBytes, {
   String? password,
+  RestoreStrategy strategy = RestoreStrategy.merge,
+  Set<AstraBackupCategory>? selectedCategories,
 }) async {
   final restoreService = ref.read(astraRestoreServiceProvider);
-  final result = await restoreService.restoreBackup(backupBytes, password: password);
+  final result = await restoreService.restoreBackup(
+    backupBytes,
+    password: password,
+    strategy: strategy,
+    selectedCategories: selectedCategories,
+  );
 
   // 1. Invalidate reactive stream & state providers
   ref.invalidate(taskListProvider);

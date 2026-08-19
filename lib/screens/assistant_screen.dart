@@ -17,6 +17,7 @@ import '../widgets/design_system/astra_3d_surface.dart';
 import '../widgets/assistant/astra_response_card.dart';
 import '../services/email/astra_email_analyzer.dart';
 import '../services/assistant/astra_document_analyzer.dart';
+import '../widgets/assistant/astra_chat_composer.dart';
 
 class AssistantScreen extends ConsumerStatefulWidget {
   const AssistantScreen({super.key});
@@ -1306,73 +1307,16 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen>
     ).animate().fadeIn(duration: 200.ms).slideY(begin: 0.1, end: 0);
   }
 
-  // ─── Input Bar Component (Fixed UI Padding for Keyboard & Bottom Nav) ──────
-
+  // ─── Input Bar Component (Bounded Composer + Fixed SEND/STOP Button) ──────
   Widget _buildInputBar(BuildContext context) {
     final assistantState = ref.watch(assistantStateProvider);
-    return Container(
-      padding: const EdgeInsets.fromLTRB(12, 10, 12, 14),
-      decoration: const BoxDecoration(
-        color: AstraColors.surface,
-        border: Border(top: BorderSide(color: AstraColors.edgeSoft, width: 1)),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          Expanded(
-            child: Container(
-              decoration: BoxDecoration(
-                color: AstraColors.surface2,
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: AstraColors.edgeSoft, width: 1),
-              ),
-              child: TextField(
-                controller: _controller,
-                style: const TextStyle(color: AstraColors.text, fontSize: 14),
-                decoration: const InputDecoration(
-                  hintText: 'Ask ASTRA or type a command…',
-                  hintStyle: TextStyle(color: AstraColors.textMuted, fontSize: 13),
-                  border: InputBorder.none,
-                  contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                ),
-                onSubmitted: (_) => _sendInput(),
-                textCapitalization: TextCapitalization.sentences,
-                maxLines: null,
-              ),
-            ),
-          ),
-          const SizedBox(width: 10),
-          // Send / Stop button: toggle based on assistant isLoading state
-          if (assistantState.isLoading)
-            Astra3DIconButton(
-              icon: LucideIcons.square,
-              iconSize: 16,
-              size: 46,
-              depth: AstraDepth.small,
-              faceColor: const Color(0xFFEF4444),
-              depthColor: const Color(0xFFB91C1C),
-              borderColor: const Color(0xFFDC2626),
-              iconColor: Colors.white,
-              borderRadius: AstraRadii.md,
-              onTap: () {
-                ref.read(assistantStateProvider.notifier).stopCommand();
-              },
-            )
-          else
-            Astra3DIconButton(
-              icon: LucideIcons.send,
-              iconSize: 18,
-              size: 46,
-              depth: AstraDepth.small,
-              faceColor: AstraDepthColors.limeFace,
-              depthColor: AstraDepthColors.limeDepth,
-              borderColor: AstraDepthColors.limeBorder,
-              iconColor: Colors.black,
-              borderRadius: AstraRadii.md,
-              onTap: _sendInput,
-            ),
-        ],
-      ),
+    return AstraChatComposer(
+      controller: _controller,
+      isLoading: assistantState.isLoading,
+      onSend: _sendInput,
+      onStop: () {
+        ref.read(assistantStateProvider.notifier).stopCommand();
+      },
     );
   }
 }
