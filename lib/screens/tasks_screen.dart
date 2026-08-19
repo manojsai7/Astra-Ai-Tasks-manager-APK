@@ -5,21 +5,16 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:confetti/confetti.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 
-import '../core/parser/task_parser.dart';
 import '../models/task.dart';
-import '../models/task_intent.dart';
-import '../providers/astra_command_executor_provider.dart';
 import '../providers/task_provider.dart';
-import '../services/haptics/astra_haptics.dart';
 import '../services/task/astra_task_filter.dart';
 import '../theme/app_theme.dart';
 import '../services/notification_service.dart';
 import '../widgets/design_system/astra_section_header.dart';
 import '../widgets/design_system/astra_3d_button.dart';
 import '../widgets/tasks/astra_task_card.dart';
-import '../widgets/tasks/quick_add_bar.dart';
-import '../widgets/tasks/tasks_view_tabs.dart';
 import '../widgets/tasks/astra_task_creation_sheet.dart';
+import '../widgets/tasks/tasks_view_tabs.dart';
 
 class TasksScreen extends ConsumerStatefulWidget {
   const TasksScreen({super.key});
@@ -61,40 +56,6 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
     );
   }
 
-  Future<void> _handleQuickAdd(String text) async {
-    if (text.trim().isEmpty) return;
-    AstraHaptics.medium();
-
-    final parsed = TaskParser.parse(text.trim());
-    final title = parsed.title.isNotEmpty ? parsed.title : text.trim();
-
-    DateTime? initialDate = parsed.remindAt;
-    if (initialDate == null && parsed.recurrenceRule == null) {
-      if (_selectedView == TaskViewFilter.myDay) {
-        initialDate = DateTime.now();
-      } else if (_selectedView == TaskViewFilter.upcoming) {
-        initialDate = DateTime.now().add(const Duration(days: 1));
-      }
-    }
-
-    final intent = TaskIntent(
-      title: title,
-      dueDate: initialDate,
-      dueTime: parsed.dueTime,
-      recurrenceRule: parsed.recurrenceRule,
-      priority: parsed.priority,
-      organization: parsed.organization,
-      subtasks: parsed.subtasks,
-      source: 'manual',
-    );
-
-    final executor = ref.read(astraCommandExecutorProvider);
-    await executor.executeTaskIntent(
-      ref: ref,
-      intent: intent,
-    );
-    ref.invalidate(taskListProvider);
-  }
 
   void _showEditTaskDialog(Task task) {
     AstraTaskDetailSheet.edit(
@@ -210,16 +171,6 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
             ),
           ),
 
-          // Floating Quick Add Bar
-          Align(
-            alignment: Alignment.bottomCenter,
-            child: QuickAddBar(
-              hintText: 'Add task... (e.g. Study DSA at 7pm)',
-              onAddTask: _handleQuickAdd,
-              onExpand: _showAddTaskDialog,
-            ),
-          ),
-
           // Confetti Celebration (Subtle & Bounded)
           Align(
             alignment: Alignment.topCenter,
@@ -266,7 +217,7 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
         }
         return ListView(
           physics: const BouncingScrollPhysics(),
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 110),
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
           children: [
             if (overdue.isNotEmpty) ...[
               const AstraSectionHeader(
@@ -311,7 +262,7 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
         }
         return ListView(
           physics: const BouncingScrollPhysics(),
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 110),
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
           children: [
             if (tomorrowTasks.isNotEmpty) ...[
               const AstraSectionHeader(
@@ -360,7 +311,7 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
         }
         return ListView(
           physics: const BouncingScrollPhysics(),
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 110),
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
           children: [
             if (starred.isNotEmpty) ...[
               const AstraSectionHeader(
@@ -414,7 +365,7 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
         }
         return ListView(
           physics: const BouncingScrollPhysics(),
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 110),
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
           children: [
             const AstraSectionHeader(
               title: 'Routines & Habits',
@@ -436,7 +387,7 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
         }
         return ListView(
           physics: const BouncingScrollPhysics(),
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 110),
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
           children: [
             AstraSectionHeader(
               title: 'Completed',
@@ -463,7 +414,7 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
         }
         return ListView(
           physics: const BouncingScrollPhysics(),
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 110),
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
           children: [
             if (overdue.isNotEmpty) ...[
               const AstraSectionHeader(

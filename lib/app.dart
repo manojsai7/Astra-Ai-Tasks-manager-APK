@@ -5,6 +5,7 @@ import 'providers/auth_provider.dart';
 import 'providers/reminder_provider.dart';
 import 'screens/auth_screen.dart';
 import 'screens/home_screen.dart';
+import 'screens/onboarding_screen.dart';
 
 class AstraApp extends ConsumerStatefulWidget {
   final String initialRoute;
@@ -42,6 +43,7 @@ class _AstraAppState extends ConsumerState<AstraApp> {
       navigatorKey: _navigatorKey,
       initialRoute: widget.initialRoute,
       routes: {
+        '/onboarding': (context) => const OnboardingScreen(),
         '/auth': (context) => const AuthScreen(),
         '/home': (context) => const HomeScreen(),
       },

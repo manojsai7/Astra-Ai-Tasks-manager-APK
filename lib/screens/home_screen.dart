@@ -16,6 +16,7 @@ import '../widgets/design_system/astra_section_header.dart';
 import '../widgets/design_system/astra_insight_card.dart';
 import '../providers/message_provider.dart';
 import '../providers/assistant_provider.dart';
+import '../widgets/notifications/astra_reminder_readiness_banner.dart';
 import 'tasks_screen.dart';
 import 'focus_screen.dart';
 import 'panchang_screen.dart';
@@ -209,9 +210,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
             padding: const EdgeInsets.symmetric(horizontal: AppTheme.s20, vertical: AppTheme.s12),
             sliver: SliverList(
               delegate: SliverChildListDelegate([
-                // ─── Header ──────────────────────────────────
+                // ─── Header ─────────────────────────────────────────
                 _buildHeader(context, pending, high),
-                const SizedBox(height: 24),
+                const SizedBox(height: 14),
+
+                // ─── Reminder readiness nudge (amber, dismissible per session) ─
+                // Hidden automatically when all permissions are granted.
+                const AstraReminderReadinessBanner(),
+                const SizedBox(height: 10),
 
                 // ─── Progress Card ───────────────────────────
                 _buildStreakBanner(completed, total),

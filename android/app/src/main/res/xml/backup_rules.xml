@@ -4,10 +4,4 @@
     <!-- Include persistent databases and preferences -->
     <include domain="database" path="." />
     <include domain="sharedpref" path="." />
-    <!-- Exclude temporary caches and large assets -->
-    <exclude domain="root" path="cache" />
-    <exclude domain="root" path="code_cache" />
-    <exclude domain="root" path="tmp" />
-    <exclude domain="file" path="flutter_assets" />
-    <exclude domain="external" path="." />
 </full-backup-content>

@@ -18,12 +18,26 @@ void main() async {
   }
 
   final prefs = await SharedPreferences.getInstance();
+  final hasSeenOnboarding = prefs.getBool('hasSeenOnboarding') ?? false;
   final hasSeenAuth = prefs.getBool('hasSeenAuth') ?? false;
+
+  // Route logic:
+  //   - First launch → /onboarding (sets hasSeenOnboarding at completion)
+  //   - Returning user, not yet authenticated → /auth
+  //   - Returning user, authenticated → /home
+  final String initialRoute;
+  if (!hasSeenOnboarding) {
+    initialRoute = '/onboarding';
+  } else if (!hasSeenAuth) {
+    initialRoute = '/auth';
+  } else {
+    initialRoute = '/home';
+  }
 
   runApp(
     ProviderScope(
       child: AstraApp(
-        initialRoute: hasSeenAuth ? '/home' : '/auth',
+        initialRoute: initialRoute,
       ),
     ),
   );

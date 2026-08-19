@@ -5,20 +5,10 @@
         <!-- Include SQLite databases and critical shared preferences -->
         <include domain="database" path="." />
         <include domain="sharedpref" path="." />
-        <!-- Exclude temporary caches, compiled code caches, and asset directories -->
-        <exclude domain="root" path="cache" />
-        <exclude domain="root" path="code_cache" />
-        <exclude domain="root" path="tmp" />
-        <exclude domain="file" path="flutter_assets" />
-        <exclude domain="external" path="." />
     </cloud-backup>
     <device-transfer>
         <!-- Include database and preferences during device-to-device migration -->
         <include domain="database" path="." />
         <include domain="sharedpref" path="." />
-        <exclude domain="root" path="cache" />
-        <exclude domain="root" path="code_cache" />
-        <exclude domain="root" path="tmp" />
-        <exclude domain="external" path="." />
     </device-transfer>
 </data-extraction-rules>

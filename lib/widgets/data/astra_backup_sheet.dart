@@ -386,135 +386,141 @@ class _AstraBackupSheetState extends ConsumerState<AstraBackupSheet> {
                 Text('RESTORE BACKUP', style: AstraText.displayM(size: 18)),
               ],
             ),
-            content: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Archive: $fileName', style: const TextStyle(fontSize: 11, color: AstraColors.textMuted)),
-                  const SizedBox(height: 10),
+            content: SizedBox(
+              width: double.maxFinite,
+              // Constrain height so the dialog never overflows on small screens.
+              height: MediaQuery.of(context).size.height * 0.52,
+              child: SingleChildScrollView(
+                physics: const BouncingScrollPhysics(),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Archive: $fileName', style: const TextStyle(fontSize: 11, color: AstraColors.textMuted)),
+                    const SizedBox(height: 10),
 
-                  const Text(
-                    'Select categories to restore:',
-                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AstraColors.textPrimary),
-                  ),
-                  const SizedBox(height: 8),
+                    const Text(
+                      'Select categories to restore:',
+                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AstraColors.textPrimary),
+                    ),
+                    const SizedBox(height: 8),
 
-                  ...availableCategories.map((cat) {
-                    final isChecked = categoriesToRestore.contains(cat);
-                    return CheckboxListTile(
-                      dense: true,
-                      contentPadding: EdgeInsets.zero,
-                      value: isChecked,
-                      activeColor: AstraColors.lime,
-                      title: Text(cat.title, style: const TextStyle(fontSize: 13, color: AstraColors.textPrimary)),
-                      subtitle: Text(cat.description, style: const TextStyle(fontSize: 10, color: AstraColors.textMuted)),
-                      onChanged: (val) {
-                        setDialogState(() {
-                          if (val == true) {
-                            categoriesToRestore.add(cat);
-                          } else {
-                            categoriesToRestore.remove(cat);
-                          }
-                        });
+                    ...availableCategories.map((cat) {
+                      final isChecked = categoriesToRestore.contains(cat);
+                      return CheckboxListTile(
+                        dense: true,
+                        contentPadding: EdgeInsets.zero,
+                        value: isChecked,
+                        activeColor: AstraColors.lime,
+                        title: Text(cat.title, style: const TextStyle(fontSize: 13, color: AstraColors.textPrimary)),
+                        subtitle: Text(cat.description, style: const TextStyle(fontSize: 10, color: AstraColors.textMuted)),
+                        onChanged: (val) {
+                          setDialogState(() {
+                            if (val == true) {
+                              categoriesToRestore.add(cat);
+                            } else {
+                              categoriesToRestore.remove(cat);
+                            }
+                          });
+                        },
+                      );
+                    }),
+
+                    const SizedBox(height: 14),
+                    const Text(
+                      'Restore Strategy:',
+                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AstraColors.textPrimary),
+                    ),
+                    const SizedBox(height: 6),
+
+                    GestureDetector(
+                      key: const Key('restore_strategy_merge'),
+                      onTap: () {
+                        AstraHaptics.selection();
+                        setDialogState(() => strategy = RestoreStrategy.merge);
                       },
-                    );
-                  }),
-
-                  const SizedBox(height: 14),
-                  const Text(
-                    'Restore Strategy:',
-                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AstraColors.textPrimary),
-                  ),
-                  const SizedBox(height: 6),
-
-                  GestureDetector(
-                    key: const Key('restore_strategy_merge'),
-                    onTap: () {
-                      AstraHaptics.selection();
-                      setDialogState(() => strategy = RestoreStrategy.merge);
-                    },
-                    child: Container(
-                      margin: const EdgeInsets.only(bottom: 6),
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: strategy == RestoreStrategy.merge ? const Color(0x1ACEFF00) : AstraColors.surface0,
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(
-                          color: strategy == RestoreStrategy.merge ? AstraColors.lime : AstraColors.borderSubtle,
+                      child: Container(
+                        margin: const EdgeInsets.only(bottom: 6),
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: strategy == RestoreStrategy.merge ? const Color(0x1ACEFF00) : AstraColors.surface0,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: strategy == RestoreStrategy.merge ? AstraColors.lime : AstraColors.borderSubtle,
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              strategy == RestoreStrategy.merge ? LucideIcons.circleDot : LucideIcons.circle,
+                              size: 16,
+                              color: strategy == RestoreStrategy.merge ? AstraColors.lime : AstraColors.textMuted,
+                            ),
+                            const SizedBox(width: 8),
+                            const Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'MERGE (Recommended)',
+                                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AstraColors.textPrimary),
+                                  ),
+                                  Text(
+                                    'Preserves newer local edits and combines data.',
+                                    style: TextStyle(fontSize: 10, color: AstraColors.textMuted),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                      child: Row(
-                        children: [
-                          Icon(
-                            strategy == RestoreStrategy.merge ? LucideIcons.circleDot : LucideIcons.circle,
-                            size: 16,
-                            color: strategy == RestoreStrategy.merge ? AstraColors.lime : AstraColors.textMuted,
-                          ),
-                          const SizedBox(width: 8),
-                          const Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'MERGE (Recommended)',
-                                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AstraColors.textPrimary),
-                                ),
-                                Text(
-                                  'Preserves newer local edits and combines data.',
-                                  style: TextStyle(fontSize: 10, color: AstraColors.textMuted),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
                     ),
-                  ),
 
-                  GestureDetector(
-                    key: const Key('restore_strategy_replace'),
-                    onTap: () {
-                      AstraHaptics.selection();
-                      setDialogState(() => strategy = RestoreStrategy.replaceSelected);
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: strategy == RestoreStrategy.replaceSelected ? const Color(0x1AFF0055) : AstraColors.surface0,
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(
-                          color: strategy == RestoreStrategy.replaceSelected ? AstraColors.red : AstraColors.borderSubtle,
+                    GestureDetector(
+                      key: const Key('restore_strategy_replace'),
+                      onTap: () {
+                        AstraHaptics.selection();
+                        setDialogState(() => strategy = RestoreStrategy.replaceSelected);
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: strategy == RestoreStrategy.replaceSelected ? const Color(0x1AFF0055) : AstraColors.surface0,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: strategy == RestoreStrategy.replaceSelected ? AstraColors.red : AstraColors.borderSubtle,
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              strategy == RestoreStrategy.replaceSelected ? LucideIcons.circleDot : LucideIcons.circle,
+                              size: 16,
+                              color: strategy == RestoreStrategy.replaceSelected ? AstraColors.red : AstraColors.textMuted,
+                            ),
+                            const SizedBox(width: 8),
+                            const Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'REPLACE SELECTED DATA',
+                                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AstraColors.red),
+                                  ),
+                                  Text(
+                                    '⚠️ Replaces local records for chosen categories.',
+                                    style: TextStyle(fontSize: 10, color: AstraColors.textMuted),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                      child: Row(
-                        children: [
-                          Icon(
-                            strategy == RestoreStrategy.replaceSelected ? LucideIcons.circleDot : LucideIcons.circle,
-                            size: 16,
-                            color: strategy == RestoreStrategy.replaceSelected ? AstraColors.red : AstraColors.textMuted,
-                          ),
-                          const SizedBox(width: 8),
-                          const Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'REPLACE SELECTED DATA',
-                                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AstraColors.red),
-                                ),
-                                Text(
-                                  '⚠️ Replaces local records for chosen categories.',
-                                  style: TextStyle(fontSize: 10, color: AstraColors.textMuted),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
             actions: [
@@ -865,23 +871,50 @@ class _AstraBackupSheetState extends ConsumerState<AstraBackupSheet> {
 
               const SizedBox(height: 16),
 
-              // Status message banner
+              // Status message banner — icon + dismiss
               if (_statusMessage != null) ...[
                 Container(
                   width: double.infinity,
-                  padding: const EdgeInsets.all(12),
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                   decoration: BoxDecoration(
                     color: _isSuccess ? const Color(0x1ACEFF00) : AstraColors.red.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: _isSuccess ? AstraColors.lime : AstraColors.red),
-                  ),
-                  child: Text(
-                    _statusMessage!,
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: _isSuccess ? AstraColors.lime : AstraColors.red,
-                      height: 1.4,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: _isSuccess ? const Color(0x4DCEFF00) : AstraColors.red.withValues(alpha: 0.4),
                     ),
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Icon(
+                        _isSuccess ? LucideIcons.circleCheck : LucideIcons.circleX,
+                        size: 15,
+                        color: _isSuccess ? AstraColors.lime : AstraColors.red,
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          _statusMessage!,
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: _isSuccess ? AstraColors.lime : AstraColors.red,
+                            height: 1.45,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      GestureDetector(
+                        onTap: () {
+                          AstraHaptics.light();
+                          setState(() => _statusMessage = null);
+                        },
+                        child: Icon(
+                          LucideIcons.x,
+                          size: 13,
+                          color: _isSuccess ? AstraColors.lime : AstraColors.red,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
                 const SizedBox(height: 16),
@@ -926,12 +959,20 @@ class _StatPill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Text(value, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AstraColors.textPrimary)),
-        const SizedBox(height: 2),
-        Text(label, style: const TextStyle(fontSize: 9, color: AstraColors.textMuted, letterSpacing: 0.5)),
-      ],
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: AstraColors.surface0,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AstraColors.borderSubtle),
+      ),
+      child: Column(
+        children: [
+          Text(value, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: AstraColors.textPrimary)),
+          const SizedBox(height: 3),
+          Text(label, style: const TextStyle(fontSize: 9, color: AstraColors.textMuted, letterSpacing: 0.5)),
+        ],
+      ),
     );
   }
 }

@@ -3,6 +3,7 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/data/latest.dart' as tz;
 import 'package:timezone/timezone.dart' as tz_lib;
+import 'package:url_launcher/url_launcher.dart';
 
 import '../core/database/database.dart';
 import '../core/time/astra_time_service.dart';
@@ -81,33 +82,119 @@ class NotificationService {
     }
   }
 
-  /// Requests the OS notification permission.
+  /// Requests the OS POST_NOTIFICATIONS permission.
+  /// If the system dialog cannot be shown (already denied), falls back to
+  /// opening the app's notification settings so the user can enable manually.
   static Future<bool> requestNotificationPermission() async {
     try {
       final androidImpl = _plugin.resolvePlatformSpecificImplementation<
           AndroidFlutterLocalNotificationsPlugin>();
       if (androidImpl != null) {
+        // areNotificationsEnabled() == true means already granted — skip dialog.
+        final alreadyGranted = await androidImpl.areNotificationsEnabled() ?? false;
+        if (alreadyGranted) return true;
+
         final granted = await androidImpl.requestNotificationsPermission();
-        return granted ?? false;
+        if (granted == true) return true;
+
+        // Dialog may have been blocked (user tapped "Don't ask again").
+        // Open app notification settings as a fallback.
+        await _openAppNotificationSettings();
+        return false;
       }
       return true;
-    } catch (_) {
-      return true;
+    } catch (e) {
+      debugPrint('[NotificationService] requestNotificationPermission error: $e');
+      await _openAppNotificationSettings();
+      return false;
     }
   }
 
-  /// Requests the OS exact alarm permission (opens system settings if needed on Android 13/14+).
+  /// Opens the system Alarms & Reminders settings page for this app.
+  /// On Android 12+ (API 31+) this is ACTION_REQUEST_SCHEDULE_EXACT_ALARM.
+  /// Falls back to app details settings on older versions.
   static Future<bool> requestExactAlarmPermission() async {
     try {
       final androidImpl = _plugin.resolvePlatformSpecificImplementation<
           AndroidFlutterLocalNotificationsPlugin>();
+
       if (androidImpl != null) {
-        final granted = await androidImpl.requestExactAlarmsPermission();
-        return granted ?? false;
+        // Already granted — nothing to do.
+        final alreadyGranted = await androidImpl.canScheduleExactNotifications() ?? false;
+        if (alreadyGranted) return true;
       }
-      return true;
-    } catch (_) {
-      return true;
+
+      // Primary path: open ACTION_REQUEST_SCHEDULE_EXACT_ALARM (Android 12+).
+      // This is the only way to grant SCHEDULE_EXACT_ALARM — system dialog.
+      final opened = await _openExactAlarmSettings();
+      if (!opened) {
+        // Fallback: open app details settings.
+        await _openAppNotificationSettings();
+      }
+      // Return false — caller must re-check via checkReminderReadiness() on resume.
+      return false;
+    } catch (e) {
+      debugPrint('[NotificationService] requestExactAlarmPermission error: $e');
+      await _openExactAlarmSettings();
+      return false;
+    }
+  }
+
+  /// Opens Android → Settings → Apps → [ASTRA] → Alarms & Reminders.
+  /// Returns true if the intent launched successfully.
+  static Future<bool> _openExactAlarmSettings() async {
+    const packageId = 'dev.codehunters.astra';
+
+    // Android 12+ (API 31+): ACTION_REQUEST_SCHEDULE_EXACT_ALARM
+    // The intent URI format that url_launcher handles on Android:
+    //   intent:<data>#Intent;action=<action>;end
+    // For package-targeted Settings actions, the data is the package URI.
+    final List<Uri> candidates = [
+      // Standard Settings action URI (works on most launchers)
+      Uri.parse(
+        'intent://package/$packageId#Intent;'
+        'action=android.settings.REQUEST_SCHEDULE_EXACT_ALARM;end',
+      ),
+      // Direct app detail fallback — user can navigate to Alarms & Reminders from there
+      Uri.parse(
+        'intent://package/$packageId#Intent;'
+        'action=android.settings.APPLICATION_DETAILS_SETTINGS;end',
+      ),
+    ];
+
+    for (final uri in candidates) {
+      try {
+        if (await canLaunchUrl(uri)) {
+          return await launchUrl(uri, mode: LaunchMode.externalApplication);
+        }
+      } catch (_) {}
+    }
+    return false;
+  }
+
+  /// Opens the app's system notification settings page.
+  static Future<void> _openAppNotificationSettings() async {
+    const packageId = 'dev.codehunters.astra';
+    final List<Uri> candidates = [
+      // Notification settings for this specific app
+      Uri.parse(
+        'intent://package/$packageId#Intent;'
+        'action=android.settings.APP_NOTIFICATION_SETTINGS;end',
+      ),
+      // App detail settings (has Notifications section)
+      Uri.parse(
+        'intent://package/$packageId#Intent;'
+        'action=android.settings.APPLICATION_DETAILS_SETTINGS;end',
+      ),
+    ];
+
+    for (final uri in candidates) {
+      try {
+        if (await canLaunchUrl(uri)) {
+          await launchUrl(uri, mode: LaunchMode.externalApplication);
+          return;
+        }
+      } catch (_) {}
     }
   }
 
@@ -142,12 +229,11 @@ class NotificationService {
       onDidReceiveBackgroundNotificationResponse: astraNotificationBackgroundHandler,
     );
 
-    final androidImpl = _plugin.resolvePlatformSpecificImplementation<
-        AndroidFlutterLocalNotificationsPlugin>();
-    if (androidImpl != null) {
-      await androidImpl.requestNotificationsPermission();
-      await androidImpl.requestExactAlarmsPermission();
-    }
+    // NOTE: Permission requests (POST_NOTIFICATIONS, SCHEDULE_EXACT_ALARM) are
+    // intentionally NOT issued here. They are driven by the first-run onboarding
+    // flow (OnboardingScreen) so the user receives proper rationale before any
+    // OS dialog appears. Call requestNotificationPermission() and
+    // requestExactAlarmPermission() explicitly from the onboarding steps.
 
     _initialized = true;
     debugPrint('[NotificationService] Initialization complete.');
