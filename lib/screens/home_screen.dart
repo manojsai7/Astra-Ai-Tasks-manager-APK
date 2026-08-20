@@ -462,9 +462,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
                   valueColor: const AlwaysStoppedAnimation(AstraColors.lime),
                   strokeCap: StrokeCap.round,
                 ),
-                Text(
-                  '$pct%',
-                  style: AstraText.label(size: 11, color: AstraColors.lime),
+                Padding(
+                  padding: const EdgeInsets.all(6),
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      '$pct%',
+                      style: AstraText.label(size: 11, color: AstraColors.lime),
+                    ),
+                  ),
                 ),
               ],
             ),
@@ -551,7 +557,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
                         valueColor: const AlwaysStoppedAnimation(AstraColors.lime),
                       ),
                     ),
-                    // Removed redundant "% COMPLETE" label — already in streak banner & metrics tile
                   ],
                 ),
               ),
@@ -597,16 +602,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
 
   Widget _miniPill(IconData icon, String text, Color color) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
         color: AstraColors.surface2,
         borderRadius: BorderRadius.circular(18),
         border: Border.all(color: AstraColors.edgeSoft),
       ),
       child: Row(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 16, color: color),
-          const SizedBox(width: 6),
+          Icon(icon, size: 14, color: color),
+          const SizedBox(width: 5),
           Text(text, style: AstraText.label(size: 11, color: AstraColors.textPrimary)),
         ],
       ),

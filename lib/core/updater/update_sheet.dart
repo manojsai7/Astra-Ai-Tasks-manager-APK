@@ -254,17 +254,20 @@ class _UpdateSheetState extends State<UpdateSheet> {
               ),
               const SizedBox(height: 10),
               Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    'Downloading to Downloads/…',
-                    style: AstraText.caption(color: AstraColors.textSecondary, size: 12),
+                  Expanded(
+                    child: Text(
+                      _totalBytes > 0
+                          ? '${UpdateDownloader.formatBytes(_downloadedBytes)} / ${UpdateDownloader.formatBytes(_totalBytes)}'
+                          : 'Downloading update…',
+                      style: AstraText.caption(color: AstraColors.textSecondary, size: 12),
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
+                  const SizedBox(width: 8),
                   Text(
-                    _totalBytes > 0
-                        ? '${UpdateDownloader.formatBytes(_downloadedBytes)} / ${UpdateDownloader.formatBytes(_totalBytes)} (${(_progress * 100).toInt()}%)'
-                        : '${(_progress * 100).toInt()}%',
-                    style: AstraText.metric(color: AstraColors.lime, size: 12),
+                    '${(_progress * 100).toInt()}%',
+                    style: AstraText.metric(color: AstraColors.lime, size: 13),
                   ),
                 ],
               ),
@@ -272,6 +275,7 @@ class _UpdateSheetState extends State<UpdateSheet> {
               Text(
                 'Persistent APK saved to Downloads/ASTRA',
                 style: AstraText.caption(color: AstraColors.textDisabled, size: 11),
+                overflow: TextOverflow.ellipsis,
               ),
             ] else if (_state == UpdateDownloadState.downloaded ||
                 _state == UpdateDownloadState.installing) ...[
@@ -289,6 +293,7 @@ class _UpdateSheetState extends State<UpdateSheet> {
                     Text(
                       'ASTRA-v${widget.info.latestVersion}.apk is saved in Downloads.',
                       style: AstraText.body(color: AstraColors.textPrimary, size: 13),
+                      overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 4),
                     Text(
@@ -339,9 +344,12 @@ class _UpdateSheetState extends State<UpdateSheet> {
                       children: [
                         const Icon(LucideIcons.alertTriangle, color: AstraColors.red, size: 16),
                         const SizedBox(width: 8),
-                        Text(
-                          'Update couldn\'t be downloaded',
-                          style: AstraText.label(color: AstraColors.red, size: 13),
+                        Expanded(
+                          child: Text(
+                            'Update couldn\'t be downloaded',
+                            style: AstraText.label(color: AstraColors.red, size: 13),
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
                       ],
                     ),
@@ -353,6 +361,7 @@ class _UpdateSheetState extends State<UpdateSheet> {
                     if (_errorMessage != null && _errorMessage!.isNotEmpty) ...[
                       const SizedBox(height: 10),
                       GestureDetector(
+                        key: const Key('update_technical_details_toggle'),
                         onTap: () => setState(() => _showTechnicalDetails = !_showTechnicalDetails),
                         child: Row(
                           children: [
@@ -367,17 +376,20 @@ class _UpdateSheetState extends State<UpdateSheet> {
                         const SizedBox(height: 6),
                         Container(
                           width: double.infinity,
+                          constraints: const BoxConstraints(maxHeight: 120),
                           padding: const EdgeInsets.all(8),
                           decoration: BoxDecoration(
                             color: Colors.black26,
                             borderRadius: BorderRadius.circular(4),
                           ),
-                          child: SelectableText(
-                            _errorMessage!,
-                            style: const TextStyle(
-                              fontFamily: 'monospace',
-                              fontSize: 10,
-                              color: AstraColors.textMuted,
+                          child: SingleChildScrollView(
+                            child: SelectableText(
+                              _errorMessage!,
+                              style: const TextStyle(
+                                fontFamily: 'monospace',
+                                fontSize: 10,
+                                color: AstraColors.textMuted,
+                              ),
                             ),
                           ),
                         ),

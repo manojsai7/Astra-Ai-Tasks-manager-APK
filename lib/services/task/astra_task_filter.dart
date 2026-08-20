@@ -1,18 +1,16 @@
+import '../../core/scheduling/astra_schedule_resolver.dart';
 import '../../core/time/astra_time_service.dart';
 import '../../models/task.dart';
-import '../assistant/astra_recurrence_engine.dart';
 
 /// Centralized, deterministic filtering and bucketing logic for ASTRA tasks.
 ///
-/// Implements the canonical rules for:
+/// Fully powered by [AstraScheduleResolver] as the single canonical source of truth for:
 /// - Active task determination
 /// - Canonical Upcoming predicate (one-shot, date-range, and recurring)
 /// - Overdue and My Day predicates
 /// - Temporal bucketing (Today, Tomorrow, This Week, Later, No Due Date)
 class AstraTaskFilter {
   const AstraTaskFilter();
-
-  static const AstraRecurrenceEngine _recurrenceEngine = AstraRecurrenceEngine();
 
   /// Default upcoming horizon: 365 days ahead.
   static const Duration defaultUpcomingHorizon = Duration(days: 365);
@@ -27,7 +25,6 @@ class AstraTaskFilter {
   /// Canonical definition of an UPCOMING task:
   /// - Status is active/pending (not completed, not cancelled)
   /// - Has a valid future occurrence/deadline/range intersecting `(now, now + horizon]`
-  /// - Respects recurring next occurrence, date range intervals, and one-shot deadlines.
   static bool isUpcoming(
     Task task, {
     AstraTimeService? timeService,
@@ -37,46 +34,20 @@ class AstraTaskFilter {
     if (!isActive(task)) return false;
 
     final now = referenceTime ?? (timeService != null ? timeService.now() : DateTime.now());
-    final horizonEnd = horizon != null ? now.add(horizon) : null;
+    final resolved = AstraScheduleResolver.resolve(task: task, now: now);
 
-    // 1. Recurring tasks: check next future occurrence strictly after now
-    if (task.recurrenceRule != null &&
-        task.recurrenceRule!.frequency != RecurrenceFrequency.none) {
-      final nextOcc = _recurrenceEngine.nextOccurrence(task.recurrenceRule!, now);
-      if (nextOcc == null) return false;
-      if (!nextOcc.isAfter(now)) return false;
-      if (horizonEnd != null && nextOcc.isAfter(horizonEnd)) return false;
-      return true;
+    if (!resolved.isUpcoming) return false;
+
+    if (horizon != null && resolved.nextOccurrence != null) {
+      final horizonEnd = now.add(horizon);
+      if (resolved.nextOccurrence!.isAfter(horizonEnd)) return false;
     }
 
-    // 2. Date-range / Duration tasks: [startAt, endAt]
-    if (task.startAt != null && task.endAt != null) {
-      final start = task.startAt!;
-      final end = task.endAt!;
-
-      // If the entire interval ended in the past (<= now), it's not upcoming
-      if (end.isBefore(now) || end.isAtSameMomentAs(now)) return false;
-
-      // If it starts beyond the upcoming horizon, it's outside the window
-      if (horizonEnd != null && start.isAfter(horizonEnd)) return false;
-
-      // The interval intersects (now, now + horizon]
-      return true;
-    }
-
-    // 3. One-shot deadline / scheduled date
-    final due = task.dueDate ?? task.startAt;
-    if (due != null) {
-      if (!due.isAfter(now)) return false;
-      if (horizonEnd != null && due.isAfter(horizonEnd)) return false;
-      return true;
-    }
-
-    // 4. No date task
-    return false;
+    return true;
   }
 
-  /// Determines if an active task is Overdue (strictly before today's 00:00).
+  /// Determines if an active task is Overdue.
+  /// Note: Recurring tasks with future occurrences are NEVER overdue from a stale seed date!
   static bool isOverdue(
     Task task, {
     AstraTimeService? timeService,
@@ -85,20 +56,8 @@ class AstraTaskFilter {
     if (!isActive(task)) return false;
 
     final now = referenceTime ?? (timeService != null ? timeService.now() : DateTime.now());
-    final todayStart = DateTime(now.year, now.month, now.day);
-
-    // Date range task: overdue only if the end date is before today
-    if (task.startAt != null && task.endAt != null) {
-      return task.endAt!.isBefore(todayStart);
-    }
-
-    // One-shot task
-    final due = task.dueDate ?? task.startAt;
-    if (due != null) {
-      return due.isBefore(todayStart);
-    }
-
-    return false;
+    final resolved = AstraScheduleResolver.resolve(task: task, now: now);
+    return resolved.isOverdue;
   }
 
   /// Determines if an active task belongs to "My Day" (Overdue OR scheduled for Today).
@@ -110,39 +69,9 @@ class AstraTaskFilter {
     if (!isActive(task)) return false;
 
     final now = referenceTime ?? (timeService != null ? timeService.now() : DateTime.now());
-    final todayStart = DateTime(now.year, now.month, now.day);
-    final tomorrowStart = todayStart.add(const Duration(days: 1));
+    final resolved = AstraScheduleResolver.resolve(task: task, now: now);
 
-    // Overdue tasks are surfaced in My Day
-    if (isOverdue(task, referenceTime: now)) return true;
-
-    // Recurring task occurrence for today
-    if (task.recurrenceRule != null &&
-        task.recurrenceRule!.frequency != RecurrenceFrequency.none) {
-      final occ = _recurrenceEngine.nextOccurrence(
-        task.recurrenceRule!,
-        todayStart.subtract(const Duration(seconds: 1)),
-      );
-      if (occ != null && occ.isBefore(tomorrowStart) && (occ.isAfter(todayStart) || occ.isAtSameMomentAs(todayStart))) {
-        return true;
-      }
-      return false;
-    }
-
-    // Date range task intersecting today
-    if (task.startAt != null && task.endAt != null) {
-      return task.startAt!.isBefore(tomorrowStart) &&
-          (task.endAt!.isAfter(todayStart) || task.endAt!.isAtSameMomentAs(todayStart));
-    }
-
-    // One-shot task due today
-    final due = task.dueDate ?? task.startAt;
-    if (due != null) {
-      return (due.isAfter(todayStart) || due.isAtSameMomentAs(todayStart)) &&
-          due.isBefore(tomorrowStart);
-    }
-
-    return false;
+    return resolved.isOverdue || resolved.isToday;
   }
 
   /// Determines if an active task is scheduled for Today.
@@ -154,36 +83,21 @@ class AstraTaskFilter {
     if (!isActive(task)) return false;
 
     final now = referenceTime ?? (timeService != null ? timeService.now() : DateTime.now());
-    final todayStart = DateTime(now.year, now.month, now.day);
-    final tomorrowStart = todayStart.add(const Duration(days: 1));
+    final resolved = AstraScheduleResolver.resolve(task: task, now: now);
+    return resolved.isToday;
+  }
 
-    // Recurring task occurrence for today
-    if (task.recurrenceRule != null &&
-        task.recurrenceRule!.frequency != RecurrenceFrequency.none) {
-      final occ = _recurrenceEngine.nextOccurrence(
-        task.recurrenceRule!,
-        todayStart.subtract(const Duration(seconds: 1)),
-      );
-      if (occ != null && occ.isBefore(tomorrowStart) && (occ.isAfter(todayStart) || occ.isAtSameMomentAs(todayStart))) {
-        return true;
-      }
-      return false;
-    }
+  /// Determines if an active task is scheduled for Tomorrow.
+  static bool isTomorrow(
+    Task task, {
+    AstraTimeService? timeService,
+    DateTime? referenceTime,
+  }) {
+    if (!isActive(task)) return false;
 
-    // Date range task intersecting today
-    if (task.startAt != null && task.endAt != null) {
-      return task.startAt!.isBefore(tomorrowStart) &&
-          (task.endAt!.isAfter(todayStart) || task.endAt!.isAtSameMomentAs(todayStart));
-    }
-
-    // One-shot task due today
-    final due = task.dueDate ?? task.startAt;
-    if (due != null) {
-      return (due.isAfter(todayStart) || due.isAtSameMomentAs(todayStart)) &&
-          due.isBefore(tomorrowStart);
-    }
-
-    return false;
+    final now = referenceTime ?? (timeService != null ? timeService.now() : DateTime.now());
+    final resolved = AstraScheduleResolver.resolve(task: task, now: now);
+    return resolved.isTomorrow;
   }
 
   /// Determines if an active task is Important (high or critical priority).
@@ -210,13 +124,8 @@ class AstraTaskFilter {
     DateTime? now,
   }) {
     final current = now ?? DateTime.now();
-    if (task.recurrenceRule != null &&
-        task.recurrenceRule!.frequency != RecurrenceFrequency.none) {
-      return _recurrenceEngine.nextOccurrence(task.recurrenceRule!, current) ??
-          task.dueDate ??
-          task.startAt;
-    }
-    return task.startAt ?? task.dueDate;
+    final resolved = AstraScheduleResolver.resolve(task: task, now: current);
+    return resolved.nextOccurrence ?? resolved.effectiveDueAt;
   }
 
   /// Categorizes a list of tasks into standard sections.
@@ -251,37 +160,34 @@ class AstraTaskFilter {
         continue;
       }
 
-      if (task.recurrenceRule != null &&
-          task.recurrenceRule!.frequency != RecurrenceFrequency.none) {
+      final resolved = AstraScheduleResolver.resolve(task: task, now: now);
+
+      if (resolved.isRecurring) {
         recurringTasks.add(task);
       }
 
       // Check overdue first
-      if (isOverdue(task, referenceTime: now)) {
+      if (resolved.isOverdue) {
         overdue.add(task);
         continue;
       }
 
-      // Date range tasks
-      if (task.startAt != null && task.endAt != null) {
-        final start = task.startAt!;
-        final end = task.endAt!;
+      // Date range / Duration tasks
+      if (resolved.isDuration && resolved.startAt != null && resolved.endAt != null) {
+        final start = resolved.startAt!;
+        final end = resolved.endAt!;
 
-        // If it covers today
-        if (start.isBefore(tomorrowStart) && (end.isAfter(todayStart) || end.isAtSameMomentAs(todayStart))) {
+        if (resolved.isToday) {
           todayTasks.add(task);
         }
 
-        // If it extends into or starts in upcoming days
         if (start.isBefore(tomorrowStart) && end.isAfter(tomorrowStart)) {
-          // Ongoing multi-day event continuing tomorrow / this week
           if (end.isBefore(nextWeekStart)) {
             thisWeekTasks.add(task);
           } else {
             laterTasks.add(task);
           }
-        } else if ((start.isAfter(tomorrowStart) || start.isAtSameMomentAs(tomorrowStart)) &&
-            start.isBefore(dayAfterTomorrowStart)) {
+        } else if (resolved.isTomorrow) {
           tomorrowTasks.add(task);
         } else if ((start.isAfter(dayAfterTomorrowStart) || start.isAtSameMomentAs(dayAfterTomorrowStart)) &&
             start.isBefore(nextWeekStart)) {
@@ -292,44 +198,12 @@ class AstraTaskFilter {
         continue;
       }
 
-      // Recurring task bucketing
-      if (task.recurrenceRule != null &&
-          task.recurrenceRule!.frequency != RecurrenceFrequency.none) {
-        // Occurrence for today
-        final occToday = _recurrenceEngine.nextOccurrence(
-          task.recurrenceRule!,
-          todayStart.subtract(const Duration(seconds: 1)),
-        );
-        if (occToday != null &&
-            (occToday.isAfter(todayStart) || occToday.isAtSameMomentAs(todayStart)) &&
-            occToday.isBefore(tomorrowStart)) {
-          todayTasks.add(task);
-        }
-
-        // Occurrence strictly after now
-        final nextFutureOcc = _recurrenceEngine.nextOccurrence(task.recurrenceRule!, now);
-        if (nextFutureOcc != null) {
-          if ((nextFutureOcc.isAfter(tomorrowStart) || nextFutureOcc.isAtSameMomentAs(tomorrowStart)) &&
-              nextFutureOcc.isBefore(dayAfterTomorrowStart)) {
-            tomorrowTasks.add(task);
-          } else if ((nextFutureOcc.isAfter(dayAfterTomorrowStart) || nextFutureOcc.isAtSameMomentAs(dayAfterTomorrowStart)) &&
-              nextFutureOcc.isBefore(nextWeekStart)) {
-            thisWeekTasks.add(task);
-          } else if (nextFutureOcc.isAfter(nextWeekStart) || nextFutureOcc.isAtSameMomentAs(nextWeekStart)) {
-            laterTasks.add(task);
-          }
-        }
-        continue;
-      }
-
-      // One-shot deadline / scheduled date
-      final targetDate = task.dueDate ?? task.startAt;
+      // Recurring and one-shot tasks with target dates
+      final targetDate = resolved.nextOccurrence ?? resolved.effectiveDueAt;
       if (targetDate != null) {
-        if ((targetDate.isAfter(todayStart) || targetDate.isAtSameMomentAs(todayStart)) &&
-            targetDate.isBefore(tomorrowStart)) {
+        if (resolved.isToday) {
           todayTasks.add(task);
-        } else if ((targetDate.isAfter(tomorrowStart) || targetDate.isAtSameMomentAs(tomorrowStart)) &&
-            targetDate.isBefore(dayAfterTomorrowStart)) {
+        } else if (resolved.isTomorrow) {
           tomorrowTasks.add(task);
         } else if ((targetDate.isAfter(dayAfterTomorrowStart) || targetDate.isAtSameMomentAs(dayAfterTomorrowStart)) &&
             targetDate.isBefore(nextWeekStart)) {
