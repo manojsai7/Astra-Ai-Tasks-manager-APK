@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'assistant_provider.dart';
+import 'profile_provider.dart';
 
 class AuthState {
   final bool isAuthenticated;
@@ -31,6 +32,11 @@ class AuthNotifier extends StateNotifier<AuthState> {
       if (user != null) {
         final prefs = await SharedPreferences.getInstance();
         await prefs.setBool('hasSeenAuth', true);
+        await ref.read(astraProfileProvider.notifier).syncGoogleAccount(
+              email: user.email,
+              displayName: user.displayName,
+              photoUrl: user.photoUrl,
+            );
         state = state.copyWith(isAuthenticated: true, isLoading: false);
         return true;
       } else {
@@ -50,6 +56,8 @@ class AuthNotifier extends StateNotifier<AuthState> {
   Future<void> skipOrBypassAuth() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('hasSeenAuth', true);
+    // Keep a local profile even when the user never connects Google.
+    await ref.read(astraProfileProvider.notifier).load();
     state = state.copyWith(isAuthenticated: true, isLoading: false);
   }
 
@@ -58,6 +66,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
     await prefs.remove('hasSeenAuth');
     final auth = ref.read(googleAuthServiceProvider);
     await auth.signOut();
+    await ref.read(astraProfileProvider.notifier).clearGoogleConnection();
     state = const AuthState();
   }
 

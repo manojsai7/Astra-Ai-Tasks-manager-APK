@@ -2,7 +2,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -17,7 +16,7 @@ import '../widgets/design_system/astra_3d_button.dart';
 import '../widgets/design_system/astra_section_header.dart';
 import '../widgets/design_system/astra_insight_card.dart';
 import '../providers/message_provider.dart';
-import '../providers/assistant_provider.dart';
+import '../providers/profile_provider.dart';
 import '../widgets/notifications/astra_reminder_readiness_banner.dart';
 import 'tasks_screen.dart';
 import 'focus_screen.dart';
@@ -58,7 +57,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
 
     _initShareListener();
 
-    // ── App-level update check: runs via AppUpdateService ────────────────
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) AppUpdateService.instance.checkForUpdates(context: context, autoShowSheet: true);
     });
@@ -93,7 +91,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
     ref.read(messageNotifierProvider.notifier).addMessage(text);
     if (mounted) {
       setState(() {
-        _currentIndex = 4; // Navigate to Assistant tab
+        _currentIndex = 4;
       });
     }
   }
@@ -233,20 +231,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
             padding: const EdgeInsets.symmetric(horizontal: AppTheme.s20, vertical: AppTheme.s12),
             sliver: SliverList(
               delegate: SliverChildListDelegate([
-                // ─── Header ─────────────────────────────────────────
                 _buildHeader(context, pending, high),
                 const SizedBox(height: 14),
-
-                // ─── Reminder readiness nudge (amber, dismissible per session) ─
-                // Hidden automatically when all permissions are granted.
                 const AstraReminderReadinessBanner(),
                 const SizedBox(height: 10),
-
-                // ─── Progress Card ───────────────────────────
                 _buildStreakBanner(completed, total),
                 const SizedBox(height: 24),
-
-                // ─── Today Hero Card ─────────────────────────
                 _buildTodayCard(
                   context,
                   total: total,
@@ -257,16 +247,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
                   high: high,
                 ),
                 const SizedBox(height: 26),
-
-                // ─── Quick Actions ───────────────────────────
                 _buildQuickActions(context),
                 const SizedBox(height: 30),
-
-                // ─── Schedule Timeline ───────────────────────
                 _buildTimelineSection(context, todayTasks),
                 const SizedBox(height: 26),
-
-                // ─── AI Insight Card ─────────────────────────
                 AstraInsightCard(
                   insight: _insights[_quoteIndex],
                   primaryAction: 'Got it',
@@ -283,8 +267,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
     );
   }
 
-  // ─── Header Component ──────────────────────────────────────
   Widget _buildHeader(BuildContext context, int pending, int high) {
+    final profile = ref.watch(astraProfileProvider);
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       crossAxisAlignment: CrossAxisAlignment.center,
@@ -302,7 +286,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
                 fit: BoxFit.scaleDown,
                 alignment: Alignment.centerLeft,
                 child: Text(
-                  'MANOJ',
+                  profile.displayName.toUpperCase(),
                   style: AstraText.displayL(size: 46, color: AstraColors.textPrimary),
                 ),
               ).animate().fadeIn(duration: 500.ms).slideX(begin: -0.03, end: 0),
@@ -324,7 +308,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
           ),
         ),
         const SizedBox(width: 14),
-        // Tactile Profile Icon Button
         GestureDetector(
           onTap: () => _showProfileSheet(context),
           child: Container(
@@ -338,7 +321,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
                 BoxShadow(color: AstraColors.depth, offset: Offset(0, 4), blurRadius: 0),
               ],
             ),
-            child: const Icon(Icons.person_outline_rounded, color: AstraColors.lime, size: 34),
+            child: profile.photoUrl != null && profile.photoUrl!.isNotEmpty
+                ? ClipRRect(
+                    borderRadius: BorderRadius.circular(18),
+                    child: Image.network(profile.photoUrl!, fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => Center(
+                        child: Text(profile.initials, style: AstraText.displayM(size: 18, color: AstraColors.cyan)),
+                      ),
+                    ),
+                  )
+                : Center(
+                    child: Text(profile.initials, style: AstraText.displayM(size: 18, color: AstraColors.cyan)),
+                  ),
           ),
         ).animate().scale(duration: 500.ms, curve: Curves.easeOutBack),
       ],
@@ -346,10 +340,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
   }
 
   void _showProfileSheet(BuildContext context) {
+    final profile = ref.read(astraProfileProvider);
     showModalBottomSheet(
       context: context,
       backgroundColor: AstraColors.surface,
       showDragHandle: true,
+      isScrollControlled: true,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
       builder: (sheetContext) => SafeArea(
         child: Padding(
@@ -357,33 +353,48 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const CircleAvatar(radius: 28, backgroundColor: AstraColors.surface2, child: Icon(Icons.person_outline_rounded, color: AstraColors.lime, size: 30)),
-              const SizedBox(height: 12),
-              Text('MANOJ', style: AstraText.displayM(size: 28)),
-              const SizedBox(height: 4),
-              Text('Manage your ASTRA account', style: AstraText.body(size: 13, color: AstraColors.textMuted)),
-              const SizedBox(height: 16),
+              Row(
+                children: [
+                  CircleAvatar(
+                    radius: 28,
+                    backgroundColor: AstraColors.surface2,
+                    backgroundImage: profile.photoUrl != null && profile.photoUrl!.isNotEmpty ? NetworkImage(profile.photoUrl!) : null,
+                    child: profile.photoUrl == null || profile.photoUrl!.isEmpty
+                        ? Text(profile.initials, style: AstraText.displayM(size: 18, color: AstraColors.cyan))
+                        : null,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(profile.displayName, maxLines: 1, overflow: TextOverflow.ellipsis, style: AstraText.displayM(size: 24)),
+                        const SizedBox(height: 3),
+                        Text(profile.email.isEmpty ? 'Local ASTRA profile' : profile.email, maxLines: 1, overflow: TextOverflow.ellipsis, style: AstraText.body(size: 12, color: AstraColors.textMuted)),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 18),
+              ListTile(
+                leading: const Icon(LucideIcons.userRoundCog, color: AstraColors.cyan),
+                title: Text('Profile & Settings', style: AstraText.metric(color: AstraColors.textPrimary, size: 14)),
+                subtitle: const Text('Account, reminders, appearance, integrations', style: TextStyle(fontSize: 11, color: AstraColors.textMuted)),
+                trailing: const Icon(Icons.chevron_right, color: AstraColors.textMuted, size: 18),
+                onTap: () {
+                  Navigator.pop(sheetContext);
+                  Navigator.of(context).pushNamed('/profile');
+                },
+              ),
               ListTile(
                 leading: const Icon(Icons.shield_outlined, color: AstraColors.lime),
-                title: Text('Data & Privacy (Backup / Restore)', style: AstraText.metric(color: AstraColors.textPrimary, size: 14)),
-                subtitle: const Text('Local SQLite backup, export & restore', style: TextStyle(fontSize: 11, color: AstraColors.textMuted)),
+                title: Text('Data & Privacy', style: AstraText.metric(color: AstraColors.textPrimary, size: 14)),
+                subtitle: const Text('Encrypted backup, restore and export', style: TextStyle(fontSize: 11, color: AstraColors.textMuted)),
                 trailing: const Icon(Icons.chevron_right, color: AstraColors.textMuted, size: 18),
                 onTap: () {
                   Navigator.pop(sheetContext);
                   AstraBackupSheet.show(context);
-                },
-              ),
-              const Divider(color: AstraColors.edgeSoft, height: 16),
-              ListTile(
-                leading: const Icon(Icons.logout, color: AstraColors.red),
-                title: Text('Sign out', style: AstraText.metric(color: AstraColors.red, size: 15)),
-                onTap: () async {
-                  final navigator = Navigator.of(context);
-                  Navigator.pop(sheetContext);
-                  await ref.read(assistantStateProvider.notifier).handleSignOut();
-                  final prefs = await SharedPreferences.getInstance();
-                  await prefs.remove('hasSeenAuth');
-                  if (mounted) navigator.pushReplacementNamed('/auth');
                 },
               ),
             ],
@@ -393,10 +404,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
     );
   }
 
-  // ─── Streak Progress Card Component ───────────────────────
   Widget _buildStreakBanner(int completed, int total) {
     final pct = total > 0 ? ((completed / total) * 100).toInt() : 0;
-
     return AstraCard(
       padding: const EdgeInsets.all(18),
       child: Row(
@@ -404,16 +413,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
           Container(
             width: 58,
             height: 58,
-            decoration: BoxDecoration(
-              // Orange background for the fire icon — streak = celebration
-              color: AstraDepthColors.orangeDepth,
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: const Icon(
-              Icons.local_fire_department_rounded,
-              size: 34,
-              color: AstraColors.orange,
-            ),
+            decoration: BoxDecoration(color: AstraDepthColors.orangeDepth, borderRadius: BorderRadius.circular(16)),
+            child: const Icon(Icons.local_fire_department_rounded, size: 34, color: AstraColors.orange),
           ),
           const SizedBox(width: 14),
           Expanded(
@@ -426,25 +427,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
-                      Text(
-                        '$completed',
-                        style: AstraText.displayL(size: 42, color: AstraColors.lime),
-                      ),
+                      Text('$completed', style: AstraText.displayL(size: 42, color: AstraColors.lime)),
                       const SizedBox(width: 10),
-                      Text(
-                        'TASKS DONE',
-                        style: AstraText.label(size: 13, color: AstraColors.textPrimary),
-                      ),
+                      Text('TASKS DONE', style: AstraText.label(size: 13, color: AstraColors.textPrimary)),
                     ],
                   ),
                 ),
                 const SizedBox(height: 4),
-                Text(
-                  '$pct% PLAN COMPLETED',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: AstraText.label(size: 12, color: AstraColors.textMuted),
-                ),
+                Text('$pct% PLAN COMPLETED', maxLines: 1, overflow: TextOverflow.ellipsis, style: AstraText.label(size: 12, color: AstraColors.textMuted)),
               ],
             ),
           ),
@@ -464,13 +454,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
                 ),
                 Padding(
                   padding: const EdgeInsets.all(6),
-                  child: FittedBox(
-                    fit: BoxFit.scaleDown,
-                    child: Text(
-                      '$pct%',
-                      style: AstraText.label(size: 11, color: AstraColors.lime),
-                    ),
-                  ),
+                  child: FittedBox(fit: BoxFit.scaleDown, child: Text('$pct%', style: AstraText.label(size: 11, color: AstraColors.lime))),
                 ),
               ],
             ),
@@ -480,7 +464,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
     ).animate().fadeIn(duration: 500.ms, delay: 80.ms).slideY(begin: 0.04, end: 0);
   }
 
-  // ─── Today Hero Card Component ─────────────────────────────
   Widget _buildTodayCard(
     BuildContext context, {
     required int total,
@@ -497,26 +480,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
             children: [
               Container(width: 4, height: 31, color: AstraColors.lime),
               const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  'TODAY',
-                  style: AstraText.displayM(size: 30),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
+              Expanded(child: Text('TODAY', style: AstraText.displayM(size: 30), maxLines: 1, overflow: TextOverflow.ellipsis)),
               const SizedBox(width: 8),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                decoration: BoxDecoration(
-                  color: AstraColors.surface2,
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: AstraColors.edgeSoft),
-                ),
-                child: Text(
-                  DateFormat('EEE, MMM d').format(DateTime.now()).toUpperCase(),
-                  style: AstraText.label(size: 11, color: AstraColors.textSecondary),
-                ),
+                decoration: BoxDecoration(color: AstraColors.surface2, borderRadius: BorderRadius.circular(14), border: Border.all(color: AstraColors.edgeSoft)),
+                child: Text(DateFormat('EEE, MMM d').format(DateTime.now()).toUpperCase(), style: AstraText.label(size: 11, color: AstraColors.textSecondary)),
               ),
             ],
           ),
@@ -536,7 +505,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    // Pills row — Wrap prevents right-edge overflow
                     Wrap(
                       alignment: WrapAlignment.end,
                       spacing: 8,
@@ -547,15 +515,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
                       ],
                     ),
                     const SizedBox(height: 14),
-                    // Progress bar stretches full available width
                     ClipRRect(
                       borderRadius: BorderRadius.circular(4),
-                      child: LinearProgressIndicator(
-                        value: progress,
-                        minHeight: 8,
-                        backgroundColor: AstraColors.surface3,
-                        valueColor: const AlwaysStoppedAnimation(AstraColors.lime),
-                      ),
+                      child: LinearProgressIndicator(value: progress, minHeight: 8, backgroundColor: AstraColors.surface3, valueColor: const AlwaysStoppedAnimation(AstraColors.lime)),
                     ),
                   ],
                 ),
@@ -567,32 +529,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
           const SizedBox(height: 14),
           Row(
             children: [
-              Expanded(
-                child: _metricTile(
-                  Icons.timer_outlined,
-                  'FOCUS',
-                  '${focusMins ~/ 60}h ${(focusMins % 60).toString().padLeft(2, '0')}m',
-                  AstraColors.cyan,
-                ),
-              ),
+              Expanded(child: _metricTile(Icons.timer_outlined, 'FOCUS', '${focusMins ~/ 60}h ${(focusMins % 60).toString().padLeft(2, '0')}m', AstraColors.cyan)),
               _divider(),
-              Expanded(
-                child: _metricTile(
-                  Icons.priority_high_rounded,
-                  'URGENT',
-                  '$high TASKS',
-                  high > 0 ? AstraColors.red : AstraColors.textMuted,
-                ),
-              ),
+              Expanded(child: _metricTile(Icons.priority_high_rounded, 'URGENT', '$high TASKS', high > 0 ? AstraColors.red : AstraColors.textMuted)),
               _divider(),
-              Expanded(
-                child: _metricTile(
-                  Icons.trending_up_rounded,
-                  'COMPLETION',
-                  '${(progress * 100).toInt()}%',
-                  AstraColors.lime,
-                ),
-              ),
+              Expanded(child: _metricTile(Icons.trending_up_rounded, 'COMPLETION', '${(progress * 100).toInt()}%', AstraColors.lime)),
             ],
           ),
         ],
@@ -603,57 +544,24 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
   Widget _miniPill(IconData icon, String text, Color color) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: AstraColors.surface2,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: AstraColors.edgeSoft),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 14, color: color),
-          const SizedBox(width: 5),
-          Text(text, style: AstraText.label(size: 11, color: AstraColors.textPrimary)),
-        ],
-      ),
+      decoration: BoxDecoration(color: AstraColors.surface2, borderRadius: BorderRadius.circular(18), border: Border.all(color: AstraColors.edgeSoft)),
+      child: Row(mainAxisSize: MainAxisSize.min, children: [Icon(icon, size: 14, color: color), const SizedBox(width: 5), Text(text, style: AstraText.label(size: 11, color: AstraColors.textPrimary))]),
     );
   }
 
-  Widget _divider() => Container(
-        width: 1,
-        height: 42,
-        color: AstraColors.edgeSoft,
-        margin: const EdgeInsets.symmetric(horizontal: 8),
-      );
+  Widget _divider() => Container(width: 1, height: 42, color: AstraColors.edgeSoft, margin: const EdgeInsets.symmetric(horizontal: 8));
 
   Widget _metricTile(IconData icon, String label, String value, Color color) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          children: [
-            Icon(icon, size: 14, color: color),
-            const SizedBox(width: 4),
-            Expanded(
-              child: FittedBox(
-                fit: BoxFit.scaleDown,
-                alignment: Alignment.centerLeft,
-                child: Text(label, style: AstraText.label(size: 11)),
-              ),
-            ),
-          ],
-        ),
+        Row(children: [Icon(icon, size: 14, color: color), const SizedBox(width: 4), Expanded(child: FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: Text(label, style: AstraText.label(size: 11))))]),
         const SizedBox(height: 6),
-        FittedBox(
-          fit: BoxFit.scaleDown,
-          alignment: Alignment.centerLeft,
-          child: Text(value, style: AstraText.body(size: 15, color: color)),
-        ),
+        FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: Text(value, style: AstraText.body(size: 15, color: color))),
       ],
     );
   }
 
-  // ─── Quick Actions Component ───────────────────────────────
   Widget _buildQuickActions(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -662,122 +570,37 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
         const SizedBox(height: 14),
         Row(
           children: [
-            Expanded(
-              child: Astra3DButton(
-                height: 62,
-                expand: true,
-                depth: AstraDepth.medium,
-                palette: AstraMaterials.neutral,
-                onTap: () => setState(() => _currentIndex = 1),
-                child: FittedBox(
-                  fit: BoxFit.scaleDown,
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Icon(Icons.add_rounded, size: 24, color: AstraColors.lime),
-                      const SizedBox(height: 4),
-                      Text('ADD TASK', style: AstraText.label(size: 9, color: AstraColors.textPrimary)),
-                    ],
-                  ),
-                ),
-              ),
-            ),
+            Expanded(child: Astra3DButton(height: 62, expand: true, depth: AstraDepth.medium, palette: AstraMaterials.neutral, onTap: () => setState(() => _currentIndex = 1), child: FittedBox(fit: BoxFit.scaleDown, child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [const Icon(Icons.add_rounded, size: 24, color: AstraColors.lime), const SizedBox(height: 4), Text('ADD TASK', style: AstraText.label(size: 9, color: AstraColors.textPrimary))]))),
             const SizedBox(width: 8),
-            Expanded(
-              child: Astra3DButton(
-                height: 62,
-                expand: true,
-                depth: AstraDepth.medium,
-                palette: AstraMaterials.neutral,
-                onTap: () => setState(() => _currentIndex = 4),
-                child: FittedBox(
-                  fit: BoxFit.scaleDown,
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Icon(Icons.auto_awesome, size: 24, color: AstraColors.violet),
-                      const SizedBox(height: 4),
-                      Text('ASK ASTRA', style: AstraText.label(size: 9, color: AstraColors.textPrimary)),
-                    ],
-                  ),
-                ),
-              ),
-            ),
+            Expanded(child: Astra3DButton(height: 62, expand: true, depth: AstraDepth.medium, palette: AstraMaterials.neutral, onTap: () => setState(() => _currentIndex = 4), child: FittedBox(fit: BoxFit.scaleDown, child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [const Icon(Icons.auto_awesome, size: 24, color: AstraColors.violet), const SizedBox(height: 4), Text('ASK ASTRA', style: AstraText.label(size: 9, color: AstraColors.textPrimary))]))),
             const SizedBox(width: 8),
-            Expanded(
-              child: Astra3DButton(
-                height: 62,
-                expand: true,
-                depth: AstraDepth.medium,
-                palette: AstraMaterials.neutral,
-                onTap: () => setState(() => _currentIndex = 2),
-                child: FittedBox(
-                  fit: BoxFit.scaleDown,
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Icon(Icons.play_arrow_rounded, size: 24, color: AstraColors.lime),
-                      const SizedBox(height: 4),
-                      Text('FOCUS', style: AstraText.label(size: 9, color: AstraColors.textPrimary)),
-                    ],
-                  ),
-                ),
-              ),
-            ),
+            Expanded(child: Astra3DButton(height: 62, expand: true, depth: AstraDepth.medium, palette: AstraMaterials.neutral, onTap: () => setState(() => _currentIndex = 2), child: FittedBox(fit: BoxFit.scaleDown, child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [const Icon(Icons.play_arrow_rounded, size: 24, color: AstraColors.lime), const SizedBox(height: 4), Text('FOCUS', style: AstraText.label(size: 9, color: AstraColors.textPrimary))]))),
             const SizedBox(width: 8),
-            Expanded(
-              child: Astra3DButton(
-                height: 62,
-                expand: true,
-                depth: AstraDepth.medium,
-                palette: AstraMaterials.neutral,
-                onTap: () => setState(() => _currentIndex = 4),
-                child: FittedBox(
-                  fit: BoxFit.scaleDown,
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Icon(Icons.sync_rounded, size: 24, color: AstraColors.cyan),
-                      const SizedBox(height: 4),
-                      Text('SYNC', style: AstraText.label(size: 9, color: AstraColors.textPrimary)),
-                    ],
-                  ),
-                ),
-              ),
-            ),
+            Expanded(child: Astra3DButton(height: 62, expand: true, depth: AstraDepth.medium, palette: AstraMaterials.neutral, onTap: () => setState(() => _currentIndex = 4), child: FittedBox(fit: BoxFit.scaleDown, child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [const Icon(Icons.sync_rounded, size: 24, color: AstraColors.cyan), const SizedBox(height: 4), Text('SYNC', style: AstraText.label(size: 9, color: AstraColors.textPrimary))]))),
           ],
         ),
       ],
     ).animate().fadeIn(duration: 500.ms, delay: 150.ms);
   }
 
-  // ─── Timeline Section Component ────────────────────────────
   Widget _buildTimelineSection(BuildContext context, List<Task> todayTasks) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        AstraSectionHeader(
-          title: 'SCHEDULE',
-          action: todayTasks.length > 4 ? 'SEE ALL →' : null,
-          onActionTap: () => setState(() => _currentIndex = 1),
-        ),
+        AstraSectionHeader(title: 'SCHEDULE', action: todayTasks.length > 4 ? 'SEE ALL →' : null, onActionTap: () => setState(() => _currentIndex = 1)),
         const SizedBox(height: 14),
         AstraCard(
           padding: const EdgeInsets.all(16),
-                child: todayTasks.isEmpty
+          child: todayTasks.isEmpty
               ? _buildEmptyTimeline()
               : Column(
                   children: todayTasks.take(4).toList().asMap().entries.map((e) {
                     final task = e.value;
                     final isLast = e.key == (todayTasks.take(4).length - 1);
                     return PremiumTimelineItem(
-                      time: task.dueDate != null
-                          ? DateFormat('h:mm a').format(task.dueDate!)
-                          : '—',
+                      time: task.dueDate != null ? DateFormat('h:mm a').format(task.dueDate!) : '—',
                       title: task.title,
-                      subtitle: task.priority == 'high'
-                          ? '⚠ High priority'
-                          : task.description,
+                      subtitle: task.priority == 'high' ? '⚠ High priority' : task.description,
                       nodeColor: _priorityColor(task.priority),
                       isLast: isLast,
                       isCompleted: task.isCompleted,
@@ -823,9 +646,7 @@ class _ResilientDashboardLoaderState extends State<_ResilientDashboardLoader> {
   void initState() {
     super.initState();
     _timer = Timer.periodic(const Duration(seconds: 1), (t) {
-      if (mounted) {
-        setState(() => _elapsedSeconds++);
-      }
+      if (mounted) setState(() => _elapsedSeconds++);
     });
   }
 
@@ -846,24 +667,12 @@ class _ResilientDashboardLoaderState extends State<_ResilientDashboardLoader> {
             children: [
               const Icon(LucideIcons.alertCircle, color: AstraColors.amber, size: 32),
               const SizedBox(height: 14),
-              const Text(
-                'Couldn\'t load your plan',
-                style: TextStyle(color: AstraColors.textPrimary, fontSize: 16, fontWeight: FontWeight.bold),
-              ),
+              const Text('Couldn\'t load your plan', style: TextStyle(color: AstraColors.textPrimary, fontSize: 16, fontWeight: FontWeight.bold)),
               const SizedBox(height: 6),
-              const Text(
-                'Your existing data is safe. Tap retry to attempt loading again.',
-                textAlign: TextAlign.center,
-                style: TextStyle(color: AstraColors.textSecondary, fontSize: 13),
-              ),
+              const Text('Your existing data is safe. Tap retry to attempt loading again.', textAlign: TextAlign.center, style: TextStyle(color: AstraColors.textSecondary, fontSize: 13)),
               const SizedBox(height: 20),
               ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AstraColors.lime,
-                  foregroundColor: Colors.black,
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                ),
+                style: ElevatedButton.styleFrom(backgroundColor: AstraColors.lime, foregroundColor: Colors.black, padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
                 onPressed: () {
                   setState(() => _elapsedSeconds = 0);
                   widget.onRetry();
@@ -877,26 +686,16 @@ class _ResilientDashboardLoaderState extends State<_ResilientDashboardLoader> {
       );
     }
 
-    final message = _elapsedSeconds < 2
-        ? 'Loading your plan…'
-        : 'Preparing your workspace…';
-
+    final message = _elapsedSeconds < 2 ? 'Loading your plan…' : 'Preparing your workspace…';
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const CircularProgressIndicator(
-            color: AstraColors.lime,
-            strokeWidth: 2,
-          ),
+          const CircularProgressIndicator(color: AstraColors.lime, strokeWidth: 2),
           const SizedBox(height: 16),
-          Text(
-            message,
-            style: const TextStyle(color: AstraColors.textMuted, fontSize: 13),
-          ),
+          Text(message, style: const TextStyle(color: AstraColors.textMuted, fontSize: 13)),
         ],
       ),
     );
   }
 }
-
