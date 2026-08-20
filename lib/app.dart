@@ -6,6 +6,7 @@ import 'providers/reminder_provider.dart';
 import 'screens/auth_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/onboarding_screen.dart';
+import 'screens/profile_settings_screen.dart';
 
 class AstraApp extends ConsumerStatefulWidget {
   final String initialRoute;
@@ -21,7 +22,6 @@ class _AstraAppState extends ConsumerState<AstraApp> {
   @override
   void initState() {
     super.initState();
-    // Listen for auth state → redirect when signed out during an active session.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.listenManual(authProvider, (previous, next) {
         if ((previous?.isAuthenticated ?? true) && !next.isAuthenticated) {
@@ -33,7 +33,6 @@ class _AstraAppState extends ConsumerState<AstraApp> {
 
   @override
   Widget build(BuildContext context) {
-    // Bootstrap reminder engine on first frame.
     ref.watch(reminderBootstrapProvider);
 
     return MaterialApp(
@@ -46,6 +45,7 @@ class _AstraAppState extends ConsumerState<AstraApp> {
         '/onboarding': (context) => const OnboardingScreen(),
         '/auth': (context) => const AuthScreen(),
         '/home': (context) => const HomeScreen(),
+        '/profile': (context) => const ProfileSettingsScreen(),
       },
       onGenerateRoute: (settings) {
         if (settings.name == '/home') {
