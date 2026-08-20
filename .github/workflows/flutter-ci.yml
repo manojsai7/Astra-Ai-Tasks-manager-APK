@@ -5,6 +5,8 @@ on:
     branches:
       - main
       - "core-work/**"
+      - "core-**"
+      - "phase-**"
   pull_request:
     branches:
       - main
