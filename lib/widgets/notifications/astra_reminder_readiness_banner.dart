@@ -65,6 +65,8 @@ class _AstraReminderReadinessBannerState
         await NotificationService.requestNotificationPermission();
       case ReminderReadinessState.exactAlarmPermissionRequired:
         await NotificationService.requestExactAlarmPermission();
+      case ReminderReadinessState.unknown:
+        await NotificationService.requestNotificationPermission();
       default:
         break;
     }
@@ -95,6 +97,10 @@ class _AstraReminderReadinessBannerState
         label = 'Reminders are restricted by device policy.';
         action = 'SETTINGS';
         icon = LucideIcons.shieldAlert;
+      case ReminderReadinessState.unknown:
+        label = 'Status unavailable — check Android Settings.';
+        action = 'CHECK';
+        icon = LucideIcons.helpCircle;
       case ReminderReadinessState.ready:
         return const SizedBox.shrink();
     }

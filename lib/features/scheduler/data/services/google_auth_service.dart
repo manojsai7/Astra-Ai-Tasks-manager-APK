@@ -47,6 +47,7 @@ class GoogleAuthService {
 
   GoogleSignInAccount? get currentUser => _currentUser;
   bool get isSignedIn => _currentUser != null;
+  auth.AuthClient? get authClient => _authClient;
 
   /// Stream of user sign-in state changes.
   Stream<GoogleSignInAccount?> get onCurrentUserChanged =>

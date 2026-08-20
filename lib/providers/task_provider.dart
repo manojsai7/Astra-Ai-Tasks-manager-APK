@@ -3,6 +3,8 @@ import 'package:drift/drift.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/database/database.dart';
+import '../core/reminders/reminder_strategy.dart';
+import '../core/scheduling/astra_schedule_resolver.dart';
 import '../models/task.dart';
 import '../services/assistant/astra_recurrence_engine.dart';
 import '../services/reminder_service.dart';
@@ -125,10 +127,58 @@ class TaskNotifier extends StateNotifier<List<Task>> {
 
   Future<void> toggleComplete(String id) async {
     final task = state.firstWhere((t) => t.id == id, orElse: () => throw Exception('Task $id not found'));
-    final newStatus = task.status == 'completed' ? 'pending' : 'completed';
-    await setStatus(id, newStatus);
-    if (newStatus == 'completed') {
-      await _reminders.cancelReminderForTask(id);
+    final now = DateTime.now();
+
+    // Check if task is recurring
+    final isRecurring = task.recurrenceRule != null &&
+        task.recurrenceRule!.frequency != RecurrenceFrequency.none;
+
+    if (task.status != 'completed') {
+      // Completing active/pending task
+      if (isRecurring) {
+        // Advance recurring task to next valid cycle
+        final nextOcc = AstraScheduleResolver.resolveNextOccurrenceAfter(
+          task.recurrenceRule!,
+          task.dueDate ?? now,
+          now: now,
+        );
+
+        if (nextOcc != null) {
+          // Advance single DB row
+          await (_db.update(_db.tasks)..where((t) => t.id.equals(id))).write(
+            TasksCompanion(
+              dueAt: Value(nextOcc),
+              status: const Value('active'),
+              completedAt: const Value(null),
+              updatedAt: Value(now),
+            ),
+          );
+
+          // Reschedule reminder for the next occurrence
+          final strategy = ReminderStrategyX.resolve(
+            priority: task.priority,
+            eventType: task.category,
+          );
+          await _reminders.scheduleReminder(
+            taskId: task.id,
+            taskTitle: task.title,
+            scheduledAt: nextOcc,
+            strategy: strategy,
+          );
+          if (mounted) await loadTasks();
+        } else {
+          // Recurrence ended: mark completed
+          await setStatus(id, 'completed');
+          await _reminders.cancelReminderForTask(id);
+        }
+      } else {
+        // One-shot task: mark completed
+        await setStatus(id, 'completed');
+        await _reminders.cancelReminderForTask(id);
+      }
+    } else {
+      // Re-opening completed task
+      await setStatus(id, 'pending');
     }
   }
 

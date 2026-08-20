@@ -1,5 +1,7 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -21,7 +23,7 @@ import 'tasks_screen.dart';
 import 'focus_screen.dart';
 import 'panchang_screen.dart';
 import 'assistant_screen.dart';
-import '../core/updater/update_sheet.dart';
+import '../core/updater/app_update_service.dart';
 import '../widgets/data/astra_backup_sheet.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
@@ -56,9 +58,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
 
     _initShareListener();
 
-    // ── Update check: runs silently after first frame ───────────────────────
+    // ── App-level update check: runs via AppUpdateService ────────────────
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) UpdateSheet.checkAndShow(context);
+      if (mounted) AppUpdateService.instance.checkForUpdates(context: context, autoShowSheet: true);
     });
 
     Future.doWhile(() async {
@@ -159,29 +161,50 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
   }
 
   Widget _buildLoadingState() {
-    return const Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          CircularProgressIndicator(
-            color: AstraColors.lime,
-            strokeWidth: 2,
-          ),
-          SizedBox(height: 16),
-          Text(
-            'Loading your plan...',
-            style: TextStyle(color: AstraColors.textMuted, fontSize: 13),
-          ),
-        ],
-      ),
+    return _ResilientDashboardLoader(
+      onRetry: () {
+        ref.read(taskNotifierProvider.notifier).loadTasks();
+        ref.invalidate(taskListProvider);
+      },
     );
   }
 
   Widget _buildErrorState(Object err) {
     return Center(
-      child: Text(
-        'Error: $err',
-        style: const TextStyle(color: AstraColors.red, fontSize: 13),
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(LucideIcons.alertCircle, color: AstraColors.red, size: 32),
+            const SizedBox(height: 14),
+            const Text(
+              'Couldn\'t load your plan',
+              style: TextStyle(color: AstraColors.textPrimary, fontSize: 16, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 6),
+            const Text(
+              'Your existing data is safe. Tap retry to reload.',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: AstraColors.textSecondary, fontSize: 13),
+            ),
+            const SizedBox(height: 20),
+            ElevatedButton.icon(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AstraColors.lime,
+                foregroundColor: Colors.black,
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+              onPressed: () {
+                ref.read(taskNotifierProvider.notifier).loadTasks();
+                ref.invalidate(taskListProvider);
+              },
+              icon: const Icon(LucideIcons.refreshCw, size: 16),
+              label: const Text('RETRY', style: TextStyle(fontWeight: FontWeight.bold)),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -439,9 +462,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
                   valueColor: const AlwaysStoppedAnimation(AstraColors.lime),
                   strokeCap: StrokeCap.round,
                 ),
-                Text(
-                  '$pct%',
-                  style: AstraText.label(size: 11, color: AstraColors.lime),
+                Padding(
+                  padding: const EdgeInsets.all(6),
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      '$pct%',
+                      style: AstraText.label(size: 11, color: AstraColors.lime),
+                    ),
+                  ),
                 ),
               ],
             ),
@@ -528,7 +557,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
                         valueColor: const AlwaysStoppedAnimation(AstraColors.lime),
                       ),
                     ),
-                    // Removed redundant "% COMPLETE" label — already in streak banner & metrics tile
                   ],
                 ),
               ),
@@ -574,16 +602,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
 
   Widget _miniPill(IconData icon, String text, Color color) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
         color: AstraColors.surface2,
         borderRadius: BorderRadius.circular(18),
         border: Border.all(color: AstraColors.edgeSoft),
       ),
       child: Row(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 16, color: color),
-          const SizedBox(width: 6),
+          Icon(icon, size: 14, color: color),
+          const SizedBox(width: 5),
           Text(text, style: AstraText.label(size: 11, color: AstraColors.textPrimary)),
         ],
       ),
@@ -735,7 +764,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
         const SizedBox(height: 14),
         AstraCard(
           padding: const EdgeInsets.all(16),
-          child: todayTasks.isEmpty
+                child: todayTasks.isEmpty
               ? _buildEmptyTimeline()
               : Column(
                   children: todayTasks.take(4).toList().asMap().entries.map((e) {
@@ -773,6 +802,99 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
             Text('Add tasks with due times to see your schedule timeline here', style: AstraText.caption(size: 11), textAlign: TextAlign.center),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _ResilientDashboardLoader extends StatefulWidget {
+  final VoidCallback onRetry;
+  const _ResilientDashboardLoader({required this.onRetry});
+
+  @override
+  State<_ResilientDashboardLoader> createState() => _ResilientDashboardLoaderState();
+}
+
+class _ResilientDashboardLoaderState extends State<_ResilientDashboardLoader> {
+  int _elapsedSeconds = 0;
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    _timer = Timer.periodic(const Duration(seconds: 1), (t) {
+      if (mounted) {
+        setState(() => _elapsedSeconds++);
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_elapsedSeconds >= 8) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(LucideIcons.alertCircle, color: AstraColors.amber, size: 32),
+              const SizedBox(height: 14),
+              const Text(
+                'Couldn\'t load your plan',
+                style: TextStyle(color: AstraColors.textPrimary, fontSize: 16, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 6),
+              const Text(
+                'Your existing data is safe. Tap retry to attempt loading again.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: AstraColors.textSecondary, fontSize: 13),
+              ),
+              const SizedBox(height: 20),
+              ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AstraColors.lime,
+                  foregroundColor: Colors.black,
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                ),
+                onPressed: () {
+                  setState(() => _elapsedSeconds = 0);
+                  widget.onRetry();
+                },
+                icon: const Icon(LucideIcons.refreshCw, size: 16),
+                label: const Text('RETRY', style: TextStyle(fontWeight: FontWeight.bold)),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    final message = _elapsedSeconds < 2
+        ? 'Loading your plan…'
+        : 'Preparing your workspace…';
+
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const CircularProgressIndicator(
+            color: AstraColors.lime,
+            strokeWidth: 2,
+          ),
+          const SizedBox(height: 16),
+          Text(
+            message,
+            style: const TextStyle(color: AstraColors.textMuted, fontSize: 13),
+          ),
+        ],
       ),
     );
   }

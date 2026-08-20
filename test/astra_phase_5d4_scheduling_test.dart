@@ -6,8 +6,6 @@ import 'package:astra/services/assistant/astra_recurrence_engine.dart';
 import 'package:astra/services/task/astra_task_filter.dart';
 
 void main() {
-  final resolver = const AstraScheduleResolver();
-
   DateTime at(int hour, int minute, {int dayOffset = 0}) {
     final base = DateTime(2026, 8, 20, 0, 0);
     return base.add(Duration(days: dayOffset, hours: hour, minutes: minute));
@@ -35,7 +33,7 @@ void main() {
 
   group('AstraScheduleResolver', () {
     test('A — unscheduled task has no occurrence', () {
-      final result = resolver.resolve(oneShot(), now: at(15, 0));
+      final result = AstraScheduleResolver.resolve(task: oneShot(), now: at(15, 0));
       expect(result.effectiveDueAt, isNull);
       expect(result.isUpcoming, isFalse);
       expect(result.shouldScheduleReminder, isFalse);
@@ -43,7 +41,7 @@ void main() {
 
     test('B — floating time recurrence resolves next daily occurrence', () {
       final task = recurring();
-      final result = resolver.resolve(task, now: at(15, 0));
+      final result = AstraScheduleResolver.resolve(task: task, now: at(15, 0));
       expect(result.nextOccurrence, at(20, 0));
       expect(result.isRecurring, isTrue);
       expect(result.isPast, isFalse);
@@ -52,7 +50,7 @@ void main() {
 
     test('C — daily recurrence advances after today occurrence', () {
       final task = recurring();
-      final result = resolver.resolve(task, now: at(21, 0));
+      final result = AstraScheduleResolver.resolve(task: task, now: at(21, 0));
       expect(result.nextOccurrence, at(20, 0, dayOffset: 1));
       expect(result.isUpcoming, isTrue);
     });
@@ -60,7 +58,7 @@ void main() {
     test('D — stale recurring seed date never becomes overdue', () {
       final task = recurring(startDate: at(20, 0, dayOffset: -1));
       final now = at(15, 0);
-      final result = resolver.resolve(task, now: now);
+      final result = AstraScheduleResolver.resolve(task: task, now: now);
       expect(result.nextOccurrence, at(20, 0));
       expect(AstraTaskFilter.isOverdue(task, referenceTime: now), isFalse);
       expect(AstraTaskFilter.isToday(task, referenceTime: now), isTrue);
@@ -69,7 +67,7 @@ void main() {
     test('E — today past one-shot is overdue and must not schedule', () {
       final task = oneShot(dueDate: at(10, 0));
       final now = at(15, 0);
-      final result = resolver.resolve(task, now: now);
+      final result = AstraScheduleResolver.resolve(task: task, now: now);
       expect(result.isPast, isTrue);
       expect(result.shouldScheduleReminder, isFalse);
       expect(AstraTaskFilter.isOverdue(task, referenceTime: now), isTrue);
@@ -77,7 +75,7 @@ void main() {
 
     test('F — tomorrow future one-shot is upcoming', () {
       final task = oneShot(dueDate: at(10, 0, dayOffset: 1));
-      final result = resolver.resolve(task, now: at(15, 0));
+      final result = AstraScheduleResolver.resolve(task: task, now: at(15, 0));
       expect(result.effectiveDueAt, at(10, 0, dayOffset: 1));
       expect(result.isUpcoming, isTrue);
       expect(result.shouldScheduleReminder, isTrue);
@@ -85,16 +83,16 @@ void main() {
 
     test('G — dueDate + dueTime is resolved as one canonical instant', () {
       final task = oneShot(dueDate: at(0, 0), dueTime: '20:00');
-      final result = resolver.resolve(task, now: at(15, 0));
+      final result = AstraScheduleResolver.resolve(task: task, now: at(15, 0));
       expect(result.effectiveDueAt, at(20, 0));
     });
 
     test('H — bounded recurrence stops after its end window', () {
       final task = recurring(startDate: at(20, 0), endDate: at(20, 0, dayOffset: 1));
-      final beforeEnd = resolver.resolve(task, now: at(15, 0, dayOffset: 1));
+      final beforeEnd = AstraScheduleResolver.resolve(task: task, now: at(15, 0, dayOffset: 1));
       expect(beforeEnd.nextOccurrence, at(20, 0, dayOffset: 1));
 
-      final afterEnd = resolver.resolve(task, now: at(21, 0, dayOffset: 1));
+      final afterEnd = AstraScheduleResolver.resolve(task: task, now: at(21, 0, dayOffset: 1));
       expect(afterEnd.nextOccurrence, isNull);
       expect(afterEnd.shouldScheduleReminder, isFalse);
     });
@@ -106,7 +104,7 @@ void main() {
         minute: 0,
       );
       final task = Task.create(title: 'Weekday task', recurrenceRule: rule, dueTime: '20:00');
-      final result = resolver.resolve(task, now: DateTime(2026, 8, 22, 15)); // Saturday
+      final result = AstraScheduleResolver.resolve(task: task, now: DateTime(2026, 8, 22, 15)); // Saturday
       expect(result.nextOccurrence?.weekday, DateTime.monday);
     });
 
@@ -120,7 +118,7 @@ void main() {
 
     test('K — recurring completion/snooze semantics have one logical task row', () {
       final task = recurring();
-      final resolved = resolver.resolve(task, now: at(15, 0));
+      final resolved = AstraScheduleResolver.resolve(task: task, now: at(15, 0));
       expect(resolved.nextOccurrence, at(20, 0));
       expect(task.id, isNotEmpty);
       // Snooze is an occurrence/reminder mutation; recurrence remains daily.
@@ -129,7 +127,7 @@ void main() {
 
     test('L — past explicit date never schedules a reminder', () {
       final task = oneShot(dueDate: at(10, 0, dayOffset: -1));
-      final result = resolver.resolve(task, now: at(15, 0));
+      final result = AstraScheduleResolver.resolve(task: task, now: at(15, 0));
       expect(result.isPast, isTrue);
       expect(result.shouldScheduleReminder, isFalse);
     });

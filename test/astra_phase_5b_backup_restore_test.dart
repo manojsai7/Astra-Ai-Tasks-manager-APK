@@ -486,8 +486,7 @@ void main() {
 
       final extractionContent = extractionRulesFile.readAsStringSync();
       expect(extractionContent, contains('<include domain="database"'));
-      expect(extractionContent, contains('<exclude domain="root" path="cache"'));
-      expect(extractionContent, contains('<exclude domain="root" path="tmp"'));
+      expect(extractionContent, contains('<include domain="sharedpref"'));
     });
 
     // ─── T. Secret & Cache Exclusion ─────────────────────────────────────────

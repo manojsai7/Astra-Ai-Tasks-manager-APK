@@ -10,7 +10,6 @@ import '../../services/data/astra_crypto_service.dart';
 import '../../services/data/astra_restore_service.dart';
 import '../../theme/app_theme.dart';
 import '../design_system/astra_3d_button.dart';
-import '../design_system/astra_card.dart';
 
 /// Password strength level for advisory UI indication.
 enum PasswordStrength {
@@ -114,7 +113,14 @@ class _AstraBackupSheetState extends ConsumerState<AstraBackupSheet> {
               children: [
                 const Icon(LucideIcons.lock, color: AstraColors.lime, size: 20),
                 const SizedBox(width: 8),
-                Text('Create Backup Password', style: AstraText.displayM(size: 18)),
+                Expanded(
+                  child: Text(
+                    'Create Backup Password',
+                    style: AstraText.displayM(size: 18),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
               ],
             ),
             content: SingleChildScrollView(
@@ -134,12 +140,12 @@ class _AstraBackupSheetState extends ConsumerState<AstraBackupSheet> {
                       borderRadius: BorderRadius.circular(8),
                       border: Border.all(color: const Color(0x4DCEFF00)),
                     ),
-                    child: Row(
+                    child: const Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Icon(LucideIcons.shieldAlert, size: 16, color: AstraColors.lime),
-                        const SizedBox(width: 8),
-                        const Expanded(
+                        Icon(LucideIcons.shieldAlert, size: 16, color: AstraColors.lime),
+                        SizedBox(width: 8),
+                        Expanded(
                           child: Text(
                             'Keep this password safe. ASTRA cannot recover your data without it.',
                             style: TextStyle(fontSize: 11, color: AstraColors.textPrimary, height: 1.3),
@@ -177,7 +183,7 @@ class _AstraBackupSheetState extends ConsumerState<AstraBackupSheet> {
                   ),
                   const SizedBox(height: 6),
 
-                  // Advisory Strength Indicator (Non-blocking)
+                  // Advisory Strength Indicator
                   if (passCtrl.text.isNotEmpty) ...[
                     Row(
                       children: [
@@ -265,6 +271,11 @@ class _AstraBackupSheetState extends ConsumerState<AstraBackupSheet> {
     bool obscurePass = true;
     String? errorText;
 
+    final categoriesCount = metadata.selectedCategories.length;
+    final categorySummary = categoriesCount == 1
+        ? '1 category selected'
+        : '$categoriesCount categories selected';
+
     return showDialog<String>(
       context: context,
       barrierDismissible: false,
@@ -280,7 +291,14 @@ class _AstraBackupSheetState extends ConsumerState<AstraBackupSheet> {
               children: [
                 const Icon(LucideIcons.keyRound, color: AstraColors.lime, size: 20),
                 const SizedBox(width: 8),
-                Text('Decrypt ASTRA Backup', style: AstraText.displayM(size: 18)),
+                Expanded(
+                  child: Text(
+                    'Decrypt ASTRA Backup',
+                    style: AstraText.displayM(size: 18),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
               ],
             ),
             content: SingleChildScrollView(
@@ -290,12 +308,14 @@ class _AstraBackupSheetState extends ConsumerState<AstraBackupSheet> {
                 children: [
                   Text(
                     'Archive: $fileName',
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                     style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AstraColors.lime),
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 10),
                   _DetailRow('Created:', DateFormat('MMM d, yyyy · h:mm a').format(metadata.createdAt.toLocal())),
                   _DetailRow('App Version:', metadata.appVersion),
-                  _DetailRow('Categories:', metadata.selectedCategories.join(', ')),
+                  _DetailRow('Categories:', categorySummary),
                   _DetailRow('Tasks:', '${metadata.taskCount}'),
                   _DetailRow('Messages:', '${metadata.messageCount}'),
                   _DetailRow('Memories:', '${metadata.memoryCount}'),
@@ -383,144 +403,197 @@ class _AstraBackupSheetState extends ConsumerState<AstraBackupSheet> {
               children: [
                 const Icon(LucideIcons.fileSpreadsheet, color: AstraColors.cyan, size: 20),
                 const SizedBox(width: 8),
-                Text('RESTORE BACKUP', style: AstraText.displayM(size: 18)),
+                Expanded(
+                  child: Text(
+                    'RESTORE BACKUP',
+                    style: AstraText.displayM(size: 18),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
               ],
             ),
             content: SizedBox(
               width: double.maxFinite,
-              // Constrain height so the dialog never overflows on small screens.
-              height: MediaQuery.of(context).size.height * 0.52,
-              child: SingleChildScrollView(
-                physics: const BouncingScrollPhysics(),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Archive: $fileName', style: const TextStyle(fontSize: 11, color: AstraColors.textMuted)),
-                    const SizedBox(height: 10),
-
-                    const Text(
-                      'Select categories to restore:',
-                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AstraColors.textPrimary),
-                    ),
-                    const SizedBox(height: 8),
-
-                    ...availableCategories.map((cat) {
-                      final isChecked = categoriesToRestore.contains(cat);
-                      return CheckboxListTile(
-                        dense: true,
-                        contentPadding: EdgeInsets.zero,
-                        value: isChecked,
-                        activeColor: AstraColors.lime,
-                        title: Text(cat.title, style: const TextStyle(fontSize: 13, color: AstraColors.textPrimary)),
-                        subtitle: Text(cat.description, style: const TextStyle(fontSize: 10, color: AstraColors.textMuted)),
-                        onChanged: (val) {
-                          setDialogState(() {
-                            if (val == true) {
-                              categoriesToRestore.add(cat);
-                            } else {
-                              categoriesToRestore.remove(cat);
-                            }
-                          });
-                        },
-                      );
-                    }),
-
-                    const SizedBox(height: 14),
-                    const Text(
-                      'Restore Strategy:',
-                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AstraColors.textPrimary),
-                    ),
-                    const SizedBox(height: 6),
-
-                    GestureDetector(
-                      key: const Key('restore_strategy_merge'),
-                      onTap: () {
-                        AstraHaptics.selection();
-                        setDialogState(() => strategy = RestoreStrategy.merge);
-                      },
-                      child: Container(
-                        margin: const EdgeInsets.only(bottom: 6),
-                        padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(
-                          color: strategy == RestoreStrategy.merge ? const Color(0x1ACEFF00) : AstraColors.surface0,
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(
-                            color: strategy == RestoreStrategy.merge ? AstraColors.lime : AstraColors.borderSubtle,
+              height: MediaQuery.of(context).size.height * 0.54,
+              child: Column(
+                children: [
+                  Expanded(
+                    child: SingleChildScrollView(
+                      physics: const BouncingScrollPhysics(),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Archive: $fileName',
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(fontSize: 11, color: AstraColors.textMuted),
                           ),
-                        ),
-                        child: Row(
-                          children: [
-                            Icon(
-                              strategy == RestoreStrategy.merge ? LucideIcons.circleDot : LucideIcons.circle,
-                              size: 16,
-                              color: strategy == RestoreStrategy.merge ? AstraColors.lime : AstraColors.textMuted,
-                            ),
-                            const SizedBox(width: 8),
-                            const Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
+                          const SizedBox(height: 10),
+
+                          const Text(
+                            'Select categories to restore:',
+                            style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AstraColors.textPrimary),
+                          ),
+                          const SizedBox(height: 6),
+
+                          ...availableCategories.map((cat) {
+                            final isChecked = categoriesToRestore.contains(cat);
+                            return GestureDetector(
+                              onTap: () {
+                                setDialogState(() {
+                                  if (isChecked) {
+                                    categoriesToRestore.remove(cat);
+                                  } else {
+                                    categoriesToRestore.add(cat);
+                                  }
+                                });
+                              },
+                              child: Container(
+                                margin: const EdgeInsets.only(bottom: 4),
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                                decoration: BoxDecoration(
+                                  color: isChecked ? AstraColors.surface2 : Colors.transparent,
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Row(
+                                  children: [
+                                    SizedBox(
+                                      width: 20,
+                                      height: 20,
+                                      child: Checkbox(
+                                        value: isChecked,
+                                        activeColor: AstraColors.lime,
+                                        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                        onChanged: (val) {
+                                          setDialogState(() {
+                                            if (val == true) {
+                                              categoriesToRestore.add(cat);
+                                            } else {
+                                              categoriesToRestore.remove(cat);
+                                            }
+                                          });
+                                        },
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(
+                                        cat.title,
+                                        style: TextStyle(
+                                          fontSize: 12.5,
+                                          color: isChecked ? AstraColors.textPrimary : AstraColors.textMuted,
+                                          fontWeight: isChecked ? FontWeight.w600 : FontWeight.normal,
+                                        ),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          }),
+
+                          const SizedBox(height: 12),
+                          const Text(
+                            'Restore Strategy:',
+                            style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AstraColors.textPrimary),
+                          ),
+                          const SizedBox(height: 6),
+
+                          GestureDetector(
+                            key: const Key('restore_strategy_merge'),
+                            onTap: () {
+                              AstraHaptics.selection();
+                              setDialogState(() => strategy = RestoreStrategy.merge);
+                            },
+                            child: Container(
+                              margin: const EdgeInsets.only(bottom: 6),
+                              padding: const EdgeInsets.all(10),
+                              decoration: BoxDecoration(
+                                color: strategy == RestoreStrategy.merge ? const Color(0x1ACEFF00) : AstraColors.surface0,
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(
+                                  color: strategy == RestoreStrategy.merge ? AstraColors.lime : AstraColors.borderSubtle,
+                                ),
+                              ),
+                              child: Row(
                                 children: [
-                                  Text(
-                                    'MERGE (Recommended)',
-                                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AstraColors.textPrimary),
+                                  Icon(
+                                    strategy == RestoreStrategy.merge ? LucideIcons.circleDot : LucideIcons.circle,
+                                    size: 16,
+                                    color: strategy == RestoreStrategy.merge ? AstraColors.lime : AstraColors.textMuted,
                                   ),
-                                  Text(
-                                    'Preserves newer local edits and combines data.',
-                                    style: TextStyle(fontSize: 10, color: AstraColors.textMuted),
+                                  const SizedBox(width: 8),
+                                  const Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          'MERGE (Recommended)',
+                                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AstraColors.textPrimary),
+                                        ),
+                                        Text(
+                                          'Preserves newer local edits and combines data.',
+                                          style: TextStyle(fontSize: 10, color: AstraColors.textMuted),
+                                        ),
+                                      ],
+                                    ),
                                   ),
                                 ],
                               ),
                             ),
-                          ],
-                        ),
-                      ),
-                    ),
-
-                    GestureDetector(
-                      key: const Key('restore_strategy_replace'),
-                      onTap: () {
-                        AstraHaptics.selection();
-                        setDialogState(() => strategy = RestoreStrategy.replaceSelected);
-                      },
-                      child: Container(
-                        padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(
-                          color: strategy == RestoreStrategy.replaceSelected ? const Color(0x1AFF0055) : AstraColors.surface0,
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(
-                            color: strategy == RestoreStrategy.replaceSelected ? AstraColors.red : AstraColors.borderSubtle,
                           ),
-                        ),
-                        child: Row(
-                          children: [
-                            Icon(
-                              strategy == RestoreStrategy.replaceSelected ? LucideIcons.circleDot : LucideIcons.circle,
-                              size: 16,
-                              color: strategy == RestoreStrategy.replaceSelected ? AstraColors.red : AstraColors.textMuted,
-                            ),
-                            const SizedBox(width: 8),
-                            const Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
+
+                          GestureDetector(
+                            key: const Key('restore_strategy_replace'),
+                            onTap: () {
+                              AstraHaptics.selection();
+                              setDialogState(() => strategy = RestoreStrategy.replaceSelected);
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.all(10),
+                              decoration: BoxDecoration(
+                                color: strategy == RestoreStrategy.replaceSelected ? const Color(0x1AFF0055) : AstraColors.surface0,
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(
+                                  color: strategy == RestoreStrategy.replaceSelected ? AstraColors.red : AstraColors.borderSubtle,
+                                ),
+                              ),
+                              child: Row(
                                 children: [
-                                  Text(
-                                    'REPLACE SELECTED DATA',
-                                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AstraColors.red),
+                                  Icon(
+                                    strategy == RestoreStrategy.replaceSelected ? LucideIcons.circleDot : LucideIcons.circle,
+                                    size: 16,
+                                    color: strategy == RestoreStrategy.replaceSelected ? AstraColors.red : AstraColors.textMuted,
                                   ),
-                                  Text(
-                                    '⚠️ Replaces local records for chosen categories.',
-                                    style: TextStyle(fontSize: 10, color: AstraColors.textMuted),
+                                  const SizedBox(width: 8),
+                                  const Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          'REPLACE SELECTED DATA',
+                                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AstraColors.red),
+                                        ),
+                                        Text(
+                                          '⚠️ Replaces local records for chosen categories.',
+                                          style: TextStyle(fontSize: 10, color: AstraColors.textMuted),
+                                        ),
+                                      ],
+                                    ),
                                   ),
                                 ],
                               ),
                             ),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
             actions: [
@@ -624,13 +697,13 @@ class _AstraBackupSheetState extends ConsumerState<AstraBackupSheet> {
         setState(() {
           _isProcessing = false;
           _isSuccess = true;
-          _statusMessage = 'Encrypted backup saved successfully:\n$fileName\n($savedPath)';
+          _statusMessage = 'Backup saved:\n$fileName\n($savedPath)';
         });
       } else {
         setState(() {
           _isProcessing = false;
           _isSuccess = true;
-          _statusMessage = 'Encrypted backup created: $fileName';
+          _statusMessage = 'Backup created: $fileName';
         });
       }
 
@@ -724,207 +797,238 @@ class _AstraBackupSheetState extends ConsumerState<AstraBackupSheet> {
     }
   }
 
+  Widget _buildCompactCategoryTile(AstraBackupCategory cat) {
+    final isSelected = _selectedCategories.contains(cat);
+    return GestureDetector(
+      key: Key('backup_category_${cat.id}'),
+      onTap: () => _toggleCategory(cat),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 4),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: isSelected ? AstraColors.surface1 : AstraColors.surface0,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: isSelected ? AstraColors.borderSubtle : Colors.transparent),
+        ),
+        child: Row(
+          children: [
+            SizedBox(
+              width: 22,
+              height: 22,
+              child: Checkbox(
+                value: isSelected,
+                activeColor: AstraColors.lime,
+                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                onChanged: (_) => _toggleCategory(cat),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                cat.title,
+                style: TextStyle(
+                  fontSize: 12.5,
+                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                  color: isSelected ? AstraColors.textPrimary : AstraColors.textMuted,
+                ),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            if (cat.isDefaultSelected)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: const Color(0x1ACEFF00),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: const Text('CORE', style: TextStyle(fontSize: 8.5, fontWeight: FontWeight.bold, color: AstraColors.lime)),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStatusBanner() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: _isSuccess ? const Color(0x1ACEFF00) : AstraColors.red.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+          color: _isSuccess ? const Color(0x4DCEFF00) : AstraColors.red.withValues(alpha: 0.4),
+        ),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(
+            _isSuccess ? LucideIcons.circleCheck : LucideIcons.circleX,
+            size: 15,
+            color: _isSuccess ? AstraColors.lime : AstraColors.red,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              _statusMessage!,
+              style: TextStyle(
+                fontSize: 11.5,
+                color: _isSuccess ? AstraColors.lime : AstraColors.red,
+                height: 1.4,
+              ),
+            ),
+          ),
+          const SizedBox(width: 6),
+          GestureDetector(
+            onTap: () {
+              AstraHaptics.light();
+              setState(() => _statusMessage = null);
+            },
+            child: Icon(
+              LucideIcons.x,
+              size: 13,
+              color: _isSuccess ? AstraColors.lime : AstraColors.red,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final statsAsync = ref.watch(databaseStatsProvider);
+    final coreCategories = AstraBackupCategory.values.where((c) => c.isDefaultSelected).toList();
+    final optionalCategories = AstraBackupCategory.values.where((c) => !c.isDefaultSelected).toList();
 
     return SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(20, 10, 20, 24),
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  const Icon(LucideIcons.shieldCheck, color: AstraColors.lime, size: 24),
-                  const SizedBox(width: 10),
-                  Text('DATA & ENCRYPTED BACKUP', style: AstraText.displayM(size: 20)),
-                ],
-              ),
-              const SizedBox(height: 6),
-              Text(
-                '100% on-device SQLite with AES-256-GCM encrypted portable backups and automatic Android backup safety.',
-                style: AstraText.body(size: 12.5, color: AstraColors.textSecondary),
-              ),
-              const SizedBox(height: 16),
-
-              // Live Database Stats Card
-              AstraCard(
-                padding: const EdgeInsets.all(16),
-                child: statsAsync.when(
-                  data: (stats) => Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text('ASTRA LOCAL DATA', style: AstraText.label(size: 11, color: AstraColors.cyan)),
-                          Text(stats.formattedSize, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AstraColors.lime)),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceAround,
-                        children: [
-                          _StatPill(label: 'TASKS', value: '${stats.taskCount}'),
-                          _StatPill(label: 'MESSAGES', value: '${stats.messageCount}'),
-                          _StatPill(label: 'MEMORIES', value: '${stats.memoryCount}'),
-                          _StatPill(label: 'ALARMS', value: '${stats.reminderCount}'),
-                        ],
-                      ),
-                    ],
-                  ),
-                  loading: () => const Center(child: CircularProgressIndicator()),
-                  error: (e, _) => Text('Error loading stats: $e', style: const TextStyle(color: AstraColors.red)),
-                ),
-              ),
-              const SizedBox(height: 16),
-
-              // Selective Category Checklist Section
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text(
-                    'WHAT DO YOU WANT TO BACK UP?',
-                    style: TextStyle(color: AstraColors.cyan, fontSize: 11, fontWeight: FontWeight.w700, letterSpacing: 0.8),
-                  ),
-                  Row(
-                    children: [
-                      GestureDetector(
-                        onTap: _selectAll,
-                        child: const Text('Select All', style: TextStyle(color: AstraColors.lime, fontSize: 11, fontWeight: FontWeight.w600)),
-                      ),
-                      const SizedBox(width: 10),
-                      GestureDetector(
-                        onTap: _selectNone,
-                        child: const Text('Clear', style: TextStyle(color: AstraColors.textMuted, fontSize: 11)),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-
-              ...AstraBackupCategory.values.map((cat) {
-                final isSelected = _selectedCategories.contains(cat);
-                return GestureDetector(
-                  onTap: () => _toggleCategory(cat),
-                  child: Container(
-                    margin: const EdgeInsets.only(bottom: 6),
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: isSelected ? AstraColors.surface1 : AstraColors.surface0,
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: isSelected ? AstraColors.borderSubtle : Colors.transparent),
-                    ),
-                    child: Row(
+      child: Container(
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.of(context).size.height * 0.86,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Scrollable Content
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
                       children: [
-                        Checkbox(
-                          value: isSelected,
-                          activeColor: AstraColors.lime,
-                          onChanged: (_) => _toggleCategory(cat),
-                        ),
-                        const SizedBox(width: 4),
+                        const Icon(LucideIcons.shieldCheck, color: AstraColors.lime, size: 22),
+                        const SizedBox(width: 10),
                         Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(cat.title, style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: AstraColors.textPrimary)),
-                              Text(cat.description, style: const TextStyle(fontSize: 10, color: AstraColors.textMuted)),
-                            ],
+                          child: Text(
+                            'BACKUP DATA',
+                            style: AstraText.displayM(size: 20),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
                       ],
                     ),
-                  ),
-                );
-              }),
-
-              const SizedBox(height: 12),
-
-              // Estimated size & category count
-              statsAsync.maybeWhen(
-                data: (stats) => Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: AstraColors.surface1,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        '${_selectedCategories.length} of ${AstraBackupCategory.values.length} categories selected',
-                        style: const TextStyle(fontSize: 11, color: AstraColors.textSecondary),
-                      ),
-                      Text(
-                        'Est. size: ${stats.formatBytes(stats.estimateSelectedSize(_selectedCategories))}',
-                        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AstraColors.cyan),
-                      ),
-                    ],
-                  ),
-                ),
-                orElse: () => const SizedBox.shrink(),
-              ),
-
-              const SizedBox(height: 16),
-
-              // Status message banner — icon + dismiss
-              if (_statusMessage != null) ...[
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                  decoration: BoxDecoration(
-                    color: _isSuccess ? const Color(0x1ACEFF00) : AstraColors.red.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: _isSuccess ? const Color(0x4DCEFF00) : AstraColors.red.withValues(alpha: 0.4),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Protect your ASTRA data with AES-256-GCM encryption.',
+                      style: AstraText.body(size: 12.5, color: AstraColors.textSecondary),
                     ),
-                  ),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Icon(
-                        _isSuccess ? LucideIcons.circleCheck : LucideIcons.circleX,
-                        size: 15,
-                        color: _isSuccess ? AstraColors.lime : AstraColors.red,
+                    const SizedBox(height: 12),
+
+                    // Live Database Stats / Selection Summary
+                    statsAsync.maybeWhen(
+                      data: (stats) => Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: AstraColors.surface1,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: AstraColors.borderSubtle),
+                        ),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                '${_selectedCategories.length} of ${AstraBackupCategory.values.length} categories',
+                                style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: AstraColors.textPrimary),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              '~${stats.formatBytes(stats.estimateSelectedSize(_selectedCategories))}',
+                              style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold, color: AstraColors.cyan),
+                            ),
+                          ],
+                        ),
                       ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Text(
-                          _statusMessage!,
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: _isSuccess ? AstraColors.lime : AstraColors.red,
-                            height: 1.45,
+                      orElse: () => const SizedBox.shrink(),
+                    ),
+                    const SizedBox(height: 14),
+
+                    // Header + Select All / Clear
+                    Row(
+                      children: [
+                        const Expanded(
+                          child: Text(
+                            'CORE ASTRA DATA',
+                            style: TextStyle(color: AstraColors.cyan, fontSize: 11, fontWeight: FontWeight.w700, letterSpacing: 0.8),
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
-                      ),
-                      const SizedBox(width: 6),
-                      GestureDetector(
-                        onTap: () {
-                          AstraHaptics.light();
-                          setState(() => _statusMessage = null);
-                        },
-                        child: Icon(
-                          LucideIcons.x,
-                          size: 13,
-                          color: _isSuccess ? AstraColors.lime : AstraColors.red,
+                        const SizedBox(width: 8),
+                        GestureDetector(
+                          key: const Key('backup_select_all_button'),
+                          onTap: _selectAll,
+                          child: const Text('SELECT ALL', style: TextStyle(color: AstraColors.lime, fontSize: 10.5, fontWeight: FontWeight.w700)),
                         ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 16),
-              ],
+                        const SizedBox(width: 10),
+                        GestureDetector(
+                          key: const Key('backup_clear_button'),
+                          onTap: _selectNone,
+                          child: const Text('CLEAR', style: TextStyle(color: AstraColors.textMuted, fontSize: 10.5, fontWeight: FontWeight.w700)),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
 
-              // Action Buttons
-              Row(
+                    // Core Categories
+                    ...coreCategories.map((cat) => _buildCompactCategoryTile(cat)),
+
+                    const SizedBox(height: 10),
+                    const Text(
+                      'OPTIONAL DATA',
+                      style: TextStyle(color: AstraColors.textMuted, fontSize: 10.5, fontWeight: FontWeight.w700, letterSpacing: 0.8),
+                    ),
+                    const SizedBox(height: 6),
+
+                    // Optional Categories
+                    ...optionalCategories.map((cat) => _buildCompactCategoryTile(cat)),
+
+                    if (_statusMessage != null) ...[
+                      const SizedBox(height: 12),
+                      _buildStatusBanner(),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+
+            // ── STICKY PINNED BOTTOM ACTION BAR ──
+            Container(
+              padding: const EdgeInsets.fromLTRB(16, 10, 16, 16),
+              decoration: const BoxDecoration(
+                color: AstraColors.surface0,
+                border: Border(top: BorderSide(color: AstraColors.borderSubtle)),
+              ),
+              child: Row(
                 children: [
                   Expanded(
+                    flex: 3,
                     child: Astra3DButton(
+                      key: const Key('backup_now_button'),
                       label: _isProcessing ? 'Working…' : 'BACK UP NOW',
                       icon: LucideIcons.lock,
                       palette: AstraMaterials.lime,
@@ -932,10 +1036,12 @@ class _AstraBackupSheetState extends ConsumerState<AstraBackupSheet> {
                       onTap: _isProcessing ? null : _handleBackup,
                     ),
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: 8),
                   Expanded(
+                    flex: 2,
                     child: Astra3DButton(
-                      label: 'RESTORE DATA',
+                      key: const Key('restore_data_button'),
+                      label: 'RESTORE',
                       icon: LucideIcons.keyRound,
                       palette: AstraMaterials.neutral,
                       height: 48,
@@ -944,34 +1050,9 @@ class _AstraBackupSheetState extends ConsumerState<AstraBackupSheet> {
                   ),
                 ],
               ),
-            ],
-          ),
+            ),
+          ],
         ),
-      ),
-    );
-  }
-}
-
-class _StatPill extends StatelessWidget {
-  final String label;
-  final String value;
-  const _StatPill({required this.label, required this.value});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: AstraColors.surface0,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: AstraColors.borderSubtle),
-      ),
-      child: Column(
-        children: [
-          Text(value, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: AstraColors.textPrimary)),
-          const SizedBox(height: 3),
-          Text(label, style: const TextStyle(fontSize: 9, color: AstraColors.textMuted, letterSpacing: 0.5)),
-        ],
       ),
     );
   }
@@ -985,12 +1066,20 @@ class _DetailRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 2),
+      padding: const EdgeInsets.symmetric(vertical: 3),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(label, style: const TextStyle(fontSize: 12, color: AstraColors.textMuted)),
-          Text(value, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AstraColors.textPrimary)),
+          const SizedBox(width: 8),
+          Flexible(
+            child: Text(
+              value,
+              textAlign: TextAlign.end,
+              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AstraColors.textPrimary),
+            ),
+          ),
         ],
       ),
     );

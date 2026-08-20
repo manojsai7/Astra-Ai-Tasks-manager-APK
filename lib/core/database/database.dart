@@ -130,13 +130,32 @@ class Reminders extends Table {
   Set<Column> get primaryKey => {id};
 }
 
+/// Local SQLite table schema for Notes.
+@DataClassName('NoteEntry')
+class Notes extends Table {
+  TextColumn get id => text()();
+  TextColumn get title => text()();
+  TextColumn get body => text()();
+  DateTimeColumn get createdAt => dateTime()();
+  DateTimeColumn get updatedAt => dateTime()();
+  BoolColumn get isPinned => boolean().withDefault(const Constant(false))();
+  BoolColumn get isArchived => boolean().withDefault(const Constant(false))();
+  TextColumn get tagsJson => text().withDefault(const Constant('[]'))();
+  TextColumn get organization => text().nullable()();
+  TextColumn get checklistJson => text().withDefault(const Constant('[]'))();
+  TextColumn get linksJson => text().withDefault(const Constant('[]'))();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
 /// The local application database.
-@DriftDatabase(tables: [InboxItems, Tasks, PanchangEvents, RitualRules, TaskContexts, ChatSessions, ChatMessages, Reminders])
+@DriftDatabase(tables: [InboxItems, Tasks, PanchangEvents, RitualRules, TaskContexts, ChatSessions, ChatMessages, Reminders, Notes])
 class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 10;
+  int get schemaVersion => 11;
 
   Future<bool> _tableExists(String tableName) async {
     try {
@@ -227,8 +246,34 @@ class AppDatabase extends _$AppDatabase {
       if (from < 10) {
         await _safeAddColumn(m, tasks, tasks.dueTime);
       }
+      if (from < 11) {
+        await _safeCreateTable(m, notes);
+      }
     },
   );
+
+  // --- Note Queries ---
+
+  Future<List<NoteEntry>> getAllNotes() {
+    return (select(notes)
+          ..orderBy([
+            (n) => OrderingTerm.desc(n.isPinned),
+            (n) => OrderingTerm.desc(n.updatedAt),
+          ]))
+        .get();
+  }
+
+  Future<NoteEntry?> getNoteById(String id) {
+    return (select(notes)..where((n) => n.id.equals(id))).getSingleOrNull();
+  }
+
+  Future<void> upsertNote(NotesCompanion entry) {
+    return into(notes).insertOnConflictUpdate(entry);
+  }
+
+  Future<int> deleteNoteById(String id) {
+    return (delete(notes)..where((n) => n.id.equals(id))).go();
+  }
 
   // --- Reminder Queries ---
 

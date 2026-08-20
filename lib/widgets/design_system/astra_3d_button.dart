@@ -114,20 +114,27 @@ class Astra3DButton extends StatelessWidget {
     final fgColor     = palette?.content ?? textColor ?? _fgFor(faceColor);
 
     final content = child ??
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            if (icon != null) ...[
-              Icon(icon, color: fgColor, size: 18),
-              const SizedBox(width: 8),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              if (icon != null) ...[
+                Icon(icon, color: fgColor, size: 18),
+                const SizedBox(width: 6),
+              ],
+              if (label != null)
+                Flexible(
+                  child: Text(
+                    label!.toUpperCase(),
+                    style: AstraText.label(color: fgColor, size: 11),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
             ],
-            if (label != null)
-              Text(
-                label!.toUpperCase(),
-                style: AstraText.label(color: fgColor, size: 11),
-              ),
-          ],
+          ),
         );
 
     return SizedBox(

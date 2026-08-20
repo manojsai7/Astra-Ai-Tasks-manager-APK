@@ -82,6 +82,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen>
           _exactAlarmGranted = false;
         case ReminderReadinessState.notificationPermissionRequired:
         case ReminderReadinessState.restricted:
+        case ReminderReadinessState.unknown:
           _notificationGranted = false;
           _exactAlarmGranted = false;
       }
