@@ -26,6 +26,11 @@ class _ProfileSetupGateState extends ConsumerState<ProfileSetupGate> {
   Future<void> _maybePrompt() async {
     if (!mounted || _promptShown) return;
     _promptShown = true;
+
+    final notifier = ref.read(astraProfileProvider.notifier);
+    await notifier.load();
+    if (!mounted) return;
+
     final prefs = await SharedPreferences.getInstance();
     if (prefs.getBool('astra_profile_prompt_seen') ?? false) return;
 
