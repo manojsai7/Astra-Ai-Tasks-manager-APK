@@ -3,6 +3,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:intl/intl.dart';
 import '../../models/task.dart';
 import '../../services/haptics/astra_haptics.dart';
+import '../../services/task/astra_task_filter.dart';
 import '../../theme/app_theme.dart';
 
 /// Clean, high-density tactile task row conforming to ASTRA UX 2.0.
@@ -24,17 +25,13 @@ class AstraTaskCard extends StatelessWidget {
   }) : super(key: ValueKey(task.id));
 
   Color _priorityColor() => switch (task.priority.toLowerCase()) {
-        'urgent' => const Color(0xFFA855F7),
+        'urgent' || 'critical' => const Color(0xFFA855F7),
         'high' => AstraColors.red,
         'medium' => AstraColors.amber,
         _ => AstraColors.cyan,
       };
 
-  bool get _isOverdue {
-    if (task.isCompleted || task.dueDate == null) return false;
-    final now = DateTime.now();
-    return task.dueDate!.isBefore(DateTime(now.year, now.month, now.day));
-  }
+  bool get _isOverdue => AstraTaskFilter.isOverdue(task);
 
   /// Returns true if the description is useful, non-empty, non-redundant, and non-malformed.
   bool get _shouldShowDescription {

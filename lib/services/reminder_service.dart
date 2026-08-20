@@ -7,6 +7,7 @@ import 'package:uuid/uuid.dart';
 import '../core/database/database.dart';
 import '../core/reminders/reminder.dart';
 import '../core/reminders/reminder_strategy.dart';
+import '../core/scheduling/astra_schedule_resolver.dart';
 import '../core/time/astra_time_service.dart';
 import 'assistant/astra_recurrence_engine.dart';
 import 'notification_service.dart';
@@ -345,7 +346,11 @@ class ReminderService {
       return;
     }
 
-    final nextOcc = recurrenceEngine.nextOccurrence(rule, afterTime);
+    final nextOcc = AstraScheduleResolver.resolveNextOccurrenceAfter(
+      rule,
+      afterTime,
+      now: DateTime.now(),
+    );
 
     if (nextOcc != null) {
       debugPrint('[ASTRA RECURRENCE]\ntask=${task.id}\ncurrent=$afterTime\nnext=$nextOcc\naction=ADVANCE');

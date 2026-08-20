@@ -1,348 +1,384 @@
 import 'package:flutter/material.dart';
-import '../../../../app/router/router.dart';
-import '../../../tasks/domain/services/task_extraction_service.dart';
-import '../../domain/entities/inbox_item.dart';
-import '../../domain/repositories/inbox_repository.dart';
-import '../../domain/usecases/inbox_ingestion_use_case.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
+import '../../../../features/scheduler/data/services/gmail_sync_service.dart';
+import '../../../../models/task_intent.dart';
+import '../../../../providers/assistant_provider.dart';
+import '../../../../providers/astra_command_executor_provider.dart';
+import '../../../../providers/google_calendar_writer_provider.dart';
+import '../../../../providers/reminder_provider.dart';
+import '../../../../services/haptics/astra_haptics.dart';
+import '../../../../theme/app_theme.dart';
+import '../../../../widgets/design_system/astra_3d_button.dart';
+import '../../../notes/data/repositories/astra_note_repository.dart';
+import '../../../notes/domain/models/astra_note.dart';
 
-/// Screen where users can manually input text or review incoming Android shares.
-class InboxScreen extends StatefulWidget {
-  final InboxIngestionUseCase useCase;
-  final InboxRepository repository;
-  final TaskExtractionService extractionService;
-  final String? prefilledText;
+final inboxEmailsProvider = FutureProvider.autoDispose<List<GmailMessageData>>((ref) async {
+  final authService = ref.read(googleAuthServiceProvider);
+  final client = await authService.getAuthenticatedClient();
+  if (client == null) return const [];
+  final gmailService = ref.read(gmailSyncServiceProvider);
+  return await gmailService.fetchRelevantEmails(client, maxResults: 20);
+});
 
-  const InboxScreen({
-    super.key,
-    required this.useCase,
-    required this.repository,
-    required this.extractionService,
-    this.prefilledText,
-  });
+class InboxScreen extends ConsumerStatefulWidget {
+  const InboxScreen({super.key});
 
   @override
-  State<InboxScreen> createState() => _InboxScreenState();
+  ConsumerState<InboxScreen> createState() => _InboxScreenState();
 }
 
-class _InboxScreenState extends State<InboxScreen> {
-  late final TextEditingController _controller;
-  bool _isConfirmingShare = false;
+class _InboxScreenState extends ConsumerState<InboxScreen> {
+  String? _statusMessage;
+  bool _isSuccessMessage = true;
 
-  @override
-  void initState() {
-    super.initState();
-    _controller = TextEditingController(text: widget.prefilledText);
-    _isConfirmingShare =
-        widget.prefilledText != null && widget.prefilledText!.isNotEmpty;
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  Future<void> _extractTask(InboxItem item) async {
-    showDialog<void>(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => const Center(child: CircularProgressIndicator()),
+  Future<void> _handleCreateTaskFromEmail(GmailMessageData msg) async {
+    AstraHaptics.medium();
+    final intent = TaskIntent(
+      title: msg.subject.isNotEmpty ? msg.subject : 'Email Task',
+      description: 'From: ${msg.sender}\n\n${msg.snippet}',
+      source: 'gmail',
     );
 
+    final executor = ref.read(astraCommandExecutorProvider);
+    final result = await executor.executeTaskIntent(
+      ref: ref,
+      intent: intent,
+    );
+
+    setState(() {
+      _statusMessage = 'Task Created! "${result.title}"';
+      _isSuccessMessage = true;
+    });
+  }
+
+  Future<void> _handleRemindFromEmail(GmailMessageData msg) async {
+    AstraHaptics.medium();
+    final now = DateTime.now();
+    final scheduledAt = now.add(const Duration(hours: 3));
+
+    final reminderService = ref.read(reminderServiceProvider);
+    await reminderService.scheduleReminder(
+      taskId: msg.id,
+      taskTitle: 'Email: ${msg.subject}',
+      scheduledAt: scheduledAt,
+    );
+
+    setState(() {
+      _statusMessage = 'Reminder set for 3 hours from now!';
+      _isSuccessMessage = true;
+    });
+  }
+
+  Future<void> _handleAddToCalendar(GmailMessageData msg) async {
+    AstraHaptics.medium();
+    final client = await ref.read(googleAuthServiceProvider).getAuthenticatedClient();
+    if (client == null) {
+      setState(() {
+        _statusMessage = 'Google Sign-In required for Google Calendar sync.';
+        _isSuccessMessage = false;
+      });
+      return;
+    }
+
     try {
-      final proposal = await widget.extractionService.extractTask(
-        item.rawText,
-        item.receivedAt,
+      final writer = ref.read(googleCalendarWriterServiceProvider);
+      final now = DateTime.now().add(const Duration(days: 1));
+
+      await writer.createEvent(
+        client,
+        title: msg.subject.isNotEmpty ? msg.subject : 'Email Follow-up',
+        startTime: now,
+        endTime: now.add(const Duration(hours: 1)),
+        description: 'Sender: ${msg.sender}\n${msg.snippet}',
       );
 
-      if (mounted) {
-        Navigator.of(context).pop(); // Pop loading dialog
-      }
-
-      if (mounted) {
-        await Navigator.of(context).pushNamed(
-          AstraRoutes.taskReview,
-          arguments: {
-            'proposal': proposal,
-            'inboxItemId': item.id,
-            'inboxReceivedAt': item.receivedAt,
-          },
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        Navigator.of(context).pop(); // Pop loading dialog
-      }
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Extraction failed: $e')));
-      }
-    }
-  }
-
-  Future<void> _submit() async {
-    final text = _controller.text;
-    if (text.trim().isEmpty) return;
-
-    try {
-      final source = _isConfirmingShare
-          ? InboxSource.androidShare
-          : InboxSource.manual;
-
-      await widget.useCase(text, source);
-      _controller.clear();
       setState(() {
-        _isConfirmingShare = false;
+        _statusMessage = 'Added to Google Calendar!';
+        _isSuccessMessage = true;
       });
-
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('Added to Inbox')));
-      }
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Failed to ingest: $e')));
-      }
+      setState(() {
+        _statusMessage = 'Calendar Error: $e';
+        _isSuccessMessage = false;
+      });
     }
   }
 
-  void _cancelConfirmation() {
-    _controller.clear();
+  Future<void> _handleSaveToNotes(GmailMessageData msg) async {
+    AstraHaptics.medium();
+    final newNote = AstraNote.create(
+      title: 'Email: ${msg.subject}',
+      body: 'From: ${msg.sender}\nDate: ${DateFormat('yyyy-MM-dd HH:mm').format(msg.date)}\n\n${msg.snippet}',
+      tags: ['Email'],
+      organization: 'Inbox',
+    );
+
+    await ref.read(noteNotifierProvider.notifier).createNote(newNote);
+
     setState(() {
-      _isConfirmingShare = false;
+      _statusMessage = 'Saved to Notes!';
+      _isSuccessMessage = true;
     });
-    if (mounted) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Share cancelled')));
-    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
+    final emailsAsync = ref.watch(inboxEmailsProvider);
 
     return Scaffold(
-      backgroundColor: colorScheme.surface,
-      appBar: AppBar(title: const Text('Inbox')),
+      backgroundColor: AstraColors.background,
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // Ingestion / Share Confirmation Area
-              if (_isConfirmingShare)
-                _buildShareConfirmationCard(colorScheme, theme)
-              else
-                _buildManualInputRow(colorScheme),
-              const SizedBox(height: 24),
+        bottom: false,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Header
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 14, 20, 4),
+              child: Row(
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('ASTRA', style: AstraText.label(size: 11, color: AstraColors.cyan)),
+                      const SizedBox(height: 2),
+                      Text('INBOX', style: AstraText.displayL(size: 32)),
+                    ],
+                  ),
+                  const Spacer(),
+                  IconButton(
+                    icon: const Icon(LucideIcons.refreshCw, color: AstraColors.lime, size: 20),
+                    onPressed: () => ref.refresh(inboxEmailsProvider),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 6),
 
-              // Recent items header
-              Text(
-                'Recent Raw Items',
-                style: theme.textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w600,
-                  color: colorScheme.onSurface,
+            if (_statusMessage != null) ...[
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: _isSuccessMessage ? const Color(0x1ACEFF00) : AstraColors.red.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: _isSuccessMessage ? AstraColors.lime : AstraColors.red),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        _isSuccessMessage ? LucideIcons.circleCheck : LucideIcons.circleX,
+                        size: 14,
+                        color: _isSuccessMessage ? AstraColors.lime : AstraColors.red,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          _statusMessage!,
+                          style: TextStyle(fontSize: 11.5, color: _isSuccessMessage ? AstraColors.lime : AstraColors.red),
+                        ),
+                      ),
+                      GestureDetector(
+                        onTap: () => setState(() => _statusMessage = null),
+                        child: const Icon(LucideIcons.x, size: 12, color: AstraColors.textMuted),
+                      ),
+                    ],
+                  ),
                 ),
               ),
-              const SizedBox(height: 12),
+            ],
 
-              // Observed List of Items
-              Expanded(
-                child: StreamBuilder<List<InboxItem>>(
-                  stream: widget.repository.watchInboxItems(),
-                  builder: (context, snapshot) {
-                    if (snapshot.connectionState == ConnectionState.waiting) {
-                      return const Center(child: CircularProgressIndicator());
-                    }
-                    if (snapshot.hasError) {
-                      return Center(
-                        child: Text(
-                          'Error loading items: ${snapshot.error}',
-                          style: TextStyle(color: colorScheme.error),
+            Expanded(
+              child: emailsAsync.when(
+                data: (emails) {
+                  if (emails.isEmpty) {
+                    return Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(LucideIcons.inbox, size: 36, color: AstraColors.textMuted),
+                          const SizedBox(height: 12),
+                          const Text('No recent emails in Inbox', style: TextStyle(fontSize: 14, color: AstraColors.textSecondary)),
+                          const SizedBox(height: 4),
+                          const Text('Connect Google Account or tap refresh above', style: TextStyle(fontSize: 11, color: AstraColors.textMuted)),
+                          const SizedBox(height: 16),
+                          Astra3DButton(
+                            label: 'Refresh Inbox',
+                            palette: AstraMaterials.lime,
+                            height: 40,
+                            onPressed: () => ref.refresh(inboxEmailsProvider),
+                          ),
+                        ],
+                      ),
+                    );
+                  }
+
+                  return ListView.builder(
+                    physics: const BouncingScrollPhysics(),
+                    padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
+                    itemCount: emails.length,
+                    itemBuilder: (context, index) {
+                      final email = emails[index];
+                      final formattedDate = DateFormat('MMM d, h:mm a').format(email.date);
+
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 10),
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: AstraColors.surface0,
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(color: AstraColors.edgeSoft),
                         ),
-                      );
-                    }
-
-                    final items = snapshot.data ?? [];
-                    if (items.isEmpty) {
-                      return Center(
                         child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Icon(
-                              Icons.inbox_outlined,
-                              size: 48,
-                              color: colorScheme.outline,
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    email.sender,
+                                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AstraColors.cyan),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                                Text(
+                                  formattedDate,
+                                  style: const TextStyle(fontSize: 10, color: AstraColors.textMuted),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              email.subject,
+                              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AstraColors.textPrimary),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              email.snippet,
+                              style: const TextStyle(fontSize: 12, color: AstraColors.textSecondary, height: 1.3),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
                             ),
                             const SizedBox(height: 12),
-                            Text(
-                              'Your inbox is empty',
-                              style: theme.textTheme.bodyLarge?.copyWith(
-                                color: colorScheme.onSurfaceVariant,
+                            // Quick Action Buttons
+                            SingleChildScrollView(
+                              scrollDirection: Axis.horizontal,
+                              child: Row(
+                                children: [
+                                  _ActionChip(
+                                    label: 'Create Task',
+                                    icon: LucideIcons.checkSquare,
+                                    color: AstraColors.lime,
+                                    onTap: () => _handleCreateTaskFromEmail(email),
+                                  ),
+                                  const SizedBox(width: 6),
+                                  _ActionChip(
+                                    label: 'Remind Me',
+                                    icon: LucideIcons.bell,
+                                    color: AstraColors.cyan,
+                                    onTap: () => _handleRemindFromEmail(email),
+                                  ),
+                                  const SizedBox(width: 6),
+                                  _ActionChip(
+                                    label: 'Add Calendar',
+                                    icon: LucideIcons.calendar,
+                                    color: AstraColors.softGreen,
+                                    onTap: () => _handleAddToCalendar(email),
+                                  ),
+                                  const SizedBox(width: 6),
+                                  _ActionChip(
+                                    label: 'Save Note',
+                                    icon: LucideIcons.fileText,
+                                    color: AstraColors.textSecondary,
+                                    onTap: () => _handleSaveToNotes(email),
+                                  ),
+                                ],
                               ),
                             ),
                           ],
                         ),
                       );
-                    }
-
-                    return ListView.separated(
-                      itemCount: items.length,
-                      separatorBuilder: (context, index) =>
-                          const SizedBox(height: 8),
-                      itemBuilder: (context, index) {
-                        final item = items[index];
-                        final time = item.receivedAt.toLocal();
-                        final formattedTime =
-                            '${time.year}-${time.month.toString().padLeft(2, '0')}-${time.day.toString().padLeft(2, '0')} '
-                            '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}';
-
-                        return Card(
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 12,
-                            ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  item.rawText,
-                                  style: theme.textTheme.bodyLarge?.copyWith(
-                                    color: colorScheme.onSurface,
-                                  ),
-                                ),
-                                const SizedBox(height: 8),
-                                Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Text(
-                                      'Source: ${item.sourceType}',
-                                      style: theme.textTheme.labelSmall
-                                          ?.copyWith(
-                                            color: colorScheme.onSurfaceVariant,
-                                          ),
-                                    ),
-                                    Text(
-                                      formattedTime,
-                                      style: theme.textTheme.labelSmall
-                                          ?.copyWith(
-                                            color: colorScheme.onSurfaceVariant,
-                                          ),
-                                    ),
-                                  ],
-                                ),
-                                const Divider(height: 16),
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.end,
-                                  children: [
-                                    TextButton.icon(
-                                      onPressed: () => _extractTask(item),
-                                      icon: const Icon(
-                                        Icons.auto_awesome,
-                                        size: 16,
-                                      ),
-                                      label: const Text('Extract Task'),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ),
-                        );
-                      },
-                    );
-                  },
+                    },
+                  );
+                },
+                loading: () => const Center(
+                  child: CircularProgressIndicator(color: AstraColors.lime, strokeWidth: 2),
                 ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildManualInputRow(ColorScheme colorScheme) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.end,
-      children: [
-        Expanded(
-          child: TextField(
-            controller: _controller,
-            decoration: const InputDecoration(
-              hintText: 'Enter or paste raw text...',
-            ),
-            maxLines: null,
-            keyboardType: TextInputType.multiline,
-          ),
-        ),
-        const SizedBox(width: 12),
-        FilledButton.icon(
-          onPressed: _submit,
-          icon: const Icon(Icons.add),
-          label: const Text('Add'),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildShareConfirmationCard(ColorScheme colorScheme, ThemeData theme) {
-    return Card(
-      color: colorScheme.primaryContainer.withAlpha(50),
-      shape: RoundedRectangleBorder(
-        side: BorderSide(color: colorScheme.primary.withAlpha(100), width: 1),
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Row(
-              children: [
-                Icon(Icons.android_rounded, color: colorScheme.primary),
-                const SizedBox(width: 8),
-                Text(
-                  'Confirm Shared Text Ingestion',
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: colorScheme.primary,
+                error: (err, _) => Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(LucideIcons.alertCircle, color: AstraColors.amber, size: 32),
+                        const SizedBox(height: 12),
+                        Text(
+                          'Couldn\'t fetch inbox emails',
+                          style: AstraText.body(size: 14, color: AstraColors.textPrimary),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Make sure Google Sign-In is active or tap retry',
+                          style: AstraText.caption(size: 11, color: AstraColors.textMuted),
+                        ),
+                        const SizedBox(height: 16),
+                        Astra3DButton(
+                          label: 'Retry Fetch',
+                          palette: AstraMaterials.lime,
+                          height: 40,
+                          onPressed: () => ref.refresh(inboxEmailsProvider),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _controller,
-              decoration: const InputDecoration(
-                hintText: 'Review or edit shared text...',
               ),
-              maxLines: null,
-              keyboardType: TextInputType.multiline,
             ),
-            const SizedBox(height: 16),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                TextButton(
-                  onPressed: _cancelConfirmation,
-                  child: const Text('Cancel'),
-                ),
-                const SizedBox(width: 12),
-                FilledButton.icon(
-                  onPressed: _submit,
-                  icon: const Icon(Icons.check_circle_outline),
-                  label: const Text('Add to Inbox'),
-                ),
-              ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ActionChip extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  final Color color;
+  final VoidCallback onTap;
+
+  const _ActionChip({
+    required this.label,
+    required this.icon,
+    required this.color,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(color: color.withValues(alpha: 0.3)),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, size: 11, color: color),
+            const SizedBox(width: 4),
+            Text(
+              label,
+              style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: color),
             ),
           ],
         ),

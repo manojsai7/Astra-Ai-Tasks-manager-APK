@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:intl/intl.dart';
 
+import '../../core/scheduling/astra_schedule_resolver.dart';
 import '../../models/task.dart';
 import '../../providers/reminder_provider.dart';
 import '../../providers/ritual_provider.dart';
@@ -525,16 +526,19 @@ class _AstraTaskDetailSheetState extends ConsumerState<AstraTaskDetailSheet> {
         final reminderService = ref.read(reminderServiceProvider);
         await reminderService.cancelReminderForTask(updatedTask.id);
 
-        if (_reminderEnabled) {
-          final targetTime = updatedTask.effectiveTargetDate ?? updatedTask.dueDate;
-          if (targetTime != null && targetTime.isAfter(DateTime.now())) {
-            final scheduledAt = targetTime.subtract(Duration(minutes: _reminderOffsetMinutes));
-            await reminderService.scheduleReminder(
-              taskId: updatedTask.id,
-              taskTitle: updatedTask.title,
-              scheduledAt: scheduledAt.isBefore(DateTime.now()) ? DateTime.now().add(const Duration(seconds: 10)) : scheduledAt,
-            );
-          }
+        final resolved = AstraScheduleResolver.resolve(
+          task: updatedTask,
+          now: DateTime.now(),
+          reminderOffsetMinutes: _reminderOffsetMinutes,
+          reminderEnabled: _reminderEnabled,
+        );
+
+        if (resolved.shouldScheduleReminder && resolved.reminderScheduleInstant != null) {
+          await reminderService.scheduleReminder(
+            taskId: updatedTask.id,
+            taskTitle: updatedTask.title,
+            scheduledAt: resolved.reminderScheduleInstant!,
+          );
         }
 
         AstraHaptics.success();
@@ -568,16 +572,19 @@ class _AstraTaskDetailSheetState extends ConsumerState<AstraTaskDetailSheet> {
         await ref.read(taskNotifierProvider.notifier).addTask(newTask);
         ref.invalidate(taskListProvider);
 
-        if (_reminderEnabled) {
-          final targetTime = newTask.effectiveTargetDate ?? newTask.dueDate;
-          if (targetTime != null && targetTime.isAfter(DateTime.now())) {
-            final scheduledAt = targetTime.subtract(Duration(minutes: _reminderOffsetMinutes));
-            await ref.read(reminderServiceProvider).scheduleReminder(
-              taskId: newTask.id,
-              taskTitle: newTask.title,
-              scheduledAt: scheduledAt.isBefore(DateTime.now()) ? DateTime.now().add(const Duration(seconds: 10)) : scheduledAt,
-            );
-          }
+        final resolved = AstraScheduleResolver.resolve(
+          task: newTask,
+          now: DateTime.now(),
+          reminderOffsetMinutes: _reminderOffsetMinutes,
+          reminderEnabled: _reminderEnabled,
+        );
+
+        if (resolved.shouldScheduleReminder && resolved.reminderScheduleInstant != null) {
+          await ref.read(reminderServiceProvider).scheduleReminder(
+            taskId: newTask.id,
+            taskTitle: newTask.title,
+            scheduledAt: resolved.reminderScheduleInstant!,
+          );
         }
 
         AstraHaptics.success();

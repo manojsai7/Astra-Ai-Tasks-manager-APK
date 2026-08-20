@@ -4769,6 +4769,666 @@ class RemindersCompanion extends UpdateCompanion<ReminderEntry> {
   }
 }
 
+class $NotesTable extends Notes with TableInfo<$NotesTable, NoteEntry> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $NotesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _titleMeta = const VerificationMeta('title');
+  @override
+  late final GeneratedColumn<String> title = GeneratedColumn<String>(
+    'title',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _bodyMeta = const VerificationMeta('body');
+  @override
+  late final GeneratedColumn<String> body = GeneratedColumn<String>(
+    'body',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _isPinnedMeta = const VerificationMeta(
+    'isPinned',
+  );
+  @override
+  late final GeneratedColumn<bool> isPinned = GeneratedColumn<bool>(
+    'is_pinned',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_pinned" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _isArchivedMeta = const VerificationMeta(
+    'isArchived',
+  );
+  @override
+  late final GeneratedColumn<bool> isArchived = GeneratedColumn<bool>(
+    'is_archived',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_archived" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _tagsJsonMeta = const VerificationMeta(
+    'tagsJson',
+  );
+  @override
+  late final GeneratedColumn<String> tagsJson = GeneratedColumn<String>(
+    'tags_json',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('[]'),
+  );
+  static const VerificationMeta _organizationMeta = const VerificationMeta(
+    'organization',
+  );
+  @override
+  late final GeneratedColumn<String> organization = GeneratedColumn<String>(
+    'organization',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _checklistJsonMeta = const VerificationMeta(
+    'checklistJson',
+  );
+  @override
+  late final GeneratedColumn<String> checklistJson = GeneratedColumn<String>(
+    'checklist_json',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('[]'),
+  );
+  static const VerificationMeta _linksJsonMeta = const VerificationMeta(
+    'linksJson',
+  );
+  @override
+  late final GeneratedColumn<String> linksJson = GeneratedColumn<String>(
+    'links_json',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('[]'),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    title,
+    body,
+    createdAt,
+    updatedAt,
+    isPinned,
+    isArchived,
+    tagsJson,
+    organization,
+    checklistJson,
+    linksJson,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'notes';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<NoteEntry> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('title')) {
+      context.handle(
+        _titleMeta,
+        title.isAcceptableOrUnknown(data['title']!, _titleMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_titleMeta);
+    }
+    if (data.containsKey('body')) {
+      context.handle(
+        _bodyMeta,
+        body.isAcceptableOrUnknown(data['body']!, _bodyMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_bodyMeta);
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_updatedAtMeta);
+    }
+    if (data.containsKey('is_pinned')) {
+      context.handle(
+        _isPinnedMeta,
+        isPinned.isAcceptableOrUnknown(data['is_pinned']!, _isPinnedMeta),
+      );
+    }
+    if (data.containsKey('is_archived')) {
+      context.handle(
+        _isArchivedMeta,
+        isArchived.isAcceptableOrUnknown(data['is_archived']!, _isArchivedMeta),
+      );
+    }
+    if (data.containsKey('tags_json')) {
+      context.handle(
+        _tagsJsonMeta,
+        tagsJson.isAcceptableOrUnknown(data['tags_json']!, _tagsJsonMeta),
+      );
+    }
+    if (data.containsKey('organization')) {
+      context.handle(
+        _organizationMeta,
+        organization.isAcceptableOrUnknown(
+          data['organization']!,
+          _organizationMeta,
+        ),
+      );
+    }
+    if (data.containsKey('checklist_json')) {
+      context.handle(
+        _checklistJsonMeta,
+        checklistJson.isAcceptableOrUnknown(
+          data['checklist_json']!,
+          _checklistJsonMeta,
+        ),
+      );
+    }
+    if (data.containsKey('links_json')) {
+      context.handle(
+        _linksJsonMeta,
+        linksJson.isAcceptableOrUnknown(data['links_json']!, _linksJsonMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  NoteEntry map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return NoteEntry(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      title: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}title'],
+      )!,
+      body: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}body'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+      isPinned: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_pinned'],
+      )!,
+      isArchived: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_archived'],
+      )!,
+      tagsJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}tags_json'],
+      )!,
+      organization: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}organization'],
+      ),
+      checklistJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}checklist_json'],
+      )!,
+      linksJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}links_json'],
+      )!,
+    );
+  }
+
+  @override
+  $NotesTable createAlias(String alias) {
+    return $NotesTable(attachedDatabase, alias);
+  }
+}
+
+class NoteEntry extends DataClass implements Insertable<NoteEntry> {
+  final String id;
+  final String title;
+  final String body;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  final bool isPinned;
+  final bool isArchived;
+  final String tagsJson;
+  final String? organization;
+  final String checklistJson;
+  final String linksJson;
+  const NoteEntry({
+    required this.id,
+    required this.title,
+    required this.body,
+    required this.createdAt,
+    required this.updatedAt,
+    required this.isPinned,
+    required this.isArchived,
+    required this.tagsJson,
+    this.organization,
+    required this.checklistJson,
+    required this.linksJson,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['title'] = Variable<String>(title);
+    map['body'] = Variable<String>(body);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    map['is_pinned'] = Variable<bool>(isPinned);
+    map['is_archived'] = Variable<bool>(isArchived);
+    map['tags_json'] = Variable<String>(tagsJson);
+    if (!nullToAbsent || organization != null) {
+      map['organization'] = Variable<String>(organization);
+    }
+    map['checklist_json'] = Variable<String>(checklistJson);
+    map['links_json'] = Variable<String>(linksJson);
+    return map;
+  }
+
+  NotesCompanion toCompanion(bool nullToAbsent) {
+    return NotesCompanion(
+      id: Value(id),
+      title: Value(title),
+      body: Value(body),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+      isPinned: Value(isPinned),
+      isArchived: Value(isArchived),
+      tagsJson: Value(tagsJson),
+      organization: organization == null && nullToAbsent
+          ? const Value.absent()
+          : Value(organization),
+      checklistJson: Value(checklistJson),
+      linksJson: Value(linksJson),
+    );
+  }
+
+  factory NoteEntry.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return NoteEntry(
+      id: serializer.fromJson<String>(json['id']),
+      title: serializer.fromJson<String>(json['title']),
+      body: serializer.fromJson<String>(json['body']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+      isPinned: serializer.fromJson<bool>(json['isPinned']),
+      isArchived: serializer.fromJson<bool>(json['isArchived']),
+      tagsJson: serializer.fromJson<String>(json['tagsJson']),
+      organization: serializer.fromJson<String?>(json['organization']),
+      checklistJson: serializer.fromJson<String>(json['checklistJson']),
+      linksJson: serializer.fromJson<String>(json['linksJson']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'title': serializer.toJson<String>(title),
+      'body': serializer.toJson<String>(body),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+      'isPinned': serializer.toJson<bool>(isPinned),
+      'isArchived': serializer.toJson<bool>(isArchived),
+      'tagsJson': serializer.toJson<String>(tagsJson),
+      'organization': serializer.toJson<String?>(organization),
+      'checklistJson': serializer.toJson<String>(checklistJson),
+      'linksJson': serializer.toJson<String>(linksJson),
+    };
+  }
+
+  NoteEntry copyWith({
+    String? id,
+    String? title,
+    String? body,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+    bool? isPinned,
+    bool? isArchived,
+    String? tagsJson,
+    Value<String?> organization = const Value.absent(),
+    String? checklistJson,
+    String? linksJson,
+  }) => NoteEntry(
+    id: id ?? this.id,
+    title: title ?? this.title,
+    body: body ?? this.body,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+    isPinned: isPinned ?? this.isPinned,
+    isArchived: isArchived ?? this.isArchived,
+    tagsJson: tagsJson ?? this.tagsJson,
+    organization: organization.present ? organization.value : this.organization,
+    checklistJson: checklistJson ?? this.checklistJson,
+    linksJson: linksJson ?? this.linksJson,
+  );
+  NoteEntry copyWithCompanion(NotesCompanion data) {
+    return NoteEntry(
+      id: data.id.present ? data.id.value : this.id,
+      title: data.title.present ? data.title.value : this.title,
+      body: data.body.present ? data.body.value : this.body,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+      isPinned: data.isPinned.present ? data.isPinned.value : this.isPinned,
+      isArchived: data.isArchived.present
+          ? data.isArchived.value
+          : this.isArchived,
+      tagsJson: data.tagsJson.present ? data.tagsJson.value : this.tagsJson,
+      organization: data.organization.present
+          ? data.organization.value
+          : this.organization,
+      checklistJson: data.checklistJson.present
+          ? data.checklistJson.value
+          : this.checklistJson,
+      linksJson: data.linksJson.present ? data.linksJson.value : this.linksJson,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('NoteEntry(')
+          ..write('id: $id, ')
+          ..write('title: $title, ')
+          ..write('body: $body, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('isPinned: $isPinned, ')
+          ..write('isArchived: $isArchived, ')
+          ..write('tagsJson: $tagsJson, ')
+          ..write('organization: $organization, ')
+          ..write('checklistJson: $checklistJson, ')
+          ..write('linksJson: $linksJson')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    title,
+    body,
+    createdAt,
+    updatedAt,
+    isPinned,
+    isArchived,
+    tagsJson,
+    organization,
+    checklistJson,
+    linksJson,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is NoteEntry &&
+          other.id == this.id &&
+          other.title == this.title &&
+          other.body == this.body &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt &&
+          other.isPinned == this.isPinned &&
+          other.isArchived == this.isArchived &&
+          other.tagsJson == this.tagsJson &&
+          other.organization == this.organization &&
+          other.checklistJson == this.checklistJson &&
+          other.linksJson == this.linksJson);
+}
+
+class NotesCompanion extends UpdateCompanion<NoteEntry> {
+  final Value<String> id;
+  final Value<String> title;
+  final Value<String> body;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> updatedAt;
+  final Value<bool> isPinned;
+  final Value<bool> isArchived;
+  final Value<String> tagsJson;
+  final Value<String?> organization;
+  final Value<String> checklistJson;
+  final Value<String> linksJson;
+  final Value<int> rowid;
+  const NotesCompanion({
+    this.id = const Value.absent(),
+    this.title = const Value.absent(),
+    this.body = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.isPinned = const Value.absent(),
+    this.isArchived = const Value.absent(),
+    this.tagsJson = const Value.absent(),
+    this.organization = const Value.absent(),
+    this.checklistJson = const Value.absent(),
+    this.linksJson = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  NotesCompanion.insert({
+    required String id,
+    required String title,
+    required String body,
+    required DateTime createdAt,
+    required DateTime updatedAt,
+    this.isPinned = const Value.absent(),
+    this.isArchived = const Value.absent(),
+    this.tagsJson = const Value.absent(),
+    this.organization = const Value.absent(),
+    this.checklistJson = const Value.absent(),
+    this.linksJson = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       title = Value(title),
+       body = Value(body),
+       createdAt = Value(createdAt),
+       updatedAt = Value(updatedAt);
+  static Insertable<NoteEntry> custom({
+    Expression<String>? id,
+    Expression<String>? title,
+    Expression<String>? body,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+    Expression<bool>? isPinned,
+    Expression<bool>? isArchived,
+    Expression<String>? tagsJson,
+    Expression<String>? organization,
+    Expression<String>? checklistJson,
+    Expression<String>? linksJson,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (title != null) 'title': title,
+      if (body != null) 'body': body,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (isPinned != null) 'is_pinned': isPinned,
+      if (isArchived != null) 'is_archived': isArchived,
+      if (tagsJson != null) 'tags_json': tagsJson,
+      if (organization != null) 'organization': organization,
+      if (checklistJson != null) 'checklist_json': checklistJson,
+      if (linksJson != null) 'links_json': linksJson,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  NotesCompanion copyWith({
+    Value<String>? id,
+    Value<String>? title,
+    Value<String>? body,
+    Value<DateTime>? createdAt,
+    Value<DateTime>? updatedAt,
+    Value<bool>? isPinned,
+    Value<bool>? isArchived,
+    Value<String>? tagsJson,
+    Value<String?>? organization,
+    Value<String>? checklistJson,
+    Value<String>? linksJson,
+    Value<int>? rowid,
+  }) {
+    return NotesCompanion(
+      id: id ?? this.id,
+      title: title ?? this.title,
+      body: body ?? this.body,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      isPinned: isPinned ?? this.isPinned,
+      isArchived: isArchived ?? this.isArchived,
+      tagsJson: tagsJson ?? this.tagsJson,
+      organization: organization ?? this.organization,
+      checklistJson: checklistJson ?? this.checklistJson,
+      linksJson: linksJson ?? this.linksJson,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (title.present) {
+      map['title'] = Variable<String>(title.value);
+    }
+    if (body.present) {
+      map['body'] = Variable<String>(body.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (isPinned.present) {
+      map['is_pinned'] = Variable<bool>(isPinned.value);
+    }
+    if (isArchived.present) {
+      map['is_archived'] = Variable<bool>(isArchived.value);
+    }
+    if (tagsJson.present) {
+      map['tags_json'] = Variable<String>(tagsJson.value);
+    }
+    if (organization.present) {
+      map['organization'] = Variable<String>(organization.value);
+    }
+    if (checklistJson.present) {
+      map['checklist_json'] = Variable<String>(checklistJson.value);
+    }
+    if (linksJson.present) {
+      map['links_json'] = Variable<String>(linksJson.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('NotesCompanion(')
+          ..write('id: $id, ')
+          ..write('title: $title, ')
+          ..write('body: $body, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('isPinned: $isPinned, ')
+          ..write('isArchived: $isArchived, ')
+          ..write('tagsJson: $tagsJson, ')
+          ..write('organization: $organization, ')
+          ..write('checklistJson: $checklistJson, ')
+          ..write('linksJson: $linksJson, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -4780,6 +5440,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $ChatSessionsTable chatSessions = $ChatSessionsTable(this);
   late final $ChatMessagesTable chatMessages = $ChatMessagesTable(this);
   late final $RemindersTable reminders = $RemindersTable(this);
+  late final $NotesTable notes = $NotesTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -4793,6 +5454,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     chatSessions,
     chatMessages,
     reminders,
+    notes,
   ];
 }
 
@@ -7558,6 +8220,319 @@ typedef $$RemindersTableProcessedTableManager =
       ReminderEntry,
       PrefetchHooks Function({bool taskId})
     >;
+typedef $$NotesTableCreateCompanionBuilder =
+    NotesCompanion Function({
+      required String id,
+      required String title,
+      required String body,
+      required DateTime createdAt,
+      required DateTime updatedAt,
+      Value<bool> isPinned,
+      Value<bool> isArchived,
+      Value<String> tagsJson,
+      Value<String?> organization,
+      Value<String> checklistJson,
+      Value<String> linksJson,
+      Value<int> rowid,
+    });
+typedef $$NotesTableUpdateCompanionBuilder =
+    NotesCompanion Function({
+      Value<String> id,
+      Value<String> title,
+      Value<String> body,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+      Value<bool> isPinned,
+      Value<bool> isArchived,
+      Value<String> tagsJson,
+      Value<String?> organization,
+      Value<String> checklistJson,
+      Value<String> linksJson,
+      Value<int> rowid,
+    });
+
+class $$NotesTableFilterComposer extends Composer<_$AppDatabase, $NotesTable> {
+  $$NotesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get title => $composableBuilder(
+    column: $table.title,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get body => $composableBuilder(
+    column: $table.body,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isPinned => $composableBuilder(
+    column: $table.isPinned,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isArchived => $composableBuilder(
+    column: $table.isArchived,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get tagsJson => $composableBuilder(
+    column: $table.tagsJson,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get organization => $composableBuilder(
+    column: $table.organization,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get checklistJson => $composableBuilder(
+    column: $table.checklistJson,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get linksJson => $composableBuilder(
+    column: $table.linksJson,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$NotesTableOrderingComposer
+    extends Composer<_$AppDatabase, $NotesTable> {
+  $$NotesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get title => $composableBuilder(
+    column: $table.title,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get body => $composableBuilder(
+    column: $table.body,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get isPinned => $composableBuilder(
+    column: $table.isPinned,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get isArchived => $composableBuilder(
+    column: $table.isArchived,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get tagsJson => $composableBuilder(
+    column: $table.tagsJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get organization => $composableBuilder(
+    column: $table.organization,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get checklistJson => $composableBuilder(
+    column: $table.checklistJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get linksJson => $composableBuilder(
+    column: $table.linksJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$NotesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $NotesTable> {
+  $$NotesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get title =>
+      $composableBuilder(column: $table.title, builder: (column) => column);
+
+  GeneratedColumn<String> get body =>
+      $composableBuilder(column: $table.body, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  GeneratedColumn<bool> get isPinned =>
+      $composableBuilder(column: $table.isPinned, builder: (column) => column);
+
+  GeneratedColumn<bool> get isArchived => $composableBuilder(
+    column: $table.isArchived,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get tagsJson =>
+      $composableBuilder(column: $table.tagsJson, builder: (column) => column);
+
+  GeneratedColumn<String> get organization => $composableBuilder(
+    column: $table.organization,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get checklistJson => $composableBuilder(
+    column: $table.checklistJson,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get linksJson =>
+      $composableBuilder(column: $table.linksJson, builder: (column) => column);
+}
+
+class $$NotesTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $NotesTable,
+          NoteEntry,
+          $$NotesTableFilterComposer,
+          $$NotesTableOrderingComposer,
+          $$NotesTableAnnotationComposer,
+          $$NotesTableCreateCompanionBuilder,
+          $$NotesTableUpdateCompanionBuilder,
+          (NoteEntry, BaseReferences<_$AppDatabase, $NotesTable, NoteEntry>),
+          NoteEntry,
+          PrefetchHooks Function()
+        > {
+  $$NotesTableTableManager(_$AppDatabase db, $NotesTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$NotesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$NotesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$NotesTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> title = const Value.absent(),
+                Value<String> body = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<bool> isPinned = const Value.absent(),
+                Value<bool> isArchived = const Value.absent(),
+                Value<String> tagsJson = const Value.absent(),
+                Value<String?> organization = const Value.absent(),
+                Value<String> checklistJson = const Value.absent(),
+                Value<String> linksJson = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => NotesCompanion(
+                id: id,
+                title: title,
+                body: body,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                isPinned: isPinned,
+                isArchived: isArchived,
+                tagsJson: tagsJson,
+                organization: organization,
+                checklistJson: checklistJson,
+                linksJson: linksJson,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String title,
+                required String body,
+                required DateTime createdAt,
+                required DateTime updatedAt,
+                Value<bool> isPinned = const Value.absent(),
+                Value<bool> isArchived = const Value.absent(),
+                Value<String> tagsJson = const Value.absent(),
+                Value<String?> organization = const Value.absent(),
+                Value<String> checklistJson = const Value.absent(),
+                Value<String> linksJson = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => NotesCompanion.insert(
+                id: id,
+                title: title,
+                body: body,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                isPinned: isPinned,
+                isArchived: isArchived,
+                tagsJson: tagsJson,
+                organization: organization,
+                checklistJson: checklistJson,
+                linksJson: linksJson,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$NotesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $NotesTable,
+      NoteEntry,
+      $$NotesTableFilterComposer,
+      $$NotesTableOrderingComposer,
+      $$NotesTableAnnotationComposer,
+      $$NotesTableCreateCompanionBuilder,
+      $$NotesTableUpdateCompanionBuilder,
+      (NoteEntry, BaseReferences<_$AppDatabase, $NotesTable, NoteEntry>),
+      NoteEntry,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -7578,4 +8553,6 @@ class $AppDatabaseManager {
       $$ChatMessagesTableTableManager(_db, _db.chatMessages);
   $$RemindersTableTableManager get reminders =>
       $$RemindersTableTableManager(_db, _db.reminders);
+  $$NotesTableTableManager get notes =>
+      $$NotesTableTableManager(_db, _db.notes);
 }

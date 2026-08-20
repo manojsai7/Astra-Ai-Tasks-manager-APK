@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -356,105 +357,105 @@ class AssistantNotifier extends StateNotifier<AssistantState> {
 
     final requestGen = ++_activeRequestGeneration;
 
-    // 0. Classify Input Kind (Command vs Conversation vs Document vs Multi-Item Document)
-    const inputClassifier = AstraInputClassifier();
-    final inputKind = inputClassifier.classify(trimmed);
-
-    if (inputKind.kind == AstraInputKind.document || inputKind.kind == AstraInputKind.multiItemDocument) {
-      debugPrint('[ASTRA ROUTER] inputKind=${inputKind.kind.name} mode=DOCUMENT_INTAKE reason=${inputKind.reason}');
-      addMessage(trimmed, isUser: true);
-      state = state.copyWith(isLoading: true, error: null);
-      await handleDocumentIntake(trimmed, requestGen);
-      return;
-    }
-
-    // 1. Resolve session ID & Build bounded local context via M1 Memory Engine
-    final currentSessionId = ref.read(currentSessionIdProvider);
-    final contextBuilder = ref.read(astraContextBuilderProvider);
-    final memoryEngine = ref.read(astraMemoryEngineProvider);
-    final referenceResolver = ref.read(astraReferenceResolverProvider);
-
-    final localContext = await contextBuilder.buildContext(
-      currentText: trimmed,
-      sessionId: currentSessionId,
-      now: DateTime.now(),
-    );
-
-    debugPrint(
-      '[ASTRA BRAIN]\n'
-      'context=LOCAL\n'
-      'messages=${localContext.recentMessages.length}\n'
-      'tasks=${localContext.activeTasks.length}\n'
-      'memories=${localContext.structuredMemories.length}',
-    );
-
-    // 2. Resolve Contextual References (e.g. "it", "the exam", "make it 11", "remind me about it Thursday at 8pm")
-    final refResult = referenceResolver.resolveReference(trimmed, localContext);
-    if (refResult.isResolved) {
-      debugPrint(
-        '[ASTRA REFERENCE]\n'
-        'query="$trimmed"\n'
-        'resolved="${refResult.resolvedTitle}"\n'
-        'confidence=${refResult.confidence.toStringAsFixed(2)}\n'
-        'reason=${refResult.reason}',
-      );
-    } else if (refResult.reason.contains('Ambiguous')) {
-      debugPrint(
-        '[ASTRA REFERENCE]\n'
-        'query="$trimmed"\n'
-        'resolved=AMBIGUOUS\n'
-        'confidence=0.0\n'
-        'reason=${refResult.reason}',
-      );
-    }
-
-    // 3. Resolve Intent via Set A on-device classifier & deterministic rules
-    var resolvedIntent = await _resolveIntentWithSetA(trimmed);
-
-    if (requestGen != _activeRequestGeneration) return;
-
-    // If a pending conversation action exists and input provides the missing piece (e.g. "tomorrow at 7pm"), align intent to pending operation
-    if (_pendingAction != null && _pendingAction!.operation == 'UPDATE_TASK') {
-      const temporalEngine = AstraTemporalEngine();
-      final temporalCheck = temporalEngine.parse(trimmed);
-      if (temporalCheck.eventStart != null || temporalCheck.deadline != null || RegExp(r'\b(today|tomorrow|tmrw|monday|tuesday|wednesday|thursday|friday|saturday|sunday|\d{1,2}(?::\d{2})?\s*(?:am|pm))\b', caseSensitive: false).hasMatch(trimmed)) {
-        resolvedIntent = const AstraResolvedIntent(
-          intent: 'UPDATE_TASK',
-          mlConfidence: 0.98,
-          reason: 'pending_action_continuation_rule',
-        );
-      }
-    }
-
-    // If text contains pronoun/definite reference to update or remind, ensure intent aligns
-    if (refResult.isResolved) {
-      if (RegExp(r'^(?:actually\s+|please\s+)?(?:make|set|change|shift|move)\s+(?:it|that|this)\b', caseSensitive: false).hasMatch(trimmed)) {
-        resolvedIntent = const AstraResolvedIntent(
-          intent: 'UPDATE_TASK',
-          mlConfidence: 0.95,
-          reason: 'contextual_reference_update_rule',
-        );
-      } else if (RegExp(r'\bremind\s+me\s+about\s+it\b', caseSensitive: false).hasMatch(trimmed)) {
-        resolvedIntent = const AstraResolvedIntent(
-          intent: 'CREATE_REMINDER',
-          mlConfidence: 0.95,
-          reason: 'contextual_reference_reminder_rule',
-        );
-      }
-    }
-
-    debugPrint(
-      '[ASTRA ROUTE]\n'
-      'local=${resolvedIntent != null}\n'
-      'intent=${resolvedIntent?.intent}\n'
-      'fallback=${resolvedIntent == null ? "gemini_llm" : "none"}',
-    );
-
+    // Guaranteed immediate UI feedback before any async parsing or context building
     addMessage(trimmed, isUser: true);
     state = state.copyWith(isLoading: true, error: null);
 
     try {
-      if (resolvedIntent != null) {
+      await Future<void>(() async {
+        // 0. Classify Input Kind (Command vs Conversation vs Document vs Multi-Item Document)
+        const inputClassifier = AstraInputClassifier();
+        final inputKind = inputClassifier.classify(trimmed);
+
+        if (inputKind.kind == AstraInputKind.document || inputKind.kind == AstraInputKind.multiItemDocument) {
+          debugPrint('[ASTRA ROUTER] inputKind=${inputKind.kind.name} mode=DOCUMENT_INTAKE reason=${inputKind.reason}');
+          await handleDocumentIntake(trimmed, requestGen);
+          return;
+        }
+
+        // 1. Resolve session ID & Build bounded local context via M1 Memory Engine
+        final currentSessionId = ref.read(currentSessionIdProvider);
+        final contextBuilder = ref.read(astraContextBuilderProvider);
+        final memoryEngine = ref.read(astraMemoryEngineProvider);
+        final referenceResolver = ref.read(astraReferenceResolverProvider);
+
+        final localContext = await contextBuilder.buildContext(
+          currentText: trimmed,
+          sessionId: currentSessionId,
+          now: DateTime.now(),
+        );
+
+        debugPrint(
+          '[ASTRA BRAIN]\n'
+          'context=LOCAL\n'
+          'messages=${localContext.recentMessages.length}\n'
+          'tasks=${localContext.activeTasks.length}\n'
+          'memories=${localContext.structuredMemories.length}',
+        );
+
+        // 2. Resolve Contextual References (e.g. "it", "the exam", "make it 11", "remind me about it Thursday at 8pm")
+        final refResult = referenceResolver.resolveReference(trimmed, localContext);
+        if (refResult.isResolved) {
+          debugPrint(
+            '[ASTRA REFERENCE]\n'
+            'query="$trimmed"\n'
+            'resolved="${refResult.resolvedTitle}"\n'
+            'confidence=${refResult.confidence.toStringAsFixed(2)}\n'
+            'reason=${refResult.reason}',
+          );
+        } else if (refResult.reason.contains('Ambiguous')) {
+          debugPrint(
+            '[ASTRA REFERENCE]\n'
+            'query="$trimmed"\n'
+            'resolved=AMBIGUOUS\n'
+            'confidence=0.0\n'
+            'reason=${refResult.reason}',
+          );
+        }
+
+        // 3. Resolve Intent via Set A on-device classifier & deterministic rules
+        var resolvedIntent = await _resolveIntentWithSetA(trimmed);
+
+        if (requestGen != _activeRequestGeneration) return;
+
+        // If a pending conversation action exists and input provides the missing piece (e.g. "tomorrow at 7pm"), align intent to pending operation
+        if (_pendingAction != null && _pendingAction!.operation == 'UPDATE_TASK') {
+          const temporalEngine = AstraTemporalEngine();
+          final temporalCheck = temporalEngine.parse(trimmed);
+          if (temporalCheck.eventStart != null || temporalCheck.deadline != null || RegExp(r'\b(today|tomorrow|tmrw|monday|tuesday|wednesday|thursday|friday|saturday|sunday|\d{1,2}(?::\d{2})?\s*(?:am|pm))\b', caseSensitive: false).hasMatch(trimmed)) {
+            resolvedIntent = const AstraResolvedIntent(
+              intent: 'UPDATE_TASK',
+              mlConfidence: 0.98,
+              reason: 'pending_action_continuation_rule',
+            );
+          }
+        }
+
+        // If text contains pronoun/definite reference to update or remind, ensure intent aligns
+        if (refResult.isResolved) {
+          if (RegExp(r'^(?:actually\s+|please\s+)?(?:make|set|change|shift|move)\s+(?:it|that|this)\b', caseSensitive: false).hasMatch(trimmed)) {
+            resolvedIntent = const AstraResolvedIntent(
+              intent: 'UPDATE_TASK',
+              mlConfidence: 0.95,
+              reason: 'contextual_reference_update_rule',
+            );
+          } else if (RegExp(r'\bremind\s+me\s+about\s+it\b', caseSensitive: false).hasMatch(trimmed)) {
+            resolvedIntent = const AstraResolvedIntent(
+              intent: 'CREATE_REMINDER',
+              mlConfidence: 0.95,
+              reason: 'contextual_reference_reminder_rule',
+            );
+          }
+        }
+
+        debugPrint(
+          '[ASTRA ROUTE]\n'
+          'local=${resolvedIntent != null}\n'
+          'intent=${resolvedIntent?.intent}\n'
+          'fallback=${resolvedIntent == null ? "gemini_llm" : "none"}',
+        );
+
+        if (resolvedIntent != null) {
         switch (resolvedIntent.intent) {
           case 'LIST_TASKS':
             debugPrint('[ASTRA ROUTER] intent=LIST_TASKS source=set_a_resolver mode=AUTHORITATIVE');
@@ -791,9 +792,20 @@ class AssistantNotifier extends StateNotifier<AssistantState> {
         case AstraIntent.generalChat:
           await _handleGeneralChat(trimmed);
       }
+    }).timeout(const Duration(seconds: 15));
+    } on TimeoutException catch (_) {
+      if (requestGen == _activeRequestGeneration) {
+        addStructuredResponse(AstraResponseBuilder.error('ASTRA couldn\'t finish that request (timed out). Please try again.'));
+      }
     } catch (e) {
-      state = state.copyWith(isLoading: false, error: e.toString());
-      addStructuredResponse(AstraResponseBuilder.error(_friendlyError(e)));
+      if (requestGen == _activeRequestGeneration) {
+        state = state.copyWith(error: e.toString());
+        addStructuredResponse(AstraResponseBuilder.error(_friendlyError(e)));
+      }
+    } finally {
+      if (requestGen == _activeRequestGeneration) {
+        state = state.copyWith(isLoading: false);
+      }
     }
   }
 
@@ -1806,10 +1818,11 @@ class AssistantNotifier extends StateNotifier<AssistantState> {
 
   String _friendlyError(Object e) {
     final str = e.toString().toLowerCase();
-    if (str.contains('network') || str.contains('socket')) return 'Check internet connection.';
+    if (str.contains('timeout')) return 'ASTRA couldn\'t finish that request (timed out). Please try again.';
+    if (str.contains('network') || str.contains('socket') || str.contains('clientexception')) return 'Check internet connection and try again.';
     if (str.contains('403') || str.contains('permission')) return 'Google permissions denied.';
     if (str.contains('401') || str.contains('unauthorized')) return 'Please sign in again.';
-    return e.toString();
+    return 'ASTRA couldn\'t finish that request. Please try again.';
   }
 }
 

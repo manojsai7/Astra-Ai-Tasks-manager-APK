@@ -284,11 +284,13 @@ void main() {
 
     // Go to step 2
     await tester.tap(find.byKey(const Key('onboarding_get_started_button')));
-    await tester.pumpAndSettle(const Duration(milliseconds: 600));
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.pumpAndSettle();
 
     // Tap the step 2 action button (label varies by permission state — use Key)
     await tester.tap(find.byKey(const Key('onboarding_enable_notifications_button')));
-    await tester.pumpAndSettle(const Duration(milliseconds: 600));
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.pumpAndSettle();
 
     // Should be on Step 3 (Precise Reminders) — regardless of whether notification
     // was granted or denied, the onboarding must advance.
@@ -304,11 +306,13 @@ void main() {
 
     // Go to step 2
     await tester.tap(find.byKey(const Key('onboarding_get_started_button')));
-    await tester.pumpAndSettle(const Duration(milliseconds: 600));
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.pumpAndSettle();
 
     // Advance past step 2 using button key (works regardless of granted state)
     await tester.tap(find.byKey(const Key('onboarding_enable_notifications_button')));
-    await tester.pumpAndSettle(const Duration(milliseconds: 600));
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.pumpAndSettle();
 
     // Advance past step 3: if exactAlarm already granted, tap CONTINUE; otherwise tap "Not now →"
     // Use the key for the step 3 button or the "Not now →" text
@@ -319,7 +323,8 @@ void main() {
     } else {
       await tester.tap(continueFinder);
     }
-    await tester.pumpAndSettle(const Duration(milliseconds: 600));
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.pumpAndSettle();
 
     // Should be on Step 4
     expect(find.text('ALL SET'), findsOneWidget);

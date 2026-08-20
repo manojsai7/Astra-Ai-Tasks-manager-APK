@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 
 import '../../features/home/home_screen.dart';
 import '../../features/inbox/presentation/screens/inbox_screen.dart';
+import '../../features/notes/presentation/screens/notes_screen.dart';
 import '../../features/tasks/domain/entities/task.dart';
 import '../../features/tasks/domain/entities/task_extraction_proposal.dart';
 import '../../features/tasks/presentation/screens/task_detail_screen.dart';
@@ -28,6 +29,9 @@ abstract final class AstraRoutes {
 
   /// Local Inbox screen route.
   static const String inbox = '/inbox';
+
+  /// Notes screen route.
+  static const String notes = '/notes';
 
   /// Tasks list screen route.
   static const String tasks = '/tasks';
@@ -55,15 +59,14 @@ Route<dynamic>? onGenerateRoute(
         builder: (_) => const HomeScreen(),
       );
     case AstraRoutes.inbox:
-      final sharedText = settings.arguments as String?;
       return MaterialPageRoute<void>(
         settings: settings,
-        builder: (_) => InboxScreen(
-          useCase: dependencies.inboxIngestionUseCase,
-          repository: dependencies.inboxRepository,
-          extractionService: dependencies.taskExtractionService,
-          prefilledText: sharedText,
-        ),
+        builder: (_) => const InboxScreen(),
+      );
+    case AstraRoutes.notes:
+      return MaterialPageRoute<void>(
+        settings: settings,
+        builder: (_) => const NotesScreen(),
       );
     case AstraRoutes.tasks:
       return MaterialPageRoute<void>(

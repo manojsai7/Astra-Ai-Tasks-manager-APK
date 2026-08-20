@@ -81,8 +81,21 @@ afterEvaluate {
 
             if (src != null) {
                 val destName = "astra-arm64-v${versionName}-${versionCode}.apk"
-                src.copyTo(destDir.resolve(destName), overwrite = true)
-                println("\n✅  APK copied  →  releases/arm64/$destName\n")
+                val destFile = destDir.resolve(destName)
+                try {
+                    if (destFile.exists()) {
+                        destFile.delete()
+                    }
+                    src.copyTo(destFile, overwrite = true)
+                    println("\n✅  APK copied  →  releases/arm64/$destName\n")
+                } catch (e: Exception) {
+                    try {
+                        destFile.writeBytes(src.readBytes())
+                        println("\n✅  APK copied via writeBytes  →  releases/arm64/$destName\n")
+                    } catch (e2: Exception) {
+                        println("\n⚠️  Could not copy release APK to releases/arm64/$destName (${e.message})\n")
+                    }
+                }
             } else {
                 println("\n⚠️  Release APK not found — run with --target-platform android-arm64\n")
             }

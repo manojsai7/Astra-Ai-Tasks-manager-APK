@@ -54,7 +54,9 @@ class AstraScheduleItem {
     }
 
     final current = now ?? DateTime.now();
-    final overdue = !task.isCompleted && effectiveStart.isBefore(DateTime(current.year, current.month, current.day));
+    final overdue = !task.isCompleted &&
+        (task.recurrenceRule == null || task.recurrenceRule!.frequency == RecurrenceFrequency.none) &&
+        effectiveStart.isBefore(DateTime(current.year, current.month, current.day));
 
     return AstraScheduleItem(
       id: task.id,
