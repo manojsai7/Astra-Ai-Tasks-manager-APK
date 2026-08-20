@@ -36,6 +36,7 @@ class HomeScreen extends ConsumerStatefulWidget {
 class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProviderStateMixin {
   int _currentIndex = 0;
   late AnimationController _scaleController;
+  Timer? _insightTimer;
   int _quoteIndex = 0;
   static const MethodChannel _shareChannel =
       MethodChannel('dev.codehunters.astra/share_bridge');
@@ -63,12 +64,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
       if (mounted) AppUpdateService.instance.checkForUpdates(context: context, autoShowSheet: true);
     });
 
-    Future.doWhile(() async {
-      await Future.delayed(const Duration(seconds: 12));
+    _insightTimer = Timer.periodic(const Duration(seconds: 12), (_) {
       if (mounted) {
         setState(() => _quoteIndex = (_quoteIndex + 1) % _insights.length);
       }
-      return mounted;
     });
   }
 
@@ -100,6 +99,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
 
   @override
   void dispose() {
+    _insightTimer?.cancel();
     _scaleController.dispose();
     super.dispose();
   }
