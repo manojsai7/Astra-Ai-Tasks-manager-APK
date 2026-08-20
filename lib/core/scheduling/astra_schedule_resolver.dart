@@ -16,6 +16,7 @@ class AstraResolvedSchedule {
   final bool isPast;
   final bool isUpcoming;
   final bool shouldScheduleReminder;
+  final String? invalidReason;
 
   const AstraResolvedSchedule({
     required this.effectiveDueAt,
@@ -28,6 +29,7 @@ class AstraResolvedSchedule {
     required this.isPast,
     required this.isUpcoming,
     required this.shouldScheduleReminder,
+    this.invalidReason,
   });
 }
 
@@ -44,7 +46,7 @@ class AstraScheduleResolver {
 
     if (isRecurring) {
       final next = recurrenceEngine.nextOccurrence(recurrence, reference);
-      final hasNext = next != null;
+      final hasNext = next != null && next.isAfter(reference);
       return AstraResolvedSchedule(
         effectiveDueAt: next,
         nextOccurrence: next,
@@ -53,16 +55,30 @@ class AstraScheduleResolver {
         recurrenceStart: recurrence.startDate,
         recurrenceEnd: recurrence.endDate,
         isRecurring: true,
-        isPast: !hasNext,
+        isPast: false,
         isUpcoming: hasNext,
-        shouldScheduleReminder: hasNext && next.isAfter(reference),
+        shouldScheduleReminder: hasNext,
+        invalidReason: next == null ? 'no_future_occurrence' : null,
       );
     }
 
     final effective = _resolveOneShot(task);
-    final isPast = effective != null && !effective.isAfter(reference);
-    final isUpcoming = effective != null && effective.isAfter(reference);
+    if (effective == null) {
+      return AstraResolvedSchedule(
+        effectiveDueAt: null,
+        nextOccurrence: null,
+        dueTime: task.dueTime,
+        recurrence: null,
+        recurrenceStart: null,
+        recurrenceEnd: null,
+        isRecurring: false,
+        isPast: false,
+        isUpcoming: false,
+        shouldScheduleReminder: false,
+      );
+    }
 
+    final isFuture = effective.isAfter(reference);
     return AstraResolvedSchedule(
       effectiveDueAt: effective,
       nextOccurrence: null,
@@ -71,26 +87,33 @@ class AstraScheduleResolver {
       recurrenceStart: null,
       recurrenceEnd: null,
       isRecurring: false,
-      isPast: isPast,
-      isUpcoming: isUpcoming,
-      shouldScheduleReminder: isUpcoming,
+      isPast: !isFuture,
+      isUpcoming: isFuture,
+      shouldScheduleReminder: isFuture,
+      invalidReason: isFuture ? null : 'past_time',
     );
   }
 
+  /// Resolves a task that carries a standalone dueTime independently from its
+  /// date anchor. If a date is present, the two are combined into one instant.
   DateTime? _resolveOneShot(Task task) {
-    if (task.startAt != null) return task.startAt;
-    if (task.dueDate == null) return null;
-    if (task.dueTime == null || task.dueTime!.trim().isEmpty) return task.dueDate;
+    final anchor = task.dueDate;
+    if (task.startAt != null && task.endAt != null) {
+      return task.startAt;
+    }
+    if (anchor == null) return task.startAt;
+    final rawTime = task.dueTime?.trim();
+    if (rawTime == null || rawTime.isEmpty) return anchor;
 
-    final parts = task.dueTime!.split(':');
-    if (parts.length != 2) return task.dueDate;
+    final parts = rawTime.split(':');
+    if (parts.length != 2) return anchor;
     final hour = int.tryParse(parts[0]);
     final minute = int.tryParse(parts[1]);
     if (hour == null || minute == null || hour < 0 || hour > 23 || minute < 0 || minute > 59) {
-      return task.dueDate;
+      return anchor;
     }
 
-    return DateTime(task.dueDate!.year, task.dueDate!.month, task.dueDate!.day, hour, minute);
+    return DateTime(anchor.year, anchor.month, anchor.day, hour, minute);
   }
 
   String _formatTime(int hour, int minute) =>
