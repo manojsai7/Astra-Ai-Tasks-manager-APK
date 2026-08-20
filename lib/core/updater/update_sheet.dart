@@ -36,6 +36,7 @@ class _UpdateSheetState extends State<UpdateSheet> {
   int _totalBytes = 0;
   String? _errorMessage;
   String? _persistedApkPath;
+  bool _showTechnicalDetails = false;
 
   @override
   void initState() {
@@ -325,15 +326,64 @@ class _UpdateSheetState extends State<UpdateSheet> {
             ] else if (_state == UpdateDownloadState.failed) ...[
               Container(
                 width: double.infinity,
-                padding: const EdgeInsets.all(12),
+                padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
                   color: AstraColors.surface1,
                   borderRadius: BorderRadius.circular(AstraRadii.sm),
-                  border: Border.all(color: AstraColors.red.withValues(alpha: 0.3), width: 1),
+                  border: Border.all(color: AstraColors.red.withValues(alpha: 0.4), width: 1),
                 ),
-                child: Text(
-                  _errorMessage ?? 'Download failed. Please check your connection.',
-                  style: AstraText.caption(color: AstraColors.red, size: 12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(LucideIcons.alertTriangle, color: AstraColors.red, size: 16),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Update couldn\'t be downloaded',
+                          style: AstraText.label(color: AstraColors.red, size: 13),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      UpdateDownloader.friendlyDownloadError(_errorMessage),
+                      style: AstraText.body(color: AstraColors.textSecondary, size: 12.5),
+                    ),
+                    if (_errorMessage != null && _errorMessage!.isNotEmpty) ...[
+                      const SizedBox(height: 10),
+                      GestureDetector(
+                        onTap: () => setState(() => _showTechnicalDetails = !_showTechnicalDetails),
+                        child: Row(
+                          children: [
+                            Text(
+                              _showTechnicalDetails ? 'Technical details ▾' : 'Technical details ▸',
+                              style: AstraText.caption(color: AstraColors.textMuted, size: 11),
+                            ),
+                          ],
+                        ),
+                      ),
+                      if (_showTechnicalDetails) ...[
+                        const SizedBox(height: 6),
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: Colors.black26,
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: SelectableText(
+                            _errorMessage!,
+                            style: const TextStyle(
+                              fontFamily: 'monospace',
+                              fontSize: 10,
+                              color: AstraColors.textMuted,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ],
                 ),
               ),
               const SizedBox(height: 16),
@@ -341,7 +391,7 @@ class _UpdateSheetState extends State<UpdateSheet> {
                 children: [
                   Expanded(
                     child: Astra3DButton(
-                      label: 'Browser',
+                      label: 'Download Page',
                       palette: AstraMaterials.dark,
                       icon: LucideIcons.externalLink,
                       height: 48,

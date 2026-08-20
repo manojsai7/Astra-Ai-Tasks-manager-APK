@@ -24,6 +24,7 @@ enum ReminderReadinessState {
   notificationPermissionRequired,
   exactAlarmPermissionRequired,
   restricted,
+  unknown,
 }
 
 typedef NotificationActionCallback = Future<void> Function(String actionId, String? payload);
@@ -61,24 +62,30 @@ class NotificationService {
   }
 
   /// Checks the current platform notification and exact alarm readiness state.
+  /// Strictly returns [ReminderReadinessState.unknown] on exception or missing plugin implementation.
   static Future<ReminderReadinessState> checkReminderReadiness() async {
     try {
       final androidImpl = _plugin.resolvePlatformSpecificImplementation<
           AndroidFlutterLocalNotificationsPlugin>();
       if (androidImpl != null) {
-        final notifAllowed = await androidImpl.areNotificationsEnabled() ?? false;
+        final notifAllowed = await androidImpl.areNotificationsEnabled();
+        if (notifAllowed == null) return ReminderReadinessState.unknown;
         if (!notifAllowed) {
           return ReminderReadinessState.notificationPermissionRequired;
         }
-        final exactAllowed = await androidImpl.canScheduleExactNotifications() ?? false;
+
+        final exactAllowed = await androidImpl.canScheduleExactNotifications();
+        if (exactAllowed == null) return ReminderReadinessState.unknown;
         if (!exactAllowed) {
           return ReminderReadinessState.exactAlarmPermissionRequired;
         }
+
         return ReminderReadinessState.ready;
       }
-      return ReminderReadinessState.ready;
-    } catch (_) {
-      return ReminderReadinessState.ready;
+      return ReminderReadinessState.unknown;
+    } catch (e) {
+      debugPrint('[NotificationService] checkReminderReadiness error: $e');
+      return ReminderReadinessState.unknown;
     }
   }
 
@@ -143,6 +150,10 @@ class NotificationService {
   /// Opens Android → Settings → Apps → [ASTRA] → Alarms & Reminders.
   /// Returns true if the intent launched successfully.
   static Future<bool> _openExactAlarmSettings() async {
+    if (WidgetsBinding.instance.runtimeType.toString().contains('TestWidgetsFlutterBinding')) {
+      return false;
+    }
+
     const packageId = 'dev.codehunters.astra';
 
     // Android 12+ (API 31+): ACTION_REQUEST_SCHEDULE_EXACT_ALARM
@@ -174,6 +185,10 @@ class NotificationService {
 
   /// Opens the app's system notification settings page.
   static Future<void> _openAppNotificationSettings() async {
+    if (WidgetsBinding.instance.runtimeType.toString().contains('TestWidgetsFlutterBinding')) {
+      return;
+    }
+
     const packageId = 'dev.codehunters.astra';
     final List<Uri> candidates = [
       // Notification settings for this specific app

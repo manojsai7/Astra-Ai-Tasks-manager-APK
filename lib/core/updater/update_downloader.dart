@@ -11,7 +11,6 @@ enum UpdateDownloadState { idle, checking, available, downloading, downloaded, i
 class UpdateDownloader {
   static const String _prefVersionKey = 'updater_downloaded_version';
   static const String _prefPathKey = 'updater_downloaded_path';
-  static const String _prefSizeKey = 'updater_downloaded_size';
   static const String _prefStatusKey = 'updater_downloaded_status';
   static const String _prefDownloadIdKey = 'updater_download_id';
   static const MethodChannel _updateChannel = MethodChannel('dev.codehunters.astra/update_bridge');
