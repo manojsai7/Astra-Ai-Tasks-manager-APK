@@ -4,7 +4,6 @@ import 'theme/app_theme.dart';
 import 'providers/auth_provider.dart';
 import 'providers/reminder_provider.dart';
 import 'screens/auth_screen.dart';
-import 'screens/home_screen.dart';
 import 'screens/onboarding_screen.dart';
 import 'screens/profile_settings_screen.dart';
 import 'screens/profile_setup_gate.dart';
