@@ -41,8 +41,15 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen>
   int _currentStep = 0;
 
   // ── Permission tracking ──────────────────────────────────────────────────
-  bool _notificationGranted = false;
-  bool _exactAlarmGranted = false;
+  // Tri-state, never inferred: a platform channel that throws or returns null
+  // resolves to [AstraPermissionDisplayState.unknown] and is reported as such.
+  // An exception must never be presented to the user as "Enabled".
+  AstraPermissionDisplayState _notificationState = AstraPermissionDisplayState.unknown;
+  AstraPermissionDisplayState _exactAlarmState = AstraPermissionDisplayState.unknown;
+
+  // Gating for CTAs: only a confirmed grant counts as granted.
+  bool get _notificationGranted => _notificationState == AstraPermissionDisplayState.enabled;
+  bool get _exactAlarmGranted => _exactAlarmState == AstraPermissionDisplayState.enabled;
 
   // true while we're waiting for requestNotificationPermission() / requestExactAlarmPermission()
   bool _permissionPending = false;
@@ -75,16 +82,20 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen>
     setState(() {
       switch (readiness) {
         case ReminderReadinessState.ready:
-          _notificationGranted = true;
-          _exactAlarmGranted = true;
+          _notificationState = AstraPermissionDisplayState.enabled;
+          _exactAlarmState = AstraPermissionDisplayState.enabled;
         case ReminderReadinessState.exactAlarmPermissionRequired:
-          _notificationGranted = true;
-          _exactAlarmGranted = false;
+          _notificationState = AstraPermissionDisplayState.enabled;
+          _exactAlarmState = AstraPermissionDisplayState.disabled;
         case ReminderReadinessState.notificationPermissionRequired:
         case ReminderReadinessState.restricted:
+          _notificationState = AstraPermissionDisplayState.disabled;
+          _exactAlarmState = AstraPermissionDisplayState.disabled;
         case ReminderReadinessState.unknown:
-          _notificationGranted = false;
-          _exactAlarmGranted = false;
+          // Platform reported null / threw / no Android implementation.
+          // Report honestly rather than guessing either way.
+          _notificationState = AstraPermissionDisplayState.unknown;
+          _exactAlarmState = AstraPermissionDisplayState.unknown;
       }
     });
   }
@@ -144,15 +155,19 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen>
     AstraHaptics.medium();
     setState(() => _permissionPending = true);
     try {
-      final granted = await NotificationService.requestNotificationPermission();
+      await NotificationService.requestNotificationPermission();
       if (!mounted) return;
-      setState(() {
-        _notificationGranted = granted;
-        _permissionPending = false;
-      });
+      // Never trust the request's return value as the reported state: read the
+      // real platform state back, so a non-Android/no-op path resolves to
+      // `unknown` instead of a fabricated "Enabled".
+      await _refreshPermissionState();
+      if (!mounted) return;
+      setState(() => _permissionPending = false);
       // Advance regardless — onboarding must never block on a denied permission.
       _advance();
     } catch (_) {
+      if (!mounted) return;
+      await _refreshPermissionState();
       if (!mounted) return;
       setState(() => _permissionPending = false);
       _advance();
@@ -171,6 +186,8 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen>
       // Don't advance yet — wait for user to return from Settings.
       // _refreshPermissionState() will update the UI; user taps Continue.
     } catch (_) {
+      if (!mounted) return;
+      await _refreshPermissionState();
       if (!mounted) return;
       setState(() => _permissionPending = false);
     }
@@ -256,8 +273,8 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen>
                     onContinue: _advance,
                   ),
                   _AllSetPage(
-                    notificationGranted: _notificationGranted,
-                    exactAlarmGranted: _exactAlarmGranted,
+                    notificationState: _notificationState,
+                    exactAlarmState: _exactAlarmState,
                     onLetsGo: _letSGo,
                   ),
                 ],
@@ -662,13 +679,13 @@ class _PreciseRemindersPage extends StatelessWidget {
 // ─── Step 4: ALL SET ──────────────────────────────────────────────────────────
 
 class _AllSetPage extends ConsumerWidget {
-  final bool notificationGranted;
-  final bool exactAlarmGranted;
+  final AstraPermissionDisplayState notificationState;
+  final AstraPermissionDisplayState exactAlarmState;
   final VoidCallback onLetsGo;
 
   const _AllSetPage({
-    required this.notificationGranted,
-    required this.exactAlarmGranted,
+    required this.notificationState,
+    required this.exactAlarmState,
     required this.onLetsGo,
   });
 
@@ -726,12 +743,12 @@ class _AllSetPage extends ConsumerWidget {
           // Status summary
           _PermissionStatusRow(
             label: 'Notifications',
-            granted: notificationGranted,
+            state: notificationState,
           ),
           const SizedBox(height: 10),
           _PermissionStatusRow(
             label: 'Precise reminders',
-            granted: exactAlarmGranted,
+            state: exactAlarmState,
           ),
 
           const SizedBox(height: 12),
@@ -885,35 +902,58 @@ class _StatusBadge extends StatelessWidget {
   }
 }
 
+/// Truthful permission reporting states.
+///
+/// [unknown] means the platform did not answer (null result, thrown platform
+/// exception, or no Android implementation). It is reported as "Unknown", never
+/// silently promoted to "Enabled" or demoted to a confident "Disabled".
+enum AstraPermissionDisplayState { enabled, disabled, unknown }
+
 class _PermissionStatusRow extends StatelessWidget {
   final String label;
-  final bool granted;
+  final AstraPermissionDisplayState state;
 
-  const _PermissionStatusRow({required this.label, required this.granted});
+  const _PermissionStatusRow({required this.label, required this.state});
 
   @override
   Widget build(BuildContext context) {
+    final isEnabled = state == AstraPermissionDisplayState.enabled;
+    final isUnknown = state == AstraPermissionDisplayState.unknown;
+
+    final IconData icon = isEnabled
+        ? LucideIcons.circleCheck
+        : isUnknown
+            ? LucideIcons.circleHelp
+            : LucideIcons.circleX;
+    final Color iconColor = isEnabled ? AstraColors.softGreen : AstraColors.textMuted;
+    final String valueText = isEnabled
+        ? 'Enabled'
+        : isUnknown
+            ? 'Unknown'
+            : 'Disabled';
+    final Color valueColor = isEnabled ? AstraColors.softGreen : AstraColors.textDisabled;
+
     return Row(
       children: [
         Icon(
-          granted ? LucideIcons.circleCheck : LucideIcons.circleX,
+          icon,
           size: 16,
-          color: granted ? AstraColors.softGreen : AstraColors.textMuted,
+          color: iconColor,
         ),
         const SizedBox(width: 10),
         Text(
           label,
           style: TextStyle(
-            color: granted ? AstraColors.textPrimary : AstraColors.textMuted,
+            color: isEnabled ? AstraColors.textPrimary : AstraColors.textMuted,
             fontSize: 14,
             fontWeight: FontWeight.w500,
           ),
         ),
         const Spacer(),
         Text(
-          granted ? 'Enabled' : 'Disabled',
+          valueText,
           style: TextStyle(
-            color: granted ? AstraColors.softGreen : AstraColors.textDisabled,
+            color: valueColor,
             fontSize: 13,
             fontWeight: FontWeight.w600,
           ),

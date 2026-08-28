@@ -934,10 +934,13 @@ void main() {
       final taskNotifier = container.read(taskNotifierProvider.notifier);
       final reminderService = container.read(reminderServiceProvider);
 
+      final base = now.add(const Duration(days: 7));
+      final taskDueDate = DateTime(base.year, base.month, base.day, 17, 0);
+
       final initialTask = Task(
         id: 'task-pri-1',
         title: 'Project Submission',
-        dueDate: DateTime(2026, 8, 25, 17, 0),
+        dueDate: taskDueDate,
         priority: 'medium',
         status: 'active',
         createdAt: now,
@@ -957,7 +960,7 @@ void main() {
       expect(result.success, isTrue);
       final reminders = await testDb.select(testDb.reminders).get();
       final activeRem = reminders.where((r) => r.taskId == 'task-pri-1' && r.status != 'cancelled').first;
-      expect(activeRem.scheduledAt, DateTime(2026, 8, 25, 17, 0));
+      expect(activeRem.scheduledAt, taskDueDate);
     });
 
     test('K. Field preservation: all metadata fields are preserved intact', () async {

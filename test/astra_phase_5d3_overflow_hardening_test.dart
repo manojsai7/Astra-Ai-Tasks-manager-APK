@@ -10,6 +10,13 @@ import 'package:astra/core/updater/update_sheet.dart';
 import 'package:astra/core/updater/app_updater.dart';
 import 'package:astra/services/data/astra_backup_service.dart';
 import 'package:astra/screens/home_screen.dart';
+import 'package:drift/native.dart';
+import 'package:astra/core/database/database.dart';
+import 'package:astra/services/reminder_service.dart';
+import 'package:astra/providers/ritual_provider.dart';
+import 'package:astra/providers/task_provider.dart';
+import 'package:astra/providers/reminder_provider.dart';
+import 'package:astra/providers/profile_provider.dart';
 
 Widget _wrapWithViewport(Widget child, {double width = 360.0, double height = 800.0, EdgeInsets viewInsets = EdgeInsets.zero}) {
   return ProviderScope(
@@ -45,19 +52,51 @@ void main() {
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.resetPhysicalSize);
 
+      final db = AppDatabase(NativeDatabase.memory());
+      addTearDown(db.close);
+
       await tester.pumpWidget(
-        _wrapWithViewport(
-          const HomeScreen(),
-          width: 360,
-          height: 800,
+        ProviderScope(
+          overrides: [
+            databaseProvider.overrideWithValue(db),
+            reminderServiceProvider.overrideWithValue(ReminderService(db)),
+            taskNotifierProvider.overrideWith(
+              (ref) => TaskNotifier(db, ReminderService(db))..loadTasks(),
+            ),
+          ],
+          child: MaterialApp(
+            theme: AppTheme.darkTheme,
+            home: MediaQuery(
+              data: const MediaQueryData(
+                size: Size(360, 800),
+                padding: EdgeInsets.only(top: 24, bottom: 16),
+              ),
+              child: const Scaffold(body: HomeScreen()),
+            ),
+          ),
         ),
       );
-      await tester.pumpAndSettle();
+      // Use bounded pumps instead of pumpAndSettle because HomeScreen has
+      // a Timer.periodic (insight ticker) that would prevent settlement.
+      await tester.pump(); // initial build
+      await tester.pump(const Duration(milliseconds: 600)); // wait for DB stream
 
-      // Ensure no overflow exception was thrown
       expect(tester.takeException(), isNull);
       expect(find.text('TODAY'), findsOneWidget);
-      expect(find.text('MANOJ'), findsOneWidget);
+      // Identity is resolved, never hardcoded. With no persisted nickname and no
+      // Google account in the test environment, the header shows the neutral
+      // placeholder rather than a real person's name.
+      expect(find.text(AstraProfile.fallbackDisplayName), findsOneWidget);
+
+      // Unmount inside the test body: tearing down the ProviderScope makes
+      // Riverpod dispose the Drift stream providers, and Drift schedules a
+      // zero-duration Timer from StreamQueryStore.markAsClosed. Pump with an
+      // explicit non-null duration so fake time actually elapses (a bare
+      // pump() only flushes microtasks and never fires timers), draining it
+      // before flutter_test's "no pending timers" invariant check — which
+      // runs before addTearDown callbacks.
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pump(const Duration(milliseconds: 1));
     });
 
     // ── Test B: 360dp Backup Sheet Sticky CTA & Compact Categories ────────────
@@ -196,15 +235,15 @@ void main() {
           height: 800,
         ),
       );
-      await tester.pumpAndSettle();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
 
       expect(tester.takeException(), isNull);
       expect(find.text('ASTRA UPDATE'), findsOneWidget);
       expect(find.text('v2.2.0  →  v2.2.1'), findsOneWidget);
-      expect(find.text('Download Update'), findsOneWidget);
+      expect(find.text('DOWNLOAD UPDATE'), findsOneWidget);
     });
 
-    // ── Test E: Multi-Viewport Audit (390dp & 412dp) ──────────────────────────
     // ── Test E: Multi-Viewport Audit (390dp & 412dp) ──────────────────────────
     testWidgets('E: 390dp & 412dp viewports - Backup sheet renders without any layout overflow', (tester) async {
       tester.view.physicalSize = const Size(390, 844);
@@ -218,7 +257,8 @@ void main() {
           height: 844,
         ),
       );
-      await tester.pumpAndSettle();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
 
       expect(tester.takeException(), isNull);
       expect(find.byKey(const Key('backup_now_button')), findsOneWidget);
@@ -239,7 +279,8 @@ void main() {
           viewInsets: const EdgeInsets.only(bottom: 300),
         ),
       );
-      await tester.pumpAndSettle();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
 
       expect(tester.takeException(), isNull);
       expect(find.byKey(const Key('backup_now_button')), findsOneWidget);

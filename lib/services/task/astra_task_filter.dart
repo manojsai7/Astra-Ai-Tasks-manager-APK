@@ -38,9 +38,10 @@ class AstraTaskFilter {
 
     if (!resolved.isUpcoming) return false;
 
-    if (horizon != null && resolved.nextOccurrence != null) {
+    final target = resolved.nextOccurrence ?? resolved.effectiveDueAt;
+    if (horizon != null && target != null) {
       final horizonEnd = now.add(horizon);
-      if (resolved.nextOccurrence!.isAfter(horizonEnd)) return false;
+      if (target.isAfter(horizonEnd)) return false;
     }
 
     return true;

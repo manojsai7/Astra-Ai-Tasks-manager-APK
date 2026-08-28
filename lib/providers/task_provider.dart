@@ -136,7 +136,9 @@ class TaskNotifier extends StateNotifier<List<Task>> {
     if (task.status != 'completed') {
       // Completing active/pending task
       if (isRecurring) {
-        // Advance recurring task to next valid cycle
+        // Advance recurring task to next valid cycle. Passing `now` lets the
+        // resolver clamp the search window forward, so a stale seed dueDate can
+        // never advance the task to an already-elapsed occurrence.
         final nextOcc = AstraScheduleResolver.resolveNextOccurrenceAfter(
           task.recurrenceRule!,
           task.dueDate ?? now,

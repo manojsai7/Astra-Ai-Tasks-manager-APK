@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'assistant_provider.dart';
+import 'profile_provider.dart';
 
 class AuthState {
   final bool isAuthenticated;
@@ -31,6 +32,10 @@ class AuthNotifier extends StateNotifier<AuthState> {
       if (user != null) {
         final prefs = await SharedPreferences.getInstance();
         await prefs.setBool('hasSeenAuth', true);
+        // Adopt the real account identity so no screen has to hardcode a name.
+        await ref
+            .read(astraProfileProvider.notifier)
+            .adoptGoogleIdentity(name: user.displayName, email: user.email);
         state = state.copyWith(isAuthenticated: true, isLoading: false);
         return true;
       } else {
@@ -58,6 +63,8 @@ class AuthNotifier extends StateNotifier<AuthState> {
     await prefs.remove('hasSeenAuth');
     final auth = ref.read(googleAuthServiceProvider);
     await auth.signOut();
+    // Drop account-derived identity; a locally set nickname is kept.
+    await ref.read(astraProfileProvider.notifier).clearAccountIdentity();
     state = const AuthState();
   }
 

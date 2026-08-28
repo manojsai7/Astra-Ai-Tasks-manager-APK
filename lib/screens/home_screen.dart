@@ -18,6 +18,7 @@ import '../widgets/design_system/astra_section_header.dart';
 import '../widgets/design_system/astra_insight_card.dart';
 import '../providers/message_provider.dart';
 import '../providers/assistant_provider.dart';
+import '../providers/profile_provider.dart';
 import '../widgets/notifications/astra_reminder_readiness_banner.dart';
 import 'tasks_screen.dart';
 import 'focus_screen.dart';
@@ -302,7 +303,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
                 fit: BoxFit.scaleDown,
                 alignment: Alignment.centerLeft,
                 child: Text(
-                  'MANOJ',
+                  ref.watch(astraProfileProvider).headerName,
                   style: AstraText.displayL(size: 46, color: AstraColors.textPrimary),
                 ),
               ).animate().fadeIn(duration: 500.ms).slideX(begin: -0.03, end: 0),
@@ -359,9 +360,22 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
             children: [
               const CircleAvatar(radius: 28, backgroundColor: AstraColors.surface2, child: Icon(Icons.person_outline_rounded, color: AstraColors.lime, size: 30)),
               const SizedBox(height: 12),
-              Text('MANOJ', style: AstraText.displayM(size: 28)),
+              Consumer(
+                builder: (_, sheetRef, _) => Text(
+                  sheetRef.watch(astraProfileProvider).headerName,
+                  style: AstraText.displayM(size: 28),
+                ),
+              ),
               const SizedBox(height: 4),
-              Text('Manage your ASTRA account', style: AstraText.body(size: 13, color: AstraColors.textMuted)),
+              Consumer(
+                builder: (_, sheetRef, _) {
+                  final email = sheetRef.watch(astraProfileProvider).email;
+                  return Text(
+                    (email != null && email.isNotEmpty) ? email : 'Manage your ASTRA account',
+                    style: AstraText.body(size: 13, color: AstraColors.textMuted),
+                  );
+                },
+              ),
               const SizedBox(height: 16),
               ListTile(
                 leading: const Icon(Icons.shield_outlined, color: AstraColors.lime),

@@ -277,7 +277,11 @@ class ReminderService {
 
         final task = await (_db.select(_db.tasks)..where((t) => t.id.equals(entry.taskId))).getSingleOrNull();
         if (task != null && task.recurrenceRuleJson != null && task.recurrenceRuleJson!.trim().isNotEmpty) {
-          await _advanceRecurrence(task, now);
+          // Pass the naive canonical instant, not `now` (a TZDateTime): the
+          // recurrence engine works in wall-clock local time, and a TZDateTime
+          // compares by absolute epoch, which would skew every comparison by
+          // the offset between the device zone and the configured zone.
+          await _advanceRecurrence(task, _timeService.now());
         }
         continue;
       }
@@ -346,17 +350,20 @@ class ReminderService {
       return;
     }
 
+    // `now` comes from the canonical injectable clock (never `DateTime.now()`)
+    // so the resolver can guarantee it never hands back an already-elapsed
+    // instant, while fake clocks in tests still drive the same code path.
     final nextOcc = AstraScheduleResolver.resolveNextOccurrenceAfter(
       rule,
       afterTime,
-      now: DateTime.now(),
+      now: _timeService.now(),
     );
 
     if (nextOcc != null) {
       debugPrint('[ASTRA RECURRENCE]\ntask=${task.id}\ncurrent=$afterTime\nnext=$nextOcc\naction=ADVANCE');
 
       // Update task dueDate to next occurrence and ensure status is active/pending
-      final now = DateTime.now();
+      final now = _timeService.now();
       await (_db.update(_db.tasks)..where((t) => t.id.equals(task.id))).write(
         TasksCompanion(
           dueAt: Value(nextOcc),
@@ -381,7 +388,7 @@ class ReminderService {
     } else {
       debugPrint('[ASTRA RECURRENCE]\ntask=${task.id}\ncurrent=$afterTime\nnext=null\naction=COMPLETE');
 
-      final now = DateTime.now();
+      final now = _timeService.now();
       await (_db.update(_db.tasks)..where((t) => t.id.equals(task.id))).write(
         TasksCompanion(
           status: const Value('completed'),

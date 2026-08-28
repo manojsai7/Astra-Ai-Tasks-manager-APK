@@ -203,7 +203,10 @@ class AstraScheduleResolver {
       }
 
       // Check if recurrence window has completely ended
-      if (rule.isEnded || (rule.endDate != null && rule.endDate!.isBefore(current))) {
+      final ruleIsEnded = rule.frequency == RecurrenceFrequency.none ||
+          (rule.occurrenceLimit != null && rule.occurrencesCount >= rule.occurrenceLimit!) ||
+          (rule.endDate != null && rule.endDate!.isBefore(current));
+      if (ruleIsEnded) {
         return AstraResolvedSchedule(
           effectiveDueAt: rawDueDate,
           dueTime: rawDueTime,
@@ -307,7 +310,11 @@ class AstraScheduleResolver {
       }
 
       if (rawDueDate != null) {
-        effectiveInstant = DateTime(rawDueDate.year, rawDueDate.month, rawDueDate.day, hour, minute);
+        if (rawDueTime != null && rawDueTime.contains(':')) {
+          effectiveInstant = DateTime(rawDueDate.year, rawDueDate.month, rawDueDate.day, hour, minute);
+        } else {
+          effectiveInstant = rawDueDate;
+        }
       } else {
         // Floating time without date (e.g. "8 PM") -> dynamically anchor to today (or tomorrow if past)
         final todayCandidate = DateTime(current.year, current.month, current.day, hour, minute);
@@ -316,8 +323,10 @@ class AstraScheduleResolver {
 
       final isPast = effectiveInstant.isBefore(current);
       final isUpcoming = effectiveInstant.isAfter(current);
-      // Overdue if the scheduled date is strictly before today's 00:00 (or if past today with time elapsed)
-      final isOverdue = effectiveInstant.isBefore(todayStart);
+      // Overdue if explicit time has passed, or if date is strictly before today's 00:00
+      final isOverdue = hasExplicitTime
+          ? effectiveInstant.isBefore(current)
+          : effectiveInstant.isBefore(todayStart);
       final isToday = effectiveInstant.isAfter(todayStart) && effectiveInstant.isBefore(tomorrowStart) ||
           effectiveInstant.isAtSameMomentAs(todayStart);
       final isTomorrow = (effectiveInstant.isAfter(tomorrowStart) || effectiveInstant.isAtSameMomentAs(tomorrowStart)) &&
@@ -376,15 +385,20 @@ class AstraScheduleResolver {
   }
 
   /// Calculates the next occurrence after a completed occurrence [completedOcc] for recurring tasks.
+  ///
+  /// [now] must be supplied from the caller's canonical clock (e.g.
+  /// `AstraTimeService.now()`) so that fake clocks in tests and the real device
+  /// clock in production behave identically. When provided, the search starts at
+  /// `max(now, completedOcc)`, which guarantees the returned occurrence is never
+  /// an already-elapsed instant — a stale seed date can therefore never make a
+  /// recurring task advance into the past (invariant 1).
   static DateTime? resolveNextOccurrenceAfter(
     RecurrenceRule rule,
     DateTime completedOcc, {
     DateTime? now,
   }) {
     if (rule.frequency == RecurrenceFrequency.none) return null;
-    final current = now ?? DateTime.now();
-    // Search strictly after max(completedOcc, current - 1s) to avoid returning an already-passed instant
-    final searchAfter = completedOcc.isAfter(current) ? completedOcc : current;
+    final searchAfter = (now != null && now.isAfter(completedOcc)) ? now : completedOcc;
     return _recurrenceEngine.nextOccurrence(rule, searchAfter);
   }
 }

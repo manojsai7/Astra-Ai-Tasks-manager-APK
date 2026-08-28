@@ -81,9 +81,12 @@ class AstraTemporalEngine {
       reference,
     );
 
+    final times = _extractTimes(text);
+
     final weekdayDate = _resolveWeekday(
       lower,
       reference,
+      timeOfDay: times.isNotEmpty ? times.first : null,
     );
 
     final explicitDate = _extractExplicitDate(
@@ -97,8 +100,6 @@ class AstraTemporalEngine {
         weekdayDate;
 
     final endDate = explicitRange?.end;
-
-    final times = _extractTimes(text);
 
     final warnings = <String>[];
     var ambiguous = false;
@@ -180,7 +181,18 @@ class AstraTemporalEngine {
     // in the past relative to reference time, flag as ambiguous and add warning.
     if (recurrence == 'NONE') {
       final targetTime = isDeadline ? deadline : start;
-      if (targetTime != null && targetTime.isBefore(reference)) {
+      // A date-only value for *today* is not an elapsed instant: "assignment due
+      // Friday" said on a Friday means end of today, not midnight this morning.
+      // It normalises to 00:00 purely because no clock time was given, so only
+      // flag it when the user actually named a time (or the date is a past day).
+      final isDateOnlyToday = targetTime != null &&
+          times.isEmpty &&
+          targetTime.hour == 0 &&
+          targetTime.minute == 0 &&
+          targetTime.year == reference.year &&
+          targetTime.month == reference.month &&
+          targetTime.day == reference.day;
+      if (targetTime != null && targetTime.isBefore(reference) && !isDateOnlyToday) {
         ambiguous = true;
         final formattedTime = '${targetTime.hour == 0 ? 12 : (targetTime.hour > 12 ? targetTime.hour - 12 : targetTime.hour)}:${targetTime.minute.toString().padLeft(2, '0')} ${targetTime.hour >= 12 ? 'PM' : 'AM'}';
         warnings.add(
@@ -317,10 +329,18 @@ class AstraTemporalEngine {
   // Weekdays
   // ----------------------------------------------------------
 
+  /// Resolves a named weekday ("thursday") to a concrete date on/after [now].
+  ///
+  /// When the named weekday *is* today, the accompanying [timeOfDay] decides:
+  /// if that time has already elapsed, the phrase means next week's occurrence,
+  /// not an instant in the past. A named weekday is an explicit anchor, so
+  /// rolling forward a full week is unambiguous — unlike a bare "at 8pm", which
+  /// stays flagged as ambiguous by the past-time check in [resolve].
   DateTime? _resolveWeekday(
     String lower,
-    DateTime now,
-  ) {
+    DateTime now, {
+    _TimeValue? timeOfDay,
+  }) {
     for (final entry in _weekdays.entries) {
       if (!RegExp(
         '\\b${RegExp.escape(entry.key)}\\b',
@@ -335,6 +355,20 @@ class AstraTemporalEngine {
 
       if (delta < 0) {
         delta += 7;
+      }
+
+      if (delta == 0 && timeOfDay != null) {
+        final todayAtTime = DateTime(
+          now.year,
+          now.month,
+          now.day,
+          timeOfDay.hour,
+          timeOfDay.minute,
+        );
+
+        if (!todayAtTime.isAfter(now)) {
+          delta = 7;
+        }
       }
 
       return DateTime(

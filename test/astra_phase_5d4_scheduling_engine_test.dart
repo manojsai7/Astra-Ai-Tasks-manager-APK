@@ -427,10 +427,11 @@ void main() {
       final notifier = TaskNotifier(db, reminderService);
       await notifier.addTask(task);
 
+      final futureReminderTime = DateTime.now().add(const Duration(hours: 2));
       await reminderService.scheduleReminder(
         taskId: 'task-r',
         taskTitle: 'Drink water',
-        scheduledAt: DateTime(2026, 8, 20, 20, 0),
+        scheduledAt: futureReminderTime,
       );
 
       final reminders = await db.getActiveReminders();
