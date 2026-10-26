@@ -1,4 +1,4 @@
-import 'package:flutter_test/flutter_test.dart';
+﻿import 'package:flutter_test/flutter_test.dart';
 import 'package:timezone/data/latest.dart' as tz_data;
 import 'package:timezone/timezone.dart' as tz;
 
@@ -6,13 +6,15 @@ import 'package:astra/core/parser/task_parser.dart';
 import 'package:astra/core/time/astra_clock.dart';
 
 void main() {
+  late final tz.Location kolkata;
+  late final tz.TZDateTime refTime;
+
   setUpAll(() {
     tz_data.initializeTimeZones();
-    tz.setLocalLocation(tz.getLocation('Asia/Kolkata'));
+    kolkata = tz.getLocation('Asia/Kolkata');
+    tz.setLocalLocation(kolkata);
+    refTime = tz.TZDateTime(kolkata, 2026, 8, 13, 14, 0, 0);
   });
-
-  // Fixed reference: Thursday Aug 13, 2026 at 2:00 PM IST
-  final refTime = DateTime(2026, 8, 13, 14, 0, 0);
 
   setUp(() {
     TaskParser.setClock(FixedAstraClock(refTime));
@@ -32,7 +34,9 @@ void main() {
     });
 
     test('in the next 2 mins', () {
-      final parsed = TaskParser.parse('remind me to drink water in the next 2 mins');
+      final parsed = TaskParser.parse(
+        'remind me to drink water in the next 2 mins',
+      );
       expect(parsed.title.toLowerCase(), contains('drink water'));
       expect(parsed.remindAt, isNotNull);
       expect(parsed.remindAt!.difference(refTime).inMinutes, 2);
@@ -44,14 +48,18 @@ void main() {
     });
 
     test('after 2 minutes', () {
-      final parsed = TaskParser.parse('remind me to drink water after 2 minutes');
+      final parsed = TaskParser.parse(
+        'remind me to drink water after 2 minutes',
+      );
       expect(parsed.remindAt!.difference(refTime).inMinutes, 2);
     });
   });
 
   group('TaskParser — day + time', () {
     test('tomorrow at 10am', () {
-      final parsed = TaskParser.parse('remind me to drink water tomorrow at 10am');
+      final parsed = TaskParser.parse(
+        'remind me to drink water tomorrow at 10am',
+      );
       expect(parsed.title.toLowerCase(), contains('drink water'));
       expect(parsed.remindAt, isNotNull);
       expect(parsed.remindAt!.year, 2026);

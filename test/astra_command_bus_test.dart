@@ -12,15 +12,19 @@ import 'package:astra/core/time/astra_clock.dart';
 
 void main() {
   final bus = AstraCommandBus();
+  late final tz.Location kolkata;
+  late final tz.TZDateTime baseTime;
 
   setUpAll(() {
     tz_data.initializeTimeZones();
-    tz.setLocalLocation(tz.getLocation('Asia/Kolkata'));
+    kolkata = tz.getLocation('Asia/Kolkata');
+    tz.setLocalLocation(kolkata);
+    baseTime = tz.TZDateTime(kolkata, 2026, 8, 13, 14, 0);
   });
 
   setUp(() {
     // Fixed base clock: 2026-08-13 (Thursday) 14:00 (2:00 PM) IST
-    TaskParser.setClock(FixedAstraClock(DateTime(2026, 8, 13, 14, 0)));
+    TaskParser.setClock(FixedAstraClock(baseTime));
     TaskParser.setTimezone('Asia/Kolkata');
   });
 
@@ -33,10 +37,15 @@ void main() {
       expect(cmd.intentConfidence, greaterThan(0.9));
     });
 
-    test('remind me to drink water in the next two minutes -> CREATE_REMINDER', () {
-      final cmd = bus.parse('remind me to drink water in the next two minutes');
-      expect(cmd.intent, AstraIntent.createReminder);
-    });
+    test(
+      'remind me to drink water in the next two minutes -> CREATE_REMINDER',
+      () {
+        final cmd = bus.parse(
+          'remind me to drink water in the next two minutes',
+        );
+        expect(cmd.intent, AstraIntent.createReminder);
+      },
+    );
 
     test('notify me to drink water in 2 minutes -> CREATE_REMINDER', () {
       final cmd = bus.parse('notify me to drink water in 2 minutes');
@@ -44,7 +53,9 @@ void main() {
     });
 
     test('notify with timezone noise still routes to CREATE_REMINDER', () {
-      final cmd = bus.parse('Notify me to Drink water in next minute indian standard time');
+      final cmd = bus.parse(
+        'Notify me to Drink water in next minute indian standard time',
+      );
       expect(cmd.intent, AstraIntent.createReminder);
       expect(cmd.intent, isNot(AstraIntent.currentTime));
     });
@@ -60,7 +71,9 @@ void main() {
     });
 
     test('make sure I remember to drink water -> CREATE_REMINDER', () {
-      final cmd = bus.parse('make sure I remember to drink water in 10 minutes');
+      final cmd = bus.parse(
+        'make sure I remember to drink water in 10 minutes',
+      );
       expect(cmd.intent, AstraIntent.createReminder);
     });
 
@@ -69,10 +82,15 @@ void main() {
       expect(cmd.intent, AstraIntent.createReminder);
     });
 
-    test('schedule a reminder for meeting tomorrow at 4pm -> CREATE_REMINDER', () {
-      final cmd = bus.parse('schedule a reminder for meeting tomorrow at 4pm');
-      expect(cmd.intent, AstraIntent.createReminder);
-    });
+    test(
+      'schedule a reminder for meeting tomorrow at 4pm -> CREATE_REMINDER',
+      () {
+        final cmd = bus.parse(
+          'schedule a reminder for meeting tomorrow at 4pm',
+        );
+        expect(cmd.intent, AstraIntent.createReminder);
+      },
+    );
 
     test('/task drink water in 2 minutes -> explicit task mode override', () {
       final cmd = bus.parse('/task drink water in 2 minutes');
@@ -81,11 +99,14 @@ void main() {
       expect(cmd.intentConfidence, greaterThanOrEqualTo(0.99));
     });
 
-    test('@task exam tomorrow at 10am by Microsoft -> explicit task mode override', () {
-      final cmd = bus.parse('@task exam tomorrow at 10am by Microsoft');
-      expect(cmd.intent, AstraIntent.createReminder);
-      expect(cmd.mode, AstraCommandMode.task);
-    });
+    test(
+      '@task exam tomorrow at 10am by Microsoft -> explicit task mode override',
+      () {
+        final cmd = bus.parse('@task exam tomorrow at 10am by Microsoft');
+        expect(cmd.intent, AstraIntent.createReminder);
+        expect(cmd.mode, AstraCommandMode.task);
+      },
+    );
 
     test('/calendar tomorrow 4pm meeting -> explicit calendar mode', () {
       final cmd = bus.parse('/calendar tomorrow 4pm meeting');
@@ -138,12 +159,17 @@ void main() {
   });
 
   group('Sentiment and Urgency Signals (Metadata Only)', () {
-    test('frustrated sentiment + high urgency extracted without altering intent', () {
-      final cmd = bus.parse("I'm freaking out, remind me to submit this stupid application tomorrow at 9.");
-      expect(cmd.intent, AstraIntent.createReminder);
-      expect(cmd.sentiment, Sentiment.frustrated);
-      expect(cmd.urgency, Urgency.high);
-    });
+    test(
+      'frustrated sentiment + high urgency extracted without altering intent',
+      () {
+        final cmd = bus.parse(
+          "I'm freaking out, remind me to submit this stupid application tomorrow at 9.",
+        );
+        expect(cmd.intent, AstraIntent.createReminder);
+        expect(cmd.sentiment, Sentiment.frustrated);
+        expect(cmd.urgency, Urgency.high);
+      },
+    );
 
     test('asap creates critical urgency', () {
       final cmd = bus.parse('asap remind me to send email in 5 minutes');
@@ -161,32 +187,40 @@ void main() {
     test('remind me to drink water in 2 mins -> +2 minutes', () {
       final parsed = TaskParser.parse('remind me to drink water in 2 mins');
       expect(parsed.remindAt, isNotNull);
-      expect(parsed.remindAt!.difference(DateTime(2026, 8, 13, 14, 0)).inMinutes, 2);
+      expect(parsed.remindAt!.difference(baseTime).inMinutes, 2);
       expect(parsed.title, 'Drink Water');
     });
 
     test('notify me in next minute -> +1 minute', () {
-      final parsed = TaskParser.parse('notify me to drink water in next minute');
+      final parsed = TaskParser.parse(
+        'notify me to drink water in next minute',
+      );
       expect(parsed.remindAt, isNotNull);
-      expect(parsed.remindAt!.difference(DateTime(2026, 8, 13, 14, 0)).inMinutes, 1);
+      expect(parsed.remindAt!.difference(baseTime).inMinutes, 1);
       expect(parsed.title, 'Drink Water');
     });
 
     test('notify me in the next two minutes -> +2 minutes', () {
-      final parsed = TaskParser.parse('notify me to drink water in the next two minutes');
+      final parsed = TaskParser.parse(
+        'notify me to drink water in the next two minutes',
+      );
       expect(parsed.remindAt, isNotNull);
-      expect(parsed.remindAt!.difference(DateTime(2026, 8, 13, 14, 0)).inMinutes, 2);
+      expect(parsed.remindAt!.difference(baseTime).inMinutes, 2);
     });
 
     test('yo don\'t let me forget water in like 20 mins -> +20 minutes', () {
-      final parsed = TaskParser.parse("yo don't let me forget water in like 20 mins");
+      final parsed = TaskParser.parse(
+        "yo don't let me forget water in like 20 mins",
+      );
       expect(parsed.remindAt, isNotNull);
-      expect(parsed.remindAt!.difference(DateTime(2026, 8, 13, 14, 0)).inMinutes, 20);
+      expect(parsed.remindAt!.difference(baseTime).inMinutes, 20);
       expect(parsed.title, 'Water');
     });
 
     test('alert me about my exam tomorrow at 10am -> tomorrow 10:00 AM', () {
-      final parsed = TaskParser.parse('alert me about my exam tomorrow at 10am');
+      final parsed = TaskParser.parse(
+        'alert me about my exam tomorrow at 10am',
+      );
       expect(parsed.remindAt, isNotNull);
       expect(parsed.remindAt!.year, 2026);
       expect(parsed.remindAt!.month, 8);
@@ -195,15 +229,22 @@ void main() {
       expect(parsed.remindAt!.minute, 0);
     });
 
-    test('don\'t let me forget my exam tomorrow at 10 -> tomorrow 10:00 AM', () {
-      final parsed = TaskParser.parse("don't let me forget my exam tomorrow at 10");
-      expect(parsed.remindAt, isNotNull);
-      expect(parsed.remindAt!.day, 14);
-      expect(parsed.remindAt!.hour, 10);
-    });
+    test(
+      'don\'t let me forget my exam tomorrow at 10 -> tomorrow 10:00 AM',
+      () {
+        final parsed = TaskParser.parse(
+          "don't let me forget my exam tomorrow at 10",
+        );
+        expect(parsed.remindAt, isNotNull);
+        expect(parsed.remindAt!.day, 14);
+        expect(parsed.remindAt!.hour, 10);
+      },
+    );
 
     test('@task exam tomorrow at 10am by Microsoft -> title, date, org', () {
-      final parsed = TaskParser.parse('@task exam tomorrow at 10am by Microsoft');
+      final parsed = TaskParser.parse(
+        '@task exam tomorrow at 10am by Microsoft',
+      );
       expect(parsed.title, contains('Exam'));
       expect(parsed.remindAt, isNotNull);
       expect(parsed.remindAt!.hour, 10);
@@ -229,7 +270,8 @@ void main() {
     });
 
     test('Multi-line teacher notification with subtasks', () {
-      const input = '''Dear students, you have your Microsoft exam tomorrow at 10am by Microsoft.
+      const input =
+          '''Dear students, you have your Microsoft exam tomorrow at 10am by Microsoft.
 - Prepare chapters 4
 - Prepare chapters 5
 - Bring ID''';
@@ -257,9 +299,22 @@ void main() {
 
       expect(resp.type, AstraResponseType.taskCreated);
       expect(resp.headline, 'Task created');
-      expect(resp.lines.any((l) => l.value == 'Drink Water' && l.highlight), isTrue);
-      expect(resp.lines.any((l) => l.label == 'Timezone' && l.value == 'Asia/Kolkata'), isTrue);
-      expect(resp.lines.any((l) => l.label == 'Notification' && l.value == 'Scheduled'), isTrue);
+      expect(
+        resp.lines.any((l) => l.value == 'Drink Water' && l.highlight),
+        isTrue,
+      );
+      expect(
+        resp.lines.any(
+          (l) => l.label == 'Timezone' && l.value == 'Asia/Kolkata',
+        ),
+        isTrue,
+      );
+      expect(
+        resp.lines.any(
+          (l) => l.label == 'Notification' && l.value == 'Scheduled',
+        ),
+        isTrue,
+      );
       expect(resp.actions.length, 3);
       expect(resp.actions[0].label, 'DONE');
       expect(resp.actions[1].label, '+10 MIN');
@@ -275,13 +330,19 @@ void main() {
       expect(resp.toPlainText(), isNot(contains('***')));
     });
 
-    test('reminderCancelled and reminderSnoozed build structured responses', () {
-      final cancel = AstraResponseBuilder.reminderCancelled('Drink Water');
-      expect(cancel.type, AstraResponseType.reminderCancelled);
+    test(
+      'reminderCancelled and reminderSnoozed build structured responses',
+      () {
+        final cancel = AstraResponseBuilder.reminderCancelled('Drink Water');
+        expect(cancel.type, AstraResponseType.reminderCancelled);
 
-      final snooze = AstraResponseBuilder.reminderSnoozed('Drink Water', const Duration(minutes: 10));
-      expect(snooze.type, AstraResponseType.reminderSnoozed);
-      expect(snooze.lines.any((l) => l.value == '10 minutes'), isTrue);
-    });
+        final snooze = AstraResponseBuilder.reminderSnoozed(
+          'Drink Water',
+          const Duration(minutes: 10),
+        );
+        expect(snooze.type, AstraResponseType.reminderSnoozed);
+        expect(snooze.lines.any((l) => l.value == '10 minutes'), isTrue);
+      },
+    );
   });
 }

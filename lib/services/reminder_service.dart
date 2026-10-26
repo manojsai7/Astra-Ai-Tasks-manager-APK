@@ -61,13 +61,17 @@ class ReminderService {
     await _cancelAllNotificationOffsets(taskId);
     final existing = await _db.getReminderByTaskId(taskId);
     if (existing != null) {
-      await _db.updateReminderStatus(existing.id, ReminderStatus.cancelled.name);
+      await _db.updateReminderStatus(
+        existing.id,
+        ReminderStatus.cancelled.name,
+      );
     }
 
     final reminderId = existing?.id ?? _uuid.v4();
     final baseNotificationId = taskId.hashCode;
 
-    NotificationScheduleResult mainScheduleResult = NotificationScheduleResult.failed;
+    NotificationScheduleResult mainScheduleResult =
+        NotificationScheduleResult.failed;
     final offsets = strategy.offsets;
 
     for (final offset in offsets) {
@@ -87,10 +91,16 @@ class ReminderService {
       final typeLabel = taskTitle.toLowerCase().contains('exam')
           ? 'Exam Reminder'
           : (taskTitle.toLowerCase().contains('interview')
-              ? 'Interview Reminder'
-              : (taskTitle.toLowerCase().contains('meeting') ? 'Meeting Reminder' : 'Reminder'));
-      final title = isMain ? 'ASTRA · $typeLabel' : 'ASTRA · $typeLabel (${offset.inMinutes}m before)';
-      final body = isMain ? taskTitle : '$taskTitle in ${offset.inMinutes} minutes';
+                ? 'Interview Reminder'
+                : (taskTitle.toLowerCase().contains('meeting')
+                      ? 'Meeting Reminder'
+                      : 'Reminder'));
+      final title = isMain
+          ? 'ASTRA · $typeLabel'
+          : 'ASTRA · $typeLabel (${offset.inMinutes}m before)';
+      final body = isMain
+          ? taskTitle
+          : '$taskTitle in ${offset.inMinutes} minutes';
 
       final payload = jsonEncode({
         'taskId': taskId,
@@ -183,54 +193,69 @@ class ReminderService {
     await _db.updateReminderStatus(reminderId, ReminderStatus.completed.name);
 
     // Check if task is recurring and advance if possible
-    final task = await (_db.select(_db.tasks)..where((t) => t.id.equals(entry.taskId))).getSingleOrNull();
-    if (task != null && task.recurrenceRuleJson != null && task.recurrenceRuleJson!.trim().isNotEmpty) {
+    final task = await (_db.select(
+      _db.tasks,
+    )..where((t) => t.id.equals(entry.taskId))).getSingleOrNull();
+    if (task != null &&
+        task.recurrenceRuleJson != null &&
+        task.recurrenceRuleJson!.trim().isNotEmpty) {
       await _advanceRecurrence(task, entry.scheduledAt);
     }
   }
 
-  Future<void> snoozeReminder(String reminderId, {Duration duration = const Duration(minutes: 10)}) async {
+  Future<void> snoozeReminder(
+    String reminderId, {
+    Duration duration = const Duration(minutes: 10),
+  }) async {
     final entry = await _db.getReminderById(reminderId);
     if (entry == null) return;
 
-    final task = await (_db.select(_db.tasks)..where((t) => t.id.equals(entry.taskId))).getSingleOrNull();
+    final task = await (_db.select(
+      _db.tasks,
+    )..where((t) => t.id.equals(entry.taskId))).getSingleOrNull();
     final oldTaskDueAt = task?.dueAt;
     final oldReminderScheduledAt = entry.scheduledAt;
 
     await _cancelAllNotificationOffsets(entry.taskId);
 
-    final newTime = _timeService.nowTZ().add(duration);
+    final newTime = _timeService.now().add(duration);
     final title = task?.title ?? 'Reminder';
 
-    debugPrint('[ASTRA SNOOZE]\noldTaskDueAt=$oldTaskDueAt\noldReminderScheduledAt=$oldReminderScheduledAt');
+    debugPrint(
+      '[ASTRA SNOOZE]\noldTaskDueAt=$oldTaskDueAt\noldReminderScheduledAt=$oldReminderScheduledAt',
+    );
     debugPrint('[ASTRA SNOOZE]\nnewTime=$newTime');
 
-    final scheduleResult = await NotificationService.scheduleReminderNotification(
-      id: entry.notificationId,
-      title: title,
-      body: 'Snoozed reminder: $title',
-      scheduledTime: newTime,
-      payload: jsonEncode({
-        'taskId': entry.taskId,
-        'reminderId': reminderId,
-        'occurrence': newTime.toIso8601String(),
-        'offset': '0m',
-        'strategy': 'SNOOZE',
-        'scheduledAt': newTime.toIso8601String(),
-      }),
-      taskId: entry.taskId,
-      occurrence: newTime,
-      offsetStr: '0m',
-      strategyStr: 'SNOOZE',
-    );
+    final scheduleResult =
+        await NotificationService.scheduleReminderNotification(
+          id: entry.notificationId,
+          title: title,
+          body: 'Snoozed reminder: $title',
+          scheduledTime: newTime,
+          payload: jsonEncode({
+            'taskId': entry.taskId,
+            'reminderId': reminderId,
+            'occurrence': newTime.toIso8601String(),
+            'offset': '0m',
+            'strategy': 'SNOOZE',
+            'scheduledAt': newTime.toIso8601String(),
+          }),
+          taskId: entry.taskId,
+          occurrence: newTime,
+          offsetStr: '0m',
+          strategyStr: 'SNOOZE',
+        );
 
-    final status = scheduleResult == NotificationScheduleResult.permissionRequired
+    final status =
+        scheduleResult == NotificationScheduleResult.permissionRequired
         ? ReminderStatus.permissionRequired.name
         : ReminderStatus.snoozed.name;
 
     final now = _timeService.now();
 
-    await (_db.update(_db.reminders)..where((r) => r.id.equals(reminderId))).write(
+    await (_db.update(
+      _db.reminders,
+    )..where((r) => r.id.equals(reminderId))).write(
       RemindersCompanion(
         scheduledAt: Value(newTime),
         status: Value(status),
@@ -239,17 +264,18 @@ class ReminderService {
     );
 
     // Update parent Task.dueAt to synchronize task state with snoozed reminder time
-    await (_db.update(_db.tasks)..where((t) => t.id.equals(entry.taskId))).write(
-      TasksCompanion(
-        dueAt: Value(newTime),
-        updatedAt: Value(now),
-      ),
-    );
+    await (_db.update(_db.tasks)..where((t) => t.id.equals(entry.taskId)))
+        .write(TasksCompanion(dueAt: Value(newTime), updatedAt: Value(now)));
 
-    final activeReminders = await (_db.select(_db.reminders)
-          ..where((r) => r.taskId.equals(entry.taskId))
-          ..where((r) => r.status.equals(ReminderStatus.scheduled.name) | r.status.equals(ReminderStatus.snoozed.name)))
-        .get();
+    final activeReminders =
+        await (_db.select(_db.reminders)
+              ..where((r) => r.taskId.equals(entry.taskId))
+              ..where(
+                (r) =>
+                    r.status.equals(ReminderStatus.scheduled.name) |
+                    r.status.equals(ReminderStatus.snoozed.name),
+              ))
+            .get();
 
     debugPrint(
       '[ASTRA SNOOZE]\n'
@@ -275,14 +301,20 @@ class ReminderService {
       if (scheduledTz.isBefore(now)) {
         await _db.updateReminderStatus(entry.id, ReminderStatus.delivered.name);
 
-        final task = await (_db.select(_db.tasks)..where((t) => t.id.equals(entry.taskId))).getSingleOrNull();
-        if (task != null && task.recurrenceRuleJson != null && task.recurrenceRuleJson!.trim().isNotEmpty) {
+        final task = await (_db.select(
+          _db.tasks,
+        )..where((t) => t.id.equals(entry.taskId))).getSingleOrNull();
+        if (task != null &&
+            task.recurrenceRuleJson != null &&
+            task.recurrenceRuleJson!.trim().isNotEmpty) {
           await _advanceRecurrence(task, now);
         }
         continue;
       }
 
-      final task = await (_db.select(_db.tasks)..where((t) => t.id.equals(entry.taskId))).getSingleOrNull();
+      final task = await (_db.select(
+        _db.tasks,
+      )..where((t) => t.id.equals(entry.taskId))).getSingleOrNull();
       if (task == null) {
         await _db.updateReminderStatus(entry.id, ReminderStatus.cancelled.name);
         continue;
@@ -300,7 +332,9 @@ class ReminderService {
 
         final isMain = offset == Duration.zero;
         final title = isMain ? task.title : 'Prep: ${task.title}';
-        final body = isMain ? 'Time for: ${task.title}' : '${task.title} in ${offset.inMinutes} minutes.';
+        final body = isMain
+            ? 'Time for: ${task.title}'
+            : '${task.title} in ${offset.inMinutes} minutes.';
 
         final result = await NotificationService.scheduleReminderNotification(
           id: entry.taskId.hashCode + offset.inMinutes,
@@ -322,12 +356,17 @@ class ReminderService {
         );
 
         if (result == NotificationScheduleResult.permissionRequired) {
-          await _db.updateReminderStatus(entry.id, ReminderStatus.permissionRequired.name);
+          await _db.updateReminderStatus(
+            entry.id,
+            ReminderStatus.permissionRequired.name,
+          );
         }
       }
     }
 
-    debugPrint('[ReminderService] Reconciled ${active.length} pending reminders.');
+    debugPrint(
+      '[ReminderService] Reconciled ${active.length} pending reminders.',
+    );
   }
 
   /// Advances a recurring task to its next occurrence strictly after [afterTime].
@@ -335,11 +374,14 @@ class ReminderService {
   Future<void> _advanceRecurrence(TaskEntry task, DateTime afterTime) async {
     RecurrenceRule? rule;
     try {
-      if (task.recurrenceRuleJson != null && task.recurrenceRuleJson!.trim().isNotEmpty) {
+      if (task.recurrenceRuleJson != null &&
+          task.recurrenceRuleJson!.trim().isNotEmpty) {
         rule = RecurrenceRule.fromJson(task.recurrenceRuleJson!);
       }
     } catch (e) {
-      debugPrint('[ReminderService] Error parsing recurrenceRuleJson for task ${task.id}: $e');
+      debugPrint(
+        '[ReminderService] Error parsing recurrenceRuleJson for task ${task.id}: $e',
+      );
     }
 
     if (rule == null || rule.frequency == RecurrenceFrequency.none) {
@@ -353,7 +395,9 @@ class ReminderService {
     );
 
     if (nextOcc != null) {
-      debugPrint('[ASTRA RECURRENCE]\ntask=${task.id}\ncurrent=$afterTime\nnext=$nextOcc\naction=ADVANCE');
+      debugPrint(
+        '[ASTRA RECURRENCE]\ntask=${task.id}\ncurrent=$afterTime\nnext=$nextOcc\naction=ADVANCE',
+      );
 
       // Update task dueDate to next occurrence and ensure status is active/pending
       final now = _timeService.now();
@@ -379,7 +423,9 @@ class ReminderService {
         strategy: strategy,
       );
     } else {
-      debugPrint('[ASTRA RECURRENCE]\ntask=${task.id}\ncurrent=$afterTime\nnext=null\naction=COMPLETE');
+      debugPrint(
+        '[ASTRA RECURRENCE]\ntask=${task.id}\ncurrent=$afterTime\nnext=null\naction=COMPLETE',
+      );
 
       final now = _timeService.now();
       await (_db.update(_db.tasks)..where((t) => t.id.equals(task.id))).write(
@@ -393,7 +439,10 @@ class ReminderService {
   }
 
   /// Handles notification action taps (DONE / SNOOZE).
-  Future<void> handleNotificationAction(String actionId, String? payload) async {
+  Future<void> handleNotificationAction(
+    String actionId,
+    String? payload,
+  ) async {
     if (payload == null || payload.isEmpty) return;
 
     try {
@@ -402,20 +451,27 @@ class ReminderService {
       final reminderId = data['reminderId'] as String?;
       if (taskId == null) return;
 
-      debugPrint('[ASTRA SNOOZE]\naction_received=true\nreminderId=$reminderId\nactionId=$actionId');
+      debugPrint(
+        '[ASTRA SNOOZE]\naction_received=true\nreminderId=$reminderId\nactionId=$actionId',
+      );
 
       var remId = reminderId;
       if (remId == null) {
-        final activeReminders = await (_db.select(_db.reminders)
-              ..where((r) => r.taskId.equals(taskId))
-              ..where((r) => r.status.equals(ReminderStatus.scheduled.name)))
-            .get();
+        final activeReminders =
+            await (_db.select(_db.reminders)
+                  ..where((r) => r.taskId.equals(taskId))
+                  ..where(
+                    (r) => r.status.equals(ReminderStatus.scheduled.name),
+                  ))
+                .get();
         if (activeReminders.isNotEmpty) {
           remId = activeReminders.first.id;
         }
       }
 
-      final task = await (_db.select(_db.tasks)..where((t) => t.id.equals(taskId))).getSingleOrNull();
+      final task = await (_db.select(
+        _db.tasks,
+      )..where((t) => t.id.equals(taskId))).getSingleOrNull();
       final reminder = remId != null ? await _db.getReminderById(remId) : null;
 
       debugPrint(
@@ -431,7 +487,10 @@ class ReminderService {
 
       switch (actionId) {
         case NotificationService.actionDone:
-          final isRecurring = task != null && task.recurrenceRuleJson != null && task.recurrenceRuleJson!.trim().isNotEmpty;
+          final isRecurring =
+              task != null &&
+              task.recurrenceRuleJson != null &&
+              task.recurrenceRuleJson!.trim().isNotEmpty;
 
           if (remId != null) {
             await completeReminder(remId);
@@ -442,7 +501,9 @@ class ReminderService {
           // For non-recurring tasks, mark completed immediately.
           // For recurring tasks, completeReminder() handles advancing or completing the task.
           if (!isRecurring) {
-            await (_db.update(_db.tasks)..where((t) => t.id.equals(taskId))).write(
+            await (_db.update(
+              _db.tasks,
+            )..where((t) => t.id.equals(taskId))).write(
               TasksCompanion(
                 status: const Value('completed'),
                 completedAt: Value(_timeService.now()),
@@ -460,7 +521,9 @@ class ReminderService {
             final now = _timeService.now();
             final newTime = now.add(const Duration(minutes: 10));
             final createdRemId = now.millisecondsSinceEpoch.toString();
-            await _db.into(_db.reminders).insert(
+            await _db
+                .into(_db.reminders)
+                .insert(
                   RemindersCompanion.insert(
                     id: createdRemId,
                     taskId: taskId,
@@ -471,11 +534,10 @@ class ReminderService {
                     updatedAt: now,
                   ),
                 );
-            await (_db.update(_db.tasks)..where((t) => t.id.equals(taskId))).write(
-              TasksCompanion(
-                dueAt: Value(newTime),
-                updatedAt: Value(now),
-              ),
+            await (_db.update(
+              _db.tasks,
+            )..where((t) => t.id.equals(taskId))).write(
+              TasksCompanion(dueAt: Value(newTime), updatedAt: Value(now)),
             );
             await NotificationService.scheduleReminderNotification(
               id: taskId.hashCode,
@@ -513,7 +575,8 @@ class ReminderService {
       ScheduleOutcome.permissionRequired =>
         'Task saved but notification permission required for exact reminder.',
       ScheduleOutcome.pastTime => 'Reminder time is in the past.',
-      ScheduleOutcome.failed => 'Task saved but notification scheduling failed.',
+      ScheduleOutcome.failed =>
+        'Task saved but notification scheduling failed.',
     };
   }
 }
