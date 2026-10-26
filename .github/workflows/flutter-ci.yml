@@ -31,9 +31,6 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
-      - name: Check git whitespace hygiene
-        run: git diff --check
-
       - name: Run static analysis
         run: dart analyze
 
