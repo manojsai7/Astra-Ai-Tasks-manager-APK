@@ -45,7 +45,8 @@ class AstraResolvedSchedule {
   /// Reminder evaluation
   final bool shouldScheduleReminder;
   final DateTime? reminderScheduleInstant;
-  final String? reminderRejectionReason; // 'past' | 'disabled' | 'unscheduled' | null
+  final String?
+  reminderRejectionReason; // 'past' | 'disabled' | 'unscheduled' | null
 
   const AstraResolvedSchedule({
     this.effectiveDueAt,
@@ -95,7 +96,8 @@ class AstraResolvedSchedule {
 class AstraScheduleResolver {
   const AstraScheduleResolver();
 
-  static const AstraRecurrenceEngine _recurrenceEngine = AstraRecurrenceEngine();
+  static const AstraRecurrenceEngine _recurrenceEngine =
+      AstraRecurrenceEngine();
 
   /// Resolves the canonical schedule state for a [Task] or [TaskIntent] against a reference [now].
   static AstraResolvedSchedule resolve({
@@ -122,8 +124,10 @@ class AstraScheduleResolver {
     final rawDueTime = dueTime ?? task?.dueTime ?? intent?.dueTime;
     final rawStartAt = startAt ?? task?.startAt ?? intent?.startAt;
     final rawEndAt = endAt ?? task?.endAt ?? intent?.endAt;
-    final rawRecurrence = recurrenceRule ?? task?.recurrenceRule ?? intent?.recurrenceRule;
-    final taskCompleted = isCompleted ||
+    final rawRecurrence =
+        recurrenceRule ?? task?.recurrenceRule ?? intent?.recurrenceRule;
+    final taskCompleted =
+        isCompleted ||
         task?.isCompleted == true ||
         task?.status == 'completed' ||
         intent?.status == 'completed' ||
@@ -137,7 +141,9 @@ class AstraScheduleResolver {
         startAt: rawStartAt,
         endAt: rawEndAt,
         recurrence: rawRecurrence,
-        isRecurring: rawRecurrence != null && rawRecurrence.frequency != RecurrenceFrequency.none,
+        isRecurring:
+            rawRecurrence != null &&
+            rawRecurrence.frequency != RecurrenceFrequency.none,
         isPast: true,
         isUpcoming: false,
         isOverdue: false,
@@ -153,15 +159,24 @@ class AstraScheduleResolver {
       final isEnded = rawEndAt.isBefore(current);
       final isOverdue = rawEndAt.isBefore(todayStart);
       final isUpcoming = rawEndAt.isAfter(current);
-      final isToday = (rawStartAt.isBefore(tomorrowStart) && (rawEndAt.isAfter(todayStart) || rawEndAt.isAtSameMomentAs(todayStart)));
-      final isTomorrow = !isToday && (rawStartAt.isAfter(tomorrowStart) || rawStartAt.isAtSameMomentAs(tomorrowStart)) && rawStartAt.isBefore(dayAfterTomorrowStart);
+      final isToday =
+          (rawStartAt.isBefore(tomorrowStart) &&
+          (rawEndAt.isAfter(todayStart) ||
+              rawEndAt.isAtSameMomentAs(todayStart)));
+      final isTomorrow =
+          !isToday &&
+          (rawStartAt.isAfter(tomorrowStart) ||
+              rawStartAt.isAtSameMomentAs(tomorrowStart)) &&
+          rawStartAt.isBefore(dayAfterTomorrowStart);
 
       DateTime? reminderInstant;
       bool shouldRemind = false;
       String? rejectionReason;
 
       if (reminderEnabled) {
-        reminderInstant = rawStartAt.subtract(Duration(minutes: reminderOffsetMinutes));
+        reminderInstant = rawStartAt.subtract(
+          Duration(minutes: reminderOffsetMinutes),
+        );
         if (reminderInstant.isAfter(current)) {
           shouldRemind = true;
         } else {
@@ -190,7 +205,8 @@ class AstraScheduleResolver {
     }
 
     // ── 2. Recurring Tasks ──────────────────────────────────────────────────
-    if (rawRecurrence != null && rawRecurrence.frequency != RecurrenceFrequency.none) {
+    if (rawRecurrence != null &&
+        rawRecurrence.frequency != RecurrenceFrequency.none) {
       // Build normalized recurrence rule if time or dates need consolidation
       RecurrenceRule rule = rawRecurrence;
       if (rawDueTime != null && rawDueTime.contains(':')) {
@@ -203,7 +219,8 @@ class AstraScheduleResolver {
       }
 
       // Check if recurrence window has completely ended
-      if (rule.isEnded || (rule.endDate != null && rule.endDate!.isBefore(current))) {
+      if (rule.isEndedAt(current) ||
+          (rule.endDate != null && rule.endDate!.isBefore(current))) {
         return AstraResolvedSchedule(
           effectiveDueAt: rawDueDate,
           dueTime: rawDueTime,
@@ -227,16 +244,22 @@ class AstraScheduleResolver {
         rule,
         todayStart.subtract(const Duration(seconds: 1)),
       );
-      final bool hasTodayOcc = occToday != null &&
-          (occToday.isAfter(todayStart) || occToday.isAtSameMomentAs(todayStart)) &&
+      final bool hasTodayOcc =
+          occToday != null &&
+          (occToday.isAfter(todayStart) ||
+              occToday.isAtSameMomentAs(todayStart)) &&
           occToday.isBefore(tomorrowStart);
 
       final isUpcoming = nextOcc != null && nextOcc.isAfter(current);
       final isToday = nextOcc != null
-          ? (nextOcc.year == current.year && nextOcc.month == current.month && nextOcc.day == current.day)
+          ? (nextOcc.year == current.year &&
+                nextOcc.month == current.month &&
+                nextOcc.day == current.day)
           : false;
       final isTomorrow = nextOcc != null
-          ? (nextOcc.year == tomorrowStart.year && nextOcc.month == tomorrowStart.month && nextOcc.day == tomorrowStart.day)
+          ? (nextOcc.year == tomorrowStart.year &&
+                nextOcc.month == tomorrowStart.month &&
+                nextOcc.day == tomorrowStart.day)
           : false;
 
       // Invariant: Recurring active tasks are NEVER overdue from a stale seed date!
@@ -248,7 +271,9 @@ class AstraScheduleResolver {
 
       if (nextOcc != null) {
         if (reminderEnabled) {
-          reminderInstant = nextOcc.subtract(Duration(minutes: reminderOffsetMinutes));
+          reminderInstant = nextOcc.subtract(
+            Duration(minutes: reminderOffsetMinutes),
+          );
           if (reminderInstant.isAfter(current)) {
             shouldRemind = true;
           } else {
@@ -267,7 +292,8 @@ class AstraScheduleResolver {
         rejectionReason = 'no_future_occurrence';
       }
 
-      final normalizedTimeStr = '${rule.hour.toString().padLeft(2, '0')}:${rule.minute.toString().padLeft(2, '0')}';
+      final normalizedTimeStr =
+          '${rule.hour.toString().padLeft(2, '0')}:${rule.minute.toString().padLeft(2, '0')}';
 
       return AstraResolvedSchedule(
         effectiveDueAt: nextOcc ?? occToday ?? rawDueDate,
@@ -293,6 +319,8 @@ class AstraScheduleResolver {
       DateTime effectiveInstant;
       int hour = 9;
       int minute = 0;
+      int second = 0;
+      int millisecond = 0;
       bool hasExplicitTime = false;
 
       if (rawDueTime != null && rawDueTime.contains(':')) {
@@ -300,27 +328,50 @@ class AstraScheduleResolver {
         hour = int.tryParse(parts[0]) ?? 9;
         minute = int.tryParse(parts[1]) ?? 0;
         hasExplicitTime = true;
-      } else if (rawDueDate != null && (rawDueDate.hour != 0 || rawDueDate.minute != 0)) {
+      } else if (rawDueDate != null) {
         hour = rawDueDate.hour;
         minute = rawDueDate.minute;
-        hasExplicitTime = true;
+        second = rawDueDate.second;
+        millisecond = rawDueDate.millisecond;
+        hasExplicitTime =
+            (hour != 0 || minute != 0 || second != 0 || millisecond != 0);
       }
 
       if (rawDueDate != null) {
-        effectiveInstant = DateTime(rawDueDate.year, rawDueDate.month, rawDueDate.day, hour, minute);
+        effectiveInstant = DateTime(
+          rawDueDate.year,
+          rawDueDate.month,
+          rawDueDate.day,
+          hour,
+          minute,
+          second,
+          millisecond,
+        );
       } else {
         // Floating time without date (e.g. "8 PM") -> dynamically anchor to today (or tomorrow if past)
-        final todayCandidate = DateTime(current.year, current.month, current.day, hour, minute);
-        effectiveInstant = todayCandidate.isAfter(current) ? todayCandidate : todayCandidate.add(const Duration(days: 1));
+        final todayCandidate = DateTime(
+          current.year,
+          current.month,
+          current.day,
+          hour,
+          minute,
+        );
+        effectiveInstant = todayCandidate.isAfter(current)
+            ? todayCandidate
+            : todayCandidate.add(const Duration(days: 1));
       }
 
       final isPast = effectiveInstant.isBefore(current);
       final isUpcoming = effectiveInstant.isAfter(current);
       // Overdue if the scheduled date is strictly before today's 00:00 (or if past today with time elapsed)
       final isOverdue = effectiveInstant.isBefore(todayStart);
-      final isToday = effectiveInstant.isAfter(todayStart) && effectiveInstant.isBefore(tomorrowStart) ||
+      final isToday =
+          effectiveInstant.isAfter(todayStart) &&
+              effectiveInstant.isBefore(tomorrowStart) ||
           effectiveInstant.isAtSameMomentAs(todayStart);
-      final isTomorrow = (effectiveInstant.isAfter(tomorrowStart) || effectiveInstant.isAtSameMomentAs(tomorrowStart)) &&
+      final isTomorrow =
+          (effectiveInstant.isAfter(tomorrowStart) ||
+              effectiveInstant.isAtSameMomentAs(tomorrowStart)) &&
           effectiveInstant.isBefore(dayAfterTomorrowStart);
 
       DateTime? reminderInstant;
@@ -328,7 +379,9 @@ class AstraScheduleResolver {
       String? rejectionReason;
 
       if (reminderEnabled) {
-        reminderInstant = effectiveInstant.subtract(Duration(minutes: reminderOffsetMinutes));
+        reminderInstant = effectiveInstant.subtract(
+          Duration(minutes: reminderOffsetMinutes),
+        );
         if (reminderInstant.isAfter(current)) {
           shouldRemind = true;
         } else {

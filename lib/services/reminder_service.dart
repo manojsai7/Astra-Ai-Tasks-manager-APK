@@ -118,7 +118,7 @@ class ReminderService {
       }
     }
 
-    final nowDt = DateTime.now();
+    final nowDt = _timeService.now();
     ReminderStatus status;
     ScheduleOutcome outcome;
 
@@ -228,7 +228,7 @@ class ReminderService {
         ? ReminderStatus.permissionRequired.name
         : ReminderStatus.snoozed.name;
 
-    final now = DateTime.now();
+    final now = _timeService.now();
 
     await (_db.update(_db.reminders)..where((r) => r.id.equals(reminderId))).write(
       RemindersCompanion(
@@ -349,14 +349,14 @@ class ReminderService {
     final nextOcc = AstraScheduleResolver.resolveNextOccurrenceAfter(
       rule,
       afterTime,
-      now: DateTime.now(),
+      now: _timeService.now(),
     );
 
     if (nextOcc != null) {
       debugPrint('[ASTRA RECURRENCE]\ntask=${task.id}\ncurrent=$afterTime\nnext=$nextOcc\naction=ADVANCE');
 
       // Update task dueDate to next occurrence and ensure status is active/pending
-      final now = DateTime.now();
+      final now = _timeService.now();
       await (_db.update(_db.tasks)..where((t) => t.id.equals(task.id))).write(
         TasksCompanion(
           dueAt: Value(nextOcc),
@@ -381,7 +381,7 @@ class ReminderService {
     } else {
       debugPrint('[ASTRA RECURRENCE]\ntask=${task.id}\ncurrent=$afterTime\nnext=null\naction=COMPLETE');
 
-      final now = DateTime.now();
+      final now = _timeService.now();
       await (_db.update(_db.tasks)..where((t) => t.id.equals(task.id))).write(
         TasksCompanion(
           status: const Value('completed'),
@@ -445,8 +445,8 @@ class ReminderService {
             await (_db.update(_db.tasks)..where((t) => t.id.equals(taskId))).write(
               TasksCompanion(
                 status: const Value('completed'),
-                completedAt: Value(DateTime.now()),
-                updatedAt: Value(DateTime.now()),
+                completedAt: Value(_timeService.now()),
+                updatedAt: Value(_timeService.now()),
               ),
             );
           }
@@ -457,7 +457,7 @@ class ReminderService {
             await snoozeReminder(remId);
           } else {
             // Fallback: snooze directly by taskId
-            final now = DateTime.now();
+            final now = _timeService.now();
             final newTime = now.add(const Duration(minutes: 10));
             final createdRemId = now.millisecondsSinceEpoch.toString();
             await _db.into(_db.reminders).insert(

@@ -1,3 +1,4 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:astra/app/app.dart';
@@ -243,7 +244,9 @@ void main() {
         taskExtractionService: extractionService,
       );
 
-      await tester.pumpWidget(AstraApp(dependencies: dependencies));
+      await tester.pumpWidget(
+        ProviderScope(child: AstraApp(dependencies: dependencies)),
+      );
       await tester.pumpAndSettle();
 
       // Go to Inbox

@@ -11,11 +11,21 @@ import 'package:astra/services/assistant/astra_recurrence_engine.dart';
 import 'package:astra/services/reminder_service.dart';
 import 'package:astra/services/task/astra_task_filter.dart';
 import 'package:astra/services/task/astra_schedule_item.dart';
+import 'package:astra/core/time/astra_clock.dart';
+import 'package:astra/core/time/astra_time_service.dart';
 import 'package:astra/providers/task_provider.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   GoogleFonts.config.allowRuntimeFetching = false;
+
+  final referenceNow = DateTime(
+    2026,
+    8,
+    20,
+    15,
+    0,
+  ); // 3:00 PM on Thursday Aug 20, 2026
 
   late AppDatabase db;
   late ReminderService reminderService;
@@ -23,7 +33,9 @@ void main() {
   setUp(() async {
     SharedPreferences.setMockInitialValues({});
     db = AppDatabase(NativeDatabase.memory());
-    reminderService = ReminderService(db);
+    final clock = FixedAstraClock(referenceNow);
+    final timeService = AstraTimeService(clock: clock);
+    reminderService = ReminderService(db, timeService: timeService);
   });
 
   tearDown(() async {
@@ -31,8 +43,6 @@ void main() {
   });
 
   group('ASTRA Phase 5D.4 — Canonical Scheduling Engine Correctness (A–Z)', () {
-    final referenceNow = DateTime(2026, 8, 20, 15, 0); // 3:00 PM on Thursday Aug 20, 2026
-
     // ── A. Unscheduled Task ──────────────────────────────────────────────────
     test('A: Unscheduled task (no date, no time, no recurrence)', () {
       final task = Task(
@@ -41,7 +51,10 @@ void main() {
         createdAt: referenceNow,
       );
 
-      final resolved = AstraScheduleResolver.resolve(task: task, now: referenceNow);
+      final resolved = AstraScheduleResolver.resolve(
+        task: task,
+        now: referenceNow,
+      );
 
       expect(resolved.effectiveDueAt, isNull);
       expect(resolved.nextOccurrence, isNull);
@@ -64,7 +77,10 @@ void main() {
         createdAt: referenceNow,
       );
 
-      final resolved = AstraScheduleResolver.resolve(task: task, now: referenceNow);
+      final resolved = AstraScheduleResolver.resolve(
+        task: task,
+        now: referenceNow,
+      );
 
       // At 3 PM, 8 PM today is upcoming
       expect(resolved.effectiveDueAt, DateTime(2026, 8, 20, 20, 0));
@@ -90,7 +106,10 @@ void main() {
       );
 
       // At 3 PM: next occurrence is today 8 PM
-      final resolvedAt3PM = AstraScheduleResolver.resolve(task: task, now: referenceNow);
+      final resolvedAt3PM = AstraScheduleResolver.resolve(
+        task: task,
+        now: referenceNow,
+      );
       expect(resolvedAt3PM.effectiveDueAt, DateTime(2026, 8, 20, 20, 0));
       expect(resolvedAt3PM.nextOccurrence, DateTime(2026, 8, 20, 20, 0));
       expect(resolvedAt3PM.isRecurring, isTrue);
@@ -101,7 +120,10 @@ void main() {
 
       // At 9 PM: next occurrence is tomorrow 8 PM
       final now9PM = DateTime(2026, 8, 20, 21, 0);
-      final resolvedAt9PM = AstraScheduleResolver.resolve(task: task, now: now9PM);
+      final resolvedAt9PM = AstraScheduleResolver.resolve(
+        task: task,
+        now: now9PM,
+      );
       expect(resolvedAt9PM.nextOccurrence, DateTime(2026, 8, 21, 20, 0));
       expect(resolvedAt9PM.isTomorrow, isTrue);
       expect(resolvedAt9PM.isUpcoming, isTrue);
@@ -123,8 +145,14 @@ void main() {
         createdAt: fridayNight,
       );
 
-      final resolved = AstraScheduleResolver.resolve(task: task, now: fridayNight);
-      expect(resolved.nextOccurrence, DateTime(2026, 8, 24, 10, 0)); // Monday Aug 24
+      final resolved = AstraScheduleResolver.resolve(
+        task: task,
+        now: fridayNight,
+      );
+      expect(
+        resolved.nextOccurrence,
+        DateTime(2026, 8, 24, 10, 0),
+      ); // Monday Aug 24
       expect(resolved.isRecurring, isTrue);
       expect(resolved.isUpcoming, isTrue);
       expect(resolved.isOverdue, isFalse);
@@ -144,8 +172,14 @@ void main() {
         createdAt: referenceNow, // Thursday
       );
 
-      final resolved = AstraScheduleResolver.resolve(task: task, now: referenceNow);
-      expect(resolved.nextOccurrence, DateTime(2026, 8, 23, 18, 0)); // Sunday Aug 23
+      final resolved = AstraScheduleResolver.resolve(
+        task: task,
+        now: referenceNow,
+      );
+      expect(
+        resolved.nextOccurrence,
+        DateTime(2026, 8, 23, 18, 0),
+      ); // Sunday Aug 23
       expect(resolved.isUpcoming, isTrue);
       expect(resolved.isOverdue, isFalse);
     });
@@ -160,7 +194,10 @@ void main() {
         createdAt: referenceNow,
       );
 
-      final resolved = AstraScheduleResolver.resolve(task: task, now: referenceNow);
+      final resolved = AstraScheduleResolver.resolve(
+        task: task,
+        now: referenceNow,
+      );
       expect(resolved.effectiveDueAt, DateTime(2026, 8, 20, 20, 0));
       expect(resolved.isPast, isFalse);
       expect(resolved.isUpcoming, isTrue);
@@ -179,7 +216,10 @@ void main() {
         createdAt: referenceNow,
       );
 
-      final resolved = AstraScheduleResolver.resolve(task: task, now: referenceNow);
+      final resolved = AstraScheduleResolver.resolve(
+        task: task,
+        now: referenceNow,
+      );
       expect(resolved.effectiveDueAt, DateTime(2026, 8, 20, 10, 0));
       expect(resolved.isPast, isTrue);
       expect(resolved.isUpcoming, isFalse);
@@ -198,7 +238,10 @@ void main() {
         createdAt: referenceNow,
       );
 
-      final resolved = AstraScheduleResolver.resolve(task: task, now: referenceNow);
+      final resolved = AstraScheduleResolver.resolve(
+        task: task,
+        now: referenceNow,
+      );
       expect(resolved.isTomorrow, isTrue);
       expect(resolved.isUpcoming, isTrue);
       expect(resolved.isOverdue, isFalse);
@@ -216,7 +259,10 @@ void main() {
         createdAt: referenceNow,
       );
 
-      final resolved = AstraScheduleResolver.resolve(task: task, now: referenceNow);
+      final resolved = AstraScheduleResolver.resolve(
+        task: task,
+        now: referenceNow,
+      );
       expect(resolved.isPast, isTrue);
       expect(resolved.isUpcoming, isFalse);
       expect(resolved.isOverdue, isTrue);
@@ -225,28 +271,37 @@ void main() {
     });
 
     // ── J. Past Date with Daily Recurrence ────────────────────────────────────
-    test('J: Past date with daily recurrence (seed was yesterday, current is 3 PM)', () {
-      final task = Task(
-        id: 'task-j',
-        title: 'Gym daily',
-        dueDate: DateTime(2026, 8, 19, 20, 0), // yesterday
-        recurrenceRule: const RecurrenceRule(
-          frequency: RecurrenceFrequency.daily,
-          hour: 20,
-          minute: 0,
-        ),
-        createdAt: DateTime(2026, 8, 19),
-      );
+    test(
+      'J: Past date with daily recurrence (seed was yesterday, current is 3 PM)',
+      () {
+        final task = Task(
+          id: 'task-j',
+          title: 'Gym daily',
+          dueDate: DateTime(2026, 8, 19, 20, 0), // yesterday
+          recurrenceRule: const RecurrenceRule(
+            frequency: RecurrenceFrequency.daily,
+            hour: 20,
+            minute: 0,
+          ),
+          createdAt: DateTime(2026, 8, 19),
+        );
 
-      final resolved = AstraScheduleResolver.resolve(task: task, now: referenceNow);
+        final resolved = AstraScheduleResolver.resolve(
+          task: task,
+          now: referenceNow,
+        );
 
-      // Invariant: Recurring task with future occurrences is NEVER overdue!
-      expect(resolved.isOverdue, isFalse);
-      expect(resolved.nextOccurrence, DateTime(2026, 8, 20, 20, 0)); // Today 8 PM
-      expect(resolved.isToday, isTrue);
-      expect(resolved.isUpcoming, isTrue);
-      expect(resolved.shouldScheduleReminder, isTrue);
-    });
+        // Invariant: Recurring task with future occurrences is NEVER overdue!
+        expect(resolved.isOverdue, isFalse);
+        expect(
+          resolved.nextOccurrence,
+          DateTime(2026, 8, 20, 20, 0),
+        ); // Today 8 PM
+        expect(resolved.isToday, isTrue);
+        expect(resolved.isUpcoming, isTrue);
+        expect(resolved.shouldScheduleReminder, isTrue);
+      },
+    );
 
     // ── K. Today with Daily Recurrence (after today occurrence) ───────────────
     test('K: Today with daily recurrence after today occurrence', () {
@@ -265,7 +320,10 @@ void main() {
 
       final resolved = AstraScheduleResolver.resolve(task: task, now: now9PM);
       expect(resolved.isOverdue, isFalse);
-      expect(resolved.nextOccurrence, DateTime(2026, 8, 21, 20, 0)); // Tomorrow 8 PM
+      expect(
+        resolved.nextOccurrence,
+        DateTime(2026, 8, 21, 20, 0),
+      ); // Tomorrow 8 PM
       expect(resolved.isTomorrow, isTrue);
       expect(resolved.isUpcoming, isTrue);
     });
@@ -285,7 +343,10 @@ void main() {
         createdAt: referenceNow,
       );
 
-      final resolved = AstraScheduleResolver.resolve(task: task, now: referenceNow);
+      final resolved = AstraScheduleResolver.resolve(
+        task: task,
+        now: referenceNow,
+      );
       expect(resolved.nextOccurrence, DateTime(2026, 8, 21, 16, 0));
       expect(resolved.isTomorrow, isTrue);
       expect(resolved.isUpcoming, isTrue);
@@ -306,13 +367,19 @@ void main() {
         createdAt: referenceNow,
       );
 
-      final resolved = AstraScheduleResolver.resolve(task: task, now: referenceNow);
+      final resolved = AstraScheduleResolver.resolve(
+        task: task,
+        now: referenceNow,
+      );
       expect(resolved.nextOccurrence, DateTime(2026, 8, 21, 10, 0));
       expect(resolved.isUpcoming, isTrue);
 
       // Check after end date
       final afterEnd = DateTime(2026, 8, 26, 12, 0);
-      final resolvedAfterEnd = AstraScheduleResolver.resolve(task: task, now: afterEnd);
+      final resolvedAfterEnd = AstraScheduleResolver.resolve(
+        task: task,
+        now: afterEnd,
+      );
       expect(resolvedAfterEnd.isRecurring, isFalse);
       expect(resolvedAfterEnd.isPast, isTrue);
       expect(resolvedAfterEnd.shouldScheduleReminder, isFalse);
@@ -361,113 +428,134 @@ void main() {
     });
 
     // ── P. Past Reminder Rejection ───────────────────────────────────────────
-    test('P: Past reminder rejection (never schedules alarm for past instant)', () {
-      final task = Task(
-        id: 'task-p',
-        title: 'Past meeting',
-        dueDate: DateTime(2026, 8, 20),
-        dueTime: '14:00', // 1 hour ago
-        createdAt: referenceNow,
-      );
+    test(
+      'P: Past reminder rejection (never schedules alarm for past instant)',
+      () {
+        final task = Task(
+          id: 'task-p',
+          title: 'Past meeting',
+          dueDate: DateTime(2026, 8, 20),
+          dueTime: '14:00', // 1 hour ago
+          createdAt: referenceNow,
+        );
 
-      final resolved = AstraScheduleResolver.resolve(
-        task: task,
-        now: referenceNow,
-        reminderEnabled: true,
-      );
+        final resolved = AstraScheduleResolver.resolve(
+          task: task,
+          now: referenceNow,
+          reminderEnabled: true,
+        );
 
-      expect(resolved.shouldScheduleReminder, isFalse);
-      expect(resolved.reminderRejectionReason, 'past');
-    });
+        expect(resolved.shouldScheduleReminder, isFalse);
+        expect(resolved.reminderRejectionReason, 'past');
+      },
+    );
 
     // ── Q. DONE Recurring Task ───────────────────────────────────────────────
-    test('Q: DONE recurring task advances to next occurrence on single DB row', () async {
-      final initialTask = Task(
-        id: 'task-q',
-        title: 'Daily meditation',
-        dueDate: DateTime(2026, 8, 20, 8, 0),
-        recurrenceRule: const RecurrenceRule(
-          frequency: RecurrenceFrequency.daily,
-          hour: 8,
-          minute: 0,
-        ),
-        createdAt: referenceNow,
-      );
+    test(
+      'Q: DONE recurring task advances to next occurrence on single DB row',
+      () async {
+        final initialTask = Task(
+          id: 'task-q',
+          title: 'Daily meditation',
+          dueDate: DateTime(2026, 8, 20, 8, 0),
+          recurrenceRule: const RecurrenceRule(
+            frequency: RecurrenceFrequency.daily,
+            hour: 8,
+            minute: 0,
+          ),
+          createdAt: referenceNow,
+        );
 
-      final notifier = TaskNotifier(db, reminderService);
-      await notifier.addTask(initialTask);
+        final notifier = TaskNotifier(db, reminderService);
+        await notifier.addTask(initialTask);
 
-      // Complete the task
-      await notifier.toggleComplete('task-q');
+        // Complete the task
+        await notifier.toggleComplete('task-q');
 
-      final allTasks = await db.select(db.tasks).get();
-      expect(allTasks.length, 1, reason: 'Must maintain single canonical DB row (no duplicate rows)');
+        final allTasks = await db.select(db.tasks).get();
+        expect(
+          allTasks.length,
+          1,
+          reason: 'Must maintain single canonical DB row (no duplicate rows)',
+        );
 
-      final updatedTask = allTasks.first;
-      expect(updatedTask.status, 'active');
-      expect(updatedTask.completedAt, isNull);
-      expect(updatedTask.dueAt, isNotNull);
-      expect(updatedTask.dueAt!.isAfter(referenceNow), isTrue);
-    });
+        final updatedTask = allTasks.first;
+        expect(updatedTask.status, 'active');
+        expect(updatedTask.completedAt, isNull);
+        expect(updatedTask.dueAt, isNotNull);
+        expect(updatedTask.dueAt!.isAfter(referenceNow), isTrue);
+      },
+    );
 
     // ── R. SNOOZE Recurring Task ─────────────────────────────────────────────
-    test('R: SNOOZE recurring task shifts current occurrence only and keeps base rule', () async {
-      final task = Task(
-        id: 'task-r',
-        title: 'Drink water',
-        dueDate: DateTime(2026, 8, 20, 20, 0),
-        recurrenceRule: const RecurrenceRule(
-          frequency: RecurrenceFrequency.daily,
-          hour: 20,
-          minute: 0,
-        ),
-        createdAt: referenceNow,
-      );
+    test(
+      'R: SNOOZE recurring task shifts current occurrence only and keeps base rule',
+      () async {
+        final task = Task(
+          id: 'task-r',
+          title: 'Drink water',
+          dueDate: DateTime(2026, 8, 20, 20, 0),
+          recurrenceRule: const RecurrenceRule(
+            frequency: RecurrenceFrequency.daily,
+            hour: 20,
+            minute: 0,
+          ),
+          createdAt: referenceNow,
+        );
 
-      final notifier = TaskNotifier(db, reminderService);
-      await notifier.addTask(task);
+        final notifier = TaskNotifier(db, reminderService);
+        await notifier.addTask(task);
 
-      await reminderService.scheduleReminder(
-        taskId: 'task-r',
-        taskTitle: 'Drink water',
-        scheduledAt: DateTime(2026, 8, 20, 20, 0),
-      );
+        await reminderService.scheduleReminder(
+          taskId: 'task-r',
+          taskTitle: 'Drink water',
+          scheduledAt: DateTime(2026, 8, 20, 20, 0),
+        );
 
-      final reminders = await db.getActiveReminders();
-      expect(reminders.isNotEmpty, isTrue);
+        final reminders = await db.getActiveReminders();
+        expect(reminders.isNotEmpty, isTrue);
 
-      // Snooze 10m
-      await reminderService.snoozeReminder(reminders.first.id, duration: const Duration(minutes: 10));
+        // Snooze 10m
+        await reminderService.snoozeReminder(
+          reminders.first.id,
+          duration: const Duration(minutes: 10),
+        );
 
-      final updatedTask = await (db.select(db.tasks)..where((t) => t.id.equals('task-r'))).getSingle();
-      expect(updatedTask.recurrenceRuleJson, isNotNull);
+        final updatedTask = await (db.select(
+          db.tasks,
+        )..where((t) => t.id.equals('task-r'))).getSingle();
+        expect(updatedTask.recurrenceRuleJson, isNotNull);
 
-      // Base recurrence rule is preserved
-      final rule = RecurrenceRule.fromJson(updatedTask.recurrenceRuleJson!);
-      expect(rule.hour, 20);
-      expect(rule.minute, 0);
-      expect(rule.frequency, RecurrenceFrequency.daily);
-    });
+        // Base recurrence rule is preserved
+        final rule = RecurrenceRule.fromJson(updatedTask.recurrenceRuleJson!);
+        expect(rule.hour, 20);
+        expect(rule.minute, 0);
+        expect(rule.frequency, RecurrenceFrequency.daily);
+      },
+    );
 
     // ── S. Task Date Changed from Yesterday to Today ─────────────────────────
-    test('S: Task date changed from yesterday to today recomputes schedule', () {
-      final pastIntent = const TaskIntent(
-        title: 'Followup',
-        dueDate: null,
-        dueTime: '10:00',
-      );
+    test(
+      'S: Task date changed from yesterday to today recomputes schedule',
+      () {
+        final pastIntent = const TaskIntent(
+          title: 'Followup',
+          dueDate: null,
+          dueTime: '10:00',
+        );
 
-      // When date is changed to today (after 10 AM)
-      final resolved = AstraScheduleResolver.resolve(
-        intent: pastIntent,
-        dueDate: DateTime(2026, 8, 20), // today
-        now: referenceNow, // 3 PM
-      );
+        // When date is changed to today (after 10 AM)
+        final resolved = AstraScheduleResolver.resolve(
+          intent: pastIntent,
+          dueDate: DateTime(2026, 8, 20), // today
+          now: referenceNow, // 3 PM
+        );
 
-      expect(resolved.isPast, isTrue);
-      expect(resolved.isToday, isTrue);
-      expect(resolved.shouldScheduleReminder, isFalse);
-    });
+        expect(resolved.isPast, isTrue);
+        expect(resolved.isToday, isTrue);
+        expect(resolved.shouldScheduleReminder, isFalse);
+      },
+    );
 
     // ── T. Time Changed ──────────────────────────────────────────────────────
     test('T: Time changed recomputes schedule and reminder', () {
@@ -494,22 +582,37 @@ void main() {
 
     // ── U. Recurrence Changed ────────────────────────────────────────────────
     test('U: Recurrence changed updates next occurrence', () {
-      final dailyRule = const RecurrenceRule(frequency: RecurrenceFrequency.daily, hour: 10, minute: 0);
-      final weeklyRule = const RecurrenceRule(frequency: RecurrenceFrequency.weekly, byWeekdays: [DateTime.monday], hour: 10, minute: 0);
+      final dailyRule = const RecurrenceRule(
+        frequency: RecurrenceFrequency.daily,
+        hour: 10,
+        minute: 0,
+      );
+      final weeklyRule = const RecurrenceRule(
+        frequency: RecurrenceFrequency.weekly,
+        byWeekdays: [DateTime.monday],
+        hour: 10,
+        minute: 0,
+      );
 
       final resolvedDaily = AstraScheduleResolver.resolve(
         dueDate: DateTime(2026, 8, 20),
         recurrenceRule: dailyRule,
         now: referenceNow, // Thursday 3 PM
       );
-      expect(resolvedDaily.nextOccurrence, DateTime(2026, 8, 21, 10, 0)); // Tomorrow
+      expect(
+        resolvedDaily.nextOccurrence,
+        DateTime(2026, 8, 21, 10, 0),
+      ); // Tomorrow
 
       final resolvedWeekly = AstraScheduleResolver.resolve(
         dueDate: DateTime(2026, 8, 20),
         recurrenceRule: weeklyRule,
         now: referenceNow,
       );
-      expect(resolvedWeekly.nextOccurrence, DateTime(2026, 8, 24, 10, 0)); // Next Monday
+      expect(
+        resolvedWeekly.nextOccurrence,
+        DateTime(2026, 8, 24, 10, 0),
+      ); // Next Monday
     });
 
     // ── V. Reminder Offset Changed ───────────────────────────────────────────
@@ -522,32 +625,49 @@ void main() {
         createdAt: referenceNow,
       );
 
-      final r0 = AstraScheduleResolver.resolve(task: task, now: referenceNow, reminderOffsetMinutes: 0);
+      final r0 = AstraScheduleResolver.resolve(
+        task: task,
+        now: referenceNow,
+        reminderOffsetMinutes: 0,
+      );
       expect(r0.reminderScheduleInstant, DateTime(2026, 8, 20, 18, 0));
 
-      final r30 = AstraScheduleResolver.resolve(task: task, now: referenceNow, reminderOffsetMinutes: 30);
+      final r30 = AstraScheduleResolver.resolve(
+        task: task,
+        now: referenceNow,
+        reminderOffsetMinutes: 30,
+      );
       expect(r30.reminderScheduleInstant, DateTime(2026, 8, 20, 17, 30));
     });
 
     // ── W. Restore Recurring Task ────────────────────────────────────────────
-    test('W: Restored recurring task reconciles to future occurrence without spam', () {
-      final oldRecurringTask = Task(
-        id: 'task-w',
-        title: 'Take vitamins',
-        dueDate: DateTime(2025, 1, 1, 9, 0), // 1.5 years ago
-        recurrenceRule: const RecurrenceRule(
-          frequency: RecurrenceFrequency.daily,
-          hour: 9,
-          minute: 0,
-        ),
-        createdAt: DateTime(2025, 1, 1),
-      );
+    test(
+      'W: Restored recurring task reconciles to future occurrence without spam',
+      () {
+        final oldRecurringTask = Task(
+          id: 'task-w',
+          title: 'Take vitamins',
+          dueDate: DateTime(2025, 1, 1, 9, 0), // 1.5 years ago
+          recurrenceRule: const RecurrenceRule(
+            frequency: RecurrenceFrequency.daily,
+            hour: 9,
+            minute: 0,
+          ),
+          createdAt: DateTime(2025, 1, 1),
+        );
 
-      final resolved = AstraScheduleResolver.resolve(task: oldRecurringTask, now: referenceNow);
-      expect(resolved.isOverdue, isFalse);
-      expect(resolved.nextOccurrence, DateTime(2026, 8, 21, 9, 0)); // Tomorrow morning
-      expect(resolved.isUpcoming, isTrue);
-    });
+        final resolved = AstraScheduleResolver.resolve(
+          task: oldRecurringTask,
+          now: referenceNow,
+        );
+        expect(resolved.isOverdue, isFalse);
+        expect(
+          resolved.nextOccurrence,
+          DateTime(2026, 8, 21, 9, 0),
+        ); // Tomorrow morning
+        expect(resolved.isUpcoming, isTrue);
+      },
+    );
 
     // ── X. Schedule View Dynamic Expansion ───────────────────────────────────
     test('X: Schedule view expands recurring items dynamically in window', () {
@@ -581,47 +701,87 @@ void main() {
     // ── Y. Task Bucketing ────────────────────────────────────────────────────
     test('Y: Task bucketing correctly distributes tasks using resolver', () {
       final tasks = [
-        Task(id: '1', title: 'Overdue', dueDate: DateTime(2026, 8, 10), createdAt: referenceNow),
-        Task(id: '2', title: 'Today', dueDate: DateTime(2026, 8, 20, 18, 0), createdAt: referenceNow),
-        Task(id: '3', title: 'Tomorrow', dueDate: DateTime(2026, 8, 21, 10, 0), createdAt: referenceNow),
-        Task(id: '4', title: 'Recurring Daily', recurrenceRule: const RecurrenceRule(frequency: RecurrenceFrequency.daily, hour: 20, minute: 0), createdAt: referenceNow),
+        Task(
+          id: '1',
+          title: 'Overdue',
+          dueDate: DateTime(2026, 8, 10),
+          createdAt: referenceNow,
+        ),
+        Task(
+          id: '2',
+          title: 'Today',
+          dueDate: DateTime(2026, 8, 20, 18, 0),
+          createdAt: referenceNow,
+        ),
+        Task(
+          id: '3',
+          title: 'Tomorrow',
+          dueDate: DateTime(2026, 8, 21, 10, 0),
+          createdAt: referenceNow,
+        ),
+        Task(
+          id: '4',
+          title: 'Recurring Daily',
+          recurrenceRule: const RecurrenceRule(
+            frequency: RecurrenceFrequency.daily,
+            hour: 20,
+            minute: 0,
+          ),
+          createdAt: referenceNow,
+        ),
         Task(id: '5', title: 'No Date', createdAt: referenceNow),
       ];
 
-      final buckets = AstraTaskFilter.categorize(tasks, referenceTime: referenceNow);
+      final buckets = AstraTaskFilter.categorize(
+        tasks,
+        referenceTime: referenceNow,
+      );
 
       expect(buckets.overdue.map((t) => t.id).toList(), ['1']);
-      expect(buckets.todayTasks.map((t) => t.id).toSet(), containsAll(['2', '4']));
-      expect(buckets.tomorrowTasks.map((t) => t.id).toSet(), containsAll(['3']));
+      expect(
+        buckets.todayTasks.map((t) => t.id).toSet(),
+        containsAll(['2', '4']),
+      );
+      expect(
+        buckets.tomorrowTasks.map((t) => t.id).toSet(),
+        containsAll(['3']),
+      );
       expect(buckets.noDateTasks.map((t) => t.id).toList(), ['5']);
     });
 
     // ── Z. No Duplicate Task Rows ────────────────────────────────────────────
-    test('Z: No duplicate task rows created across multiple completion cycles', () async {
-      final notifier = TaskNotifier(db, reminderService);
-      final task = Task(
-        id: 'task-z',
-        title: 'Daily Streak',
-        recurrenceRule: const RecurrenceRule(
-          frequency: RecurrenceFrequency.daily,
-          hour: 9,
-          minute: 0,
-        ),
-        createdAt: referenceNow,
-      );
-      await notifier.addTask(task);
+    test(
+      'Z: No duplicate task rows created across multiple completion cycles',
+      () async {
+        final notifier = TaskNotifier(db, reminderService);
+        final task = Task(
+          id: 'task-z',
+          title: 'Daily Streak',
+          recurrenceRule: const RecurrenceRule(
+            frequency: RecurrenceFrequency.daily,
+            hour: 9,
+            minute: 0,
+          ),
+          createdAt: referenceNow,
+        );
+        await notifier.addTask(task);
 
-      // Cycle 1
-      await notifier.toggleComplete('task-z');
-      // Cycle 2
-      await notifier.toggleComplete('task-z');
-      // Cycle 3
-      await notifier.toggleComplete('task-z');
+        // Cycle 1
+        await notifier.toggleComplete('task-z');
+        // Cycle 2
+        await notifier.toggleComplete('task-z');
+        // Cycle 3
+        await notifier.toggleComplete('task-z');
 
-      final rows = await db.select(db.tasks).get();
-      expect(rows.length, 1, reason: 'Single canonical DB task row preserved across cycles');
-      expect(rows.first.id, 'task-z');
-    });
+        final rows = await db.select(db.tasks).get();
+        expect(
+          rows.length,
+          1,
+          reason: 'Single canonical DB task row preserved across cycles',
+        );
+        expect(rows.first.id, 'task-z');
+      },
+    );
   });
 
   // ── Permutation Matrix Testing ──────────────────────────────────────────────
@@ -644,9 +804,22 @@ void main() {
 
     final recurrenceOptions = <String, RecurrenceRule?>{
       'none': null,
-      'daily': const RecurrenceRule(frequency: RecurrenceFrequency.daily, hour: 20, minute: 0),
-      'weekdays': const RecurrenceRule(frequency: RecurrenceFrequency.weekdays, hour: 20, minute: 0),
-      'weekly': const RecurrenceRule(frequency: RecurrenceFrequency.weekly, byWeekdays: [DateTime.monday], hour: 20, minute: 0),
+      'daily': const RecurrenceRule(
+        frequency: RecurrenceFrequency.daily,
+        hour: 20,
+        minute: 0,
+      ),
+      'weekdays': const RecurrenceRule(
+        frequency: RecurrenceFrequency.weekdays,
+        hour: 20,
+        minute: 0,
+      ),
+      'weekly': const RecurrenceRule(
+        frequency: RecurrenceFrequency.weekly,
+        byWeekdays: [DateTime.monday],
+        hour: 20,
+        minute: 0,
+      ),
     };
 
     final reminderOptions = <String, int>{
@@ -659,38 +832,52 @@ void main() {
       for (final timeEntry in timeOptions.entries) {
         for (final recEntry in recurrenceOptions.entries) {
           for (final remEntry in reminderOptions.entries) {
-            test('Matrix: date=${dateEntry.key}, time=${timeEntry.key}, rec=${recEntry.key}, rem=${remEntry.key}', () {
-              final reminderEnabled = remEntry.value >= 0;
-              final reminderOffset = reminderEnabled ? remEntry.value : 0;
+            test(
+              'Matrix: date=${dateEntry.key}, time=${timeEntry.key}, rec=${recEntry.key}, rem=${remEntry.key}',
+              () {
+                final reminderEnabled = remEntry.value >= 0;
+                final reminderOffset = reminderEnabled ? remEntry.value : 0;
 
-              final resolved = AstraScheduleResolver.resolve(
-                dueDate: dateEntry.value,
-                dueTime: timeEntry.value,
-                recurrenceRule: recEntry.value,
-                now: now,
-                reminderEnabled: reminderEnabled,
-                reminderOffsetMinutes: reminderOffset,
-              );
+                final resolved = AstraScheduleResolver.resolve(
+                  dueDate: dateEntry.value,
+                  dueTime: timeEntry.value,
+                  recurrenceRule: recEntry.value,
+                  now: now,
+                  reminderEnabled: reminderEnabled,
+                  reminderOffsetMinutes: reminderOffset,
+                );
 
-              // Invariant 1: If reminder is scheduled, it MUST be strictly in the future
-              if (resolved.shouldScheduleReminder) {
-                expect(resolved.reminderScheduleInstant, isNotNull);
-                expect(resolved.reminderScheduleInstant!.isAfter(now), isTrue,
-                    reason: 'Alarms must NEVER be scheduled in the past');
-              }
+                // Invariant 1: If reminder is scheduled, it MUST be strictly in the future
+                if (resolved.shouldScheduleReminder) {
+                  expect(resolved.reminderScheduleInstant, isNotNull);
+                  expect(
+                    resolved.reminderScheduleInstant!.isAfter(now),
+                    isTrue,
+                    reason: 'Alarms must NEVER be scheduled in the past',
+                  );
+                }
 
-              // Invariant 2: Active recurring tasks are NEVER overdue
-              if (resolved.isRecurring && resolved.nextOccurrence != null) {
-                expect(resolved.isOverdue, isFalse,
-                    reason: 'Recurring tasks with future occurrences cannot be overdue');
-              }
+                // Invariant 2: Active recurring tasks are NEVER overdue
+                if (resolved.isRecurring && resolved.nextOccurrence != null) {
+                  expect(
+                    resolved.isOverdue,
+                    isFalse,
+                    reason:
+                        'Recurring tasks with future occurrences cannot be overdue',
+                  );
+                }
 
-              // Invariant 3: Past one-shot tasks never schedule alarms
-              if (resolved.isPast && !resolved.isRecurring) {
-                expect(resolved.shouldScheduleReminder, isFalse,
-                    reason: 'Past one-shot tasks must reject reminder scheduling');
-              }
-            });
+                // Invariant 3: Past one-shot tasks never schedule alarms
+                if (resolved.isPast && !resolved.isRecurring) {
+                  expect(
+                    resolved.shouldScheduleReminder,
+                    isFalse,
+                    reason:
+                        'Past one-shot tasks must reject reminder scheduling',
+                  );
+                }
+              },
+            );
           }
         }
       }
