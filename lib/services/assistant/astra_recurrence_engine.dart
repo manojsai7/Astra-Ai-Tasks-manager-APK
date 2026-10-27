@@ -61,12 +61,20 @@ class RecurrenceRule {
     this.endMinute,
   });
 
-  bool get isEnded {
-    if (frequency == RecurrenceFrequency.none) return true;
-    if (endDate != null && DateTime.now().isAfter(endDate!)) return true;
-    if (occurrenceLimit != null && occurrencesCount >= occurrenceLimit!) return true;
+  bool isEndedAt(DateTime refNow) {
+    if (frequency == RecurrenceFrequency.none) {
+      return true;
+    }
+    if (endDate != null && refNow.isAfter(endDate!)) {
+      return true;
+    }
+    if (occurrenceLimit != null && occurrencesCount >= occurrenceLimit!) {
+      return true;
+    }
     return false;
   }
+
+  bool get isEnded => isEndedAt(DateTime.now());
 
   Map<String, dynamic> toMap() {
     return {
@@ -88,11 +96,21 @@ class RecurrenceRule {
 
   factory RecurrenceRule.fromMap(Map<String, dynamic> map) {
     return RecurrenceRule(
-      frequency: RecurrenceFrequency.fromJson(map['frequency'] as String? ?? 'NONE'),
+      frequency: RecurrenceFrequency.fromJson(
+        map['frequency'] as String? ?? 'NONE',
+      ),
       interval: (map['interval'] as num?)?.toInt() ?? 1,
-      byWeekdays: (map['byWeekdays'] as List<dynamic>?)?.map((e) => (e as num).toInt()).toList() ?? const [],
-      startDate: map['startDate'] != null ? DateTime.parse(map['startDate'] as String) : null,
-      endDate: map['endDate'] != null ? DateTime.parse(map['endDate'] as String) : null,
+      byWeekdays:
+          (map['byWeekdays'] as List<dynamic>?)
+              ?.map((e) => (e as num).toInt())
+              .toList() ??
+          const [],
+      startDate: map['startDate'] != null
+          ? DateTime.parse(map['startDate'] as String)
+          : null,
+      endDate: map['endDate'] != null
+          ? DateTime.parse(map['endDate'] as String)
+          : null,
       occurrenceLimit: (map['occurrenceLimit'] as num?)?.toInt(),
       occurrencesCount: (map['occurrencesCount'] as num?)?.toInt() ?? 0,
       hour: (map['hour'] as num?)?.toInt() ?? 9,
@@ -102,7 +120,8 @@ class RecurrenceRule {
     );
   }
 
-  factory RecurrenceRule.fromJson(String source) => RecurrenceRule.fromMap(jsonDecode(source) as Map<String, dynamic>);
+  factory RecurrenceRule.fromJson(String source) =>
+      RecurrenceRule.fromMap(jsonDecode(source) as Map<String, dynamic>);
 
   RecurrenceRule copyWith({
     RecurrenceFrequency? frequency,
@@ -125,7 +144,9 @@ class RecurrenceRule {
       byWeekdays: byWeekdays ?? this.byWeekdays,
       startDate: startDate ?? this.startDate,
       endDate: clearEndDate ? null : (endDate ?? this.endDate),
-      occurrenceLimit: clearOccurrenceLimit ? null : (occurrenceLimit ?? this.occurrenceLimit),
+      occurrenceLimit: clearOccurrenceLimit
+          ? null
+          : (occurrenceLimit ?? this.occurrenceLimit),
       occurrencesCount: occurrencesCount ?? this.occurrencesCount,
       hour: hour ?? this.hour,
       minute: minute ?? this.minute,
@@ -183,15 +204,13 @@ class AstraRecurrenceEngine {
   const AstraRecurrenceEngine();
 
   /// Calculates the next occurrence strictly after [after].
-  DateTime? nextOccurrence(
-    RecurrenceRule rule,
-    DateTime after,
-  ) {
+  DateTime? nextOccurrence(RecurrenceRule rule, DateTime after) {
     if (rule.frequency == RecurrenceFrequency.none) {
       return null;
     }
 
-    if (rule.occurrenceLimit != null && rule.occurrencesCount >= rule.occurrenceLimit!) {
+    if (rule.occurrenceLimit != null &&
+        rule.occurrencesCount >= rule.occurrenceLimit!) {
       return null;
     }
 
@@ -223,13 +242,18 @@ class AstraRecurrenceEngine {
   }
 
   /// Checks whether an occurrence candidate is within the valid start/end window of [rule].
-  bool isWithinWindow(
-    RecurrenceRule rule,
-    DateTime occurrence,
-  ) {
+  bool isWithinWindow(RecurrenceRule rule, DateTime occurrence) {
     if (rule.startDate != null) {
-      final startDay = DateTime(rule.startDate!.year, rule.startDate!.month, rule.startDate!.day);
-      final occDay = DateTime(occurrence.year, occurrence.month, occurrence.day);
+      final startDay = DateTime(
+        rule.startDate!.year,
+        rule.startDate!.month,
+        rule.startDate!.day,
+      );
+      final occDay = DateTime(
+        occurrence.year,
+        occurrence.month,
+        occurrence.day,
+      );
       if (occDay.isBefore(startDay)) {
         return false;
       }
@@ -263,7 +287,9 @@ class AstraRecurrenceEngine {
     if (candidateToday.isAfter(after) && isWithinWindow(rule, candidateToday)) {
       candidate = candidateToday;
     } else {
-      final nextDay = baseDate.add(Duration(days: rule.interval > 0 ? rule.interval : 1));
+      final nextDay = baseDate.add(
+        Duration(days: rule.interval > 0 ? rule.interval : 1),
+      );
       candidate = DateTime(
         nextDay.year,
         nextDay.month,
@@ -290,7 +316,8 @@ class AstraRecurrenceEngine {
     var cursor = DateTime(baseDate.year, baseDate.month, baseDate.day);
     // Search up to 365 days forward
     for (var i = 0; i < 365; i++) {
-      if (cursor.weekday >= DateTime.monday && cursor.weekday <= DateTime.friday) {
+      if (cursor.weekday >= DateTime.monday &&
+          cursor.weekday <= DateTime.friday) {
         final candidate = DateTime(
           cursor.year,
           cursor.month,
@@ -358,7 +385,11 @@ class AstraRecurrenceEngine {
     var targetMonth = baseDate.month;
 
     // Try current month first
-    final candidateDayCurrentMonth = _clampDayToMonth(targetYear, targetMonth, targetDayOfMonth);
+    final candidateDayCurrentMonth = _clampDayToMonth(
+      targetYear,
+      targetMonth,
+      targetDayOfMonth,
+    );
     final candidateCurrent = DateTime(
       targetYear,
       targetMonth,
@@ -367,7 +398,8 @@ class AstraRecurrenceEngine {
       rule.minute,
     );
 
-    if (candidateCurrent.isAfter(after) && isWithinWindow(rule, candidateCurrent)) {
+    if (candidateCurrent.isAfter(after) &&
+        isWithinWindow(rule, candidateCurrent)) {
       return candidateCurrent;
     }
 
@@ -379,7 +411,11 @@ class AstraRecurrenceEngine {
         targetYear += 1;
       }
 
-      final validDay = _clampDayToMonth(targetYear, targetMonth, targetDayOfMonth);
+      final validDay = _clampDayToMonth(
+        targetYear,
+        targetMonth,
+        targetDayOfMonth,
+      );
       final candidate = DateTime(
         targetYear,
         targetMonth,
@@ -412,7 +448,8 @@ class AstraRecurrenceEngine {
     final targetDay = start.day;
 
     for (var i = 0; i <= 20; i++) {
-      final targetYear = baseDate.year + (i * (rule.interval > 0 ? rule.interval : 1));
+      final targetYear =
+          baseDate.year + (i * (rule.interval > 0 ? rule.interval : 1));
       final validDay = _clampDayToMonth(targetYear, targetMonth, targetDay);
       final candidate = DateTime(
         targetYear,
@@ -456,7 +493,8 @@ class AstraRecurrenceEngine {
 
   int _daysInMonth(int year, int month) {
     if (month == 2) {
-      final isLeapYear = (year % 4 == 0 && year % 100 != 0) || (year % 400 == 0);
+      final isLeapYear =
+          (year % 4 == 0 && year % 100 != 0) || (year % 400 == 0);
       return isLeapYear ? 29 : 28;
     }
     const days = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
@@ -472,8 +510,14 @@ class AstraRecurrenceEngine {
     int minute = 0;
 
     // Extract time if present
-    final timeMatch = RegExp(r'\b(?:at\s+)?(\d{1,2})(?::(\d{2}))?\s*(am|pm)?\b', caseSensitive: false).firstMatch(lower);
-    if (timeMatch != null && (lower.contains('at ') || timeMatch.group(3) != null || timeMatch.group(2) != null)) {
+    final timeMatch = RegExp(
+      r'\b(?:at\s+)?(\d{1,2})(?::(\d{2}))?\s*(am|pm)?\b',
+      caseSensitive: false,
+    ).firstMatch(lower);
+    if (timeMatch != null &&
+        (lower.contains('at ') ||
+            timeMatch.group(3) != null ||
+            timeMatch.group(2) != null)) {
       var h = int.tryParse(timeMatch.group(1) ?? '9') ?? 9;
       final m = int.tryParse(timeMatch.group(2) ?? '0') ?? 0;
       final ampm = timeMatch.group(3)?.toLowerCase();
@@ -483,7 +527,10 @@ class AstraRecurrenceEngine {
       minute = m;
     }
 
-    if (lower.contains('every weekday') || lower.contains('on weekdays') || lower.contains('mon-fri') || lower.contains('monday to friday')) {
+    if (lower.contains('every weekday') ||
+        lower.contains('on weekdays') ||
+        lower.contains('mon-fri') ||
+        lower.contains('monday to friday')) {
       return RecurrenceRule(
         frequency: RecurrenceFrequency.weekdays,
         byWeekdays: [1, 2, 3, 4, 5],
@@ -492,7 +539,10 @@ class AstraRecurrenceEngine {
       );
     }
 
-    if (lower.contains('every day') || lower.contains('daily') || lower.contains('every morning') || lower.contains('every night')) {
+    if (lower.contains('every day') ||
+        lower.contains('daily') ||
+        lower.contains('every morning') ||
+        lower.contains('every night')) {
       return RecurrenceRule(
         frequency: RecurrenceFrequency.daily,
         hour: hour,
@@ -517,7 +567,10 @@ class AstraRecurrenceEngine {
     }
 
     // "every 2 hours", "every 3 days"
-    final intervalMatch = RegExp(r'every\s+(\d+)\s*(days?|hours?|weeks?|months?)', caseSensitive: false).firstMatch(lower);
+    final intervalMatch = RegExp(
+      r'every\s+(\d+)\s*(days?|hours?|weeks?|months?)',
+      caseSensitive: false,
+    ).firstMatch(lower);
     if (intervalMatch != null) {
       final num = int.tryParse(intervalMatch.group(1) ?? '1') ?? 1;
       final unit = intervalMatch.group(2) ?? 'days';

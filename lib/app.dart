@@ -4,8 +4,9 @@ import 'theme/app_theme.dart';
 import 'providers/auth_provider.dart';
 import 'providers/reminder_provider.dart';
 import 'screens/auth_screen.dart';
-import 'screens/home_screen.dart';
 import 'screens/onboarding_screen.dart';
+import 'screens/profile_settings_screen.dart';
+import 'screens/profile_setup_gate.dart';
 
 class AstraApp extends ConsumerStatefulWidget {
   final String initialRoute;
@@ -21,7 +22,6 @@ class _AstraAppState extends ConsumerState<AstraApp> {
   @override
   void initState() {
     super.initState();
-    // Listen for auth state → redirect when signed out during an active session.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.listenManual(authProvider, (previous, next) {
         if ((previous?.isAuthenticated ?? true) && !next.isAuthenticated) {
@@ -33,7 +33,6 @@ class _AstraAppState extends ConsumerState<AstraApp> {
 
   @override
   Widget build(BuildContext context) {
-    // Bootstrap reminder engine on first frame.
     ref.watch(reminderBootstrapProvider);
 
     return MaterialApp(
@@ -45,14 +44,15 @@ class _AstraAppState extends ConsumerState<AstraApp> {
       routes: {
         '/onboarding': (context) => const OnboardingScreen(),
         '/auth': (context) => const AuthScreen(),
-        '/home': (context) => const HomeScreen(),
+        '/home': (context) => const ProfileSetupGate(),
+        '/profile': (context) => const ProfileSettingsScreen(),
       },
       onGenerateRoute: (settings) {
         if (settings.name == '/home') {
           return PageRouteBuilder(
-            pageBuilder: (context, animation, secondaryAnimation) => const HomeScreen(),
+            pageBuilder: (context, animation, secondaryAnimation) => const ProfileSetupGate(),
             transitionsBuilder: (context, animation, secondaryAnimation, child) {
-              final scale = Tween<double>(begin: 0.8, end: 1.0).animate(
+              final scale = Tween<double>(begin: 0.96, end: 1.0).animate(
                 CurvedAnimation(parent: animation, curve: Curves.easeOutCubic),
               );
               final opacity = Tween<double>(begin: 0.0, end: 1.0).animate(
@@ -63,7 +63,7 @@ class _AstraAppState extends ConsumerState<AstraApp> {
                 child: ScaleTransition(scale: scale, child: child),
               );
             },
-            transitionDuration: const Duration(milliseconds: 500),
+            transitionDuration: const Duration(milliseconds: 260),
           );
         }
         return null;

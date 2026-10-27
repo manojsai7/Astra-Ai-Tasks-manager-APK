@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'assistant_provider.dart';
+import 'profile_provider.dart';
 
 class AuthState {
   final bool isAuthenticated;
@@ -18,9 +19,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
   Future<void> checkFirstLaunch() async {
     final prefs = await SharedPreferences.getInstance();
     final hasSeen = prefs.getBool('hasSeenAuth') ?? false;
-    if (hasSeen) {
-      state = state.copyWith(isAuthenticated: true);
-    }
+    if (hasSeen) state = state.copyWith(isAuthenticated: true);
   }
 
   Future<bool> signInWithGoogle() async {
@@ -31,14 +30,18 @@ class AuthNotifier extends StateNotifier<AuthState> {
       if (user != null) {
         final prefs = await SharedPreferences.getInstance();
         await prefs.setBool('hasSeenAuth', true);
+        await ref.read(astraProfileProvider.notifier).syncGoogleAccount(
+              email: user.email,
+              displayName: user.displayName,
+              photoUrl: user.photoUrl,
+            );
         state = state.copyWith(isAuthenticated: true, isLoading: false);
         return true;
-      } else {
-        state = state.copyWith(isLoading: false, error: 'Sign-in cancelled. Please try again.');
-        return false;
       }
+      state = state.copyWith(isLoading: false, error: 'Sign-in cancelled. Please try again.');
+      return false;
     } catch (e) {
-      String errText = e.toString();
+      var errText = e.toString();
       if (errText.contains('10') || errText.contains('DEVELOPER_ERROR') || errText.contains('ApiException')) {
         errText = 'OAuth Configuration Error: SHA-1 fingerprint missing in Firebase Console for dev.codehunters.astra.\nCheck instructions below.';
       }
@@ -50,6 +53,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
   Future<void> skipOrBypassAuth() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('hasSeenAuth', true);
+    await ref.read(astraProfileProvider.notifier).load();
     state = state.copyWith(isAuthenticated: true, isLoading: false);
   }
 
@@ -58,17 +62,14 @@ class AuthNotifier extends StateNotifier<AuthState> {
     await prefs.remove('hasSeenAuth');
     final auth = ref.read(googleAuthServiceProvider);
     await auth.signOut();
+    await ref.read(astraProfileProvider.notifier).clearGoogleConnection();
     state = const AuthState();
   }
 
-  void reset() {
-    state = const AuthState();
-  }
+  void reset() => state = const AuthState();
 }
 
-final authProvider = StateNotifierProvider<AuthNotifier, AuthState>((ref) {
-  return AuthNotifier(ref);
-});
+final authProvider = StateNotifierProvider<AuthNotifier, AuthState>((ref) => AuthNotifier(ref));
 
 extension AuthStateExt on AuthState {
   AuthState copyWith({bool? isAuthenticated, bool? isLoading, String? error}) {

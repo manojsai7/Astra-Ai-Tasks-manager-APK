@@ -33,14 +33,17 @@ class AstraTaskFilter {
   }) {
     if (!isActive(task)) return false;
 
-    final now = referenceTime ?? (timeService != null ? timeService.now() : DateTime.now());
+    final now =
+        referenceTime ??
+        (timeService != null ? timeService.now() : DateTime.now());
     final resolved = AstraScheduleResolver.resolve(task: task, now: now);
 
     if (!resolved.isUpcoming) return false;
 
-    if (horizon != null && resolved.nextOccurrence != null) {
+    final target = resolved.nextOccurrence ?? resolved.effectiveDueAt;
+    if (horizon != null && target != null) {
       final horizonEnd = now.add(horizon);
-      if (resolved.nextOccurrence!.isAfter(horizonEnd)) return false;
+      if (target.isAfter(horizonEnd)) return false;
     }
 
     return true;
@@ -55,7 +58,9 @@ class AstraTaskFilter {
   }) {
     if (!isActive(task)) return false;
 
-    final now = referenceTime ?? (timeService != null ? timeService.now() : DateTime.now());
+    final now =
+        referenceTime ??
+        (timeService != null ? timeService.now() : DateTime.now());
     final resolved = AstraScheduleResolver.resolve(task: task, now: now);
     return resolved.isOverdue;
   }
@@ -68,7 +73,9 @@ class AstraTaskFilter {
   }) {
     if (!isActive(task)) return false;
 
-    final now = referenceTime ?? (timeService != null ? timeService.now() : DateTime.now());
+    final now =
+        referenceTime ??
+        (timeService != null ? timeService.now() : DateTime.now());
     final resolved = AstraScheduleResolver.resolve(task: task, now: now);
 
     return resolved.isOverdue || resolved.isToday;
@@ -82,7 +89,9 @@ class AstraTaskFilter {
   }) {
     if (!isActive(task)) return false;
 
-    final now = referenceTime ?? (timeService != null ? timeService.now() : DateTime.now());
+    final now =
+        referenceTime ??
+        (timeService != null ? timeService.now() : DateTime.now());
     final resolved = AstraScheduleResolver.resolve(task: task, now: now);
     return resolved.isToday;
   }
@@ -95,7 +104,9 @@ class AstraTaskFilter {
   }) {
     if (!isActive(task)) return false;
 
-    final now = referenceTime ?? (timeService != null ? timeService.now() : DateTime.now());
+    final now =
+        referenceTime ??
+        (timeService != null ? timeService.now() : DateTime.now());
     final resolved = AstraScheduleResolver.resolve(task: task, now: now);
     return resolved.isTomorrow;
   }
@@ -119,10 +130,7 @@ class AstraTaskFilter {
   }
 
   /// Calculates effective next date / time for display or sorting purposes.
-  static DateTime? getEffectiveDate(
-    Task task, {
-    DateTime? now,
-  }) {
+  static DateTime? getEffectiveDate(Task task, {DateTime? now}) {
     final current = now ?? DateTime.now();
     final resolved = AstraScheduleResolver.resolve(task: task, now: current);
     return resolved.nextOccurrence ?? resolved.effectiveDueAt;
@@ -135,7 +143,9 @@ class AstraTaskFilter {
     DateTime? referenceTime,
     Duration? horizon = defaultUpcomingHorizon,
   }) {
-    final now = referenceTime ?? (timeService != null ? timeService.now() : DateTime.now());
+    final now =
+        referenceTime ??
+        (timeService != null ? timeService.now() : DateTime.now());
     final todayStart = DateTime(now.year, now.month, now.day);
     final tomorrowStart = todayStart.add(const Duration(days: 1));
     final dayAfterTomorrowStart = tomorrowStart.add(const Duration(days: 1));
@@ -173,7 +183,9 @@ class AstraTaskFilter {
       }
 
       // Date range / Duration tasks
-      if (resolved.isDuration && resolved.startAt != null && resolved.endAt != null) {
+      if (resolved.isDuration &&
+          resolved.startAt != null &&
+          resolved.endAt != null) {
         final start = resolved.startAt!;
         final end = resolved.endAt!;
 
@@ -189,10 +201,12 @@ class AstraTaskFilter {
           }
         } else if (resolved.isTomorrow) {
           tomorrowTasks.add(task);
-        } else if ((start.isAfter(dayAfterTomorrowStart) || start.isAtSameMomentAs(dayAfterTomorrowStart)) &&
+        } else if ((start.isAfter(dayAfterTomorrowStart) ||
+                start.isAtSameMomentAs(dayAfterTomorrowStart)) &&
             start.isBefore(nextWeekStart)) {
           thisWeekTasks.add(task);
-        } else if (start.isAfter(nextWeekStart) || start.isAtSameMomentAs(nextWeekStart)) {
+        } else if (start.isAfter(nextWeekStart) ||
+            start.isAtSameMomentAs(nextWeekStart)) {
           laterTasks.add(task);
         }
         continue;
@@ -205,10 +219,12 @@ class AstraTaskFilter {
           todayTasks.add(task);
         } else if (resolved.isTomorrow) {
           tomorrowTasks.add(task);
-        } else if ((targetDate.isAfter(dayAfterTomorrowStart) || targetDate.isAtSameMomentAs(dayAfterTomorrowStart)) &&
+        } else if ((targetDate.isAfter(dayAfterTomorrowStart) ||
+                targetDate.isAtSameMomentAs(dayAfterTomorrowStart)) &&
             targetDate.isBefore(nextWeekStart)) {
           thisWeekTasks.add(task);
-        } else if (targetDate.isAfter(nextWeekStart) || targetDate.isAtSameMomentAs(nextWeekStart)) {
+        } else if (targetDate.isAfter(nextWeekStart) ||
+            targetDate.isAtSameMomentAs(nextWeekStart)) {
           laterTasks.add(task);
         }
         continue;
@@ -218,7 +234,9 @@ class AstraTaskFilter {
       noDateTasks.add(task);
     }
 
-    final upcomingCount = tasks.where((t) => isUpcoming(t, referenceTime: now, horizon: horizon)).length;
+    final upcomingCount = tasks
+        .where((t) => isUpcoming(t, referenceTime: now, horizon: horizon))
+        .length;
     final importantTasks = tasks.where(isImportant).toList();
 
     return TaskBuckets(

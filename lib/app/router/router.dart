@@ -7,7 +7,9 @@ library;
 import 'package:flutter/material.dart';
 
 import '../../features/home/home_screen.dart';
-import '../../features/inbox/presentation/screens/inbox_screen.dart';
+import '../../features/inbox/presentation/screens/inbox_screen.dart'
+    as gmail_inbox;
+import '../../features/inbox/presentation/screens/local_inbox_screen.dart';
 import '../../features/notes/presentation/screens/notes_screen.dart';
 import '../../features/tasks/domain/entities/task.dart';
 import '../../features/tasks/domain/entities/task_extraction_proposal.dart';
@@ -29,6 +31,9 @@ abstract final class AstraRoutes {
 
   /// Local Inbox screen route.
   static const String inbox = '/inbox';
+
+  /// Gmail-backed inbox (separate from local Android-share/raw-text intake).
+  static const String gmailInbox = '/gmail-inbox';
 
   /// Notes screen route.
   static const String notes = '/notes';
@@ -61,7 +66,16 @@ Route<dynamic>? onGenerateRoute(
     case AstraRoutes.inbox:
       return MaterialPageRoute<void>(
         settings: settings,
-        builder: (_) => const InboxScreen(),
+        builder: (_) => LocalInboxScreen(
+          useCase: dependencies.inboxIngestionUseCase,
+          repository: dependencies.inboxRepository,
+          extractionService: dependencies.taskExtractionService,
+        ),
+      );
+    case AstraRoutes.gmailInbox:
+      return MaterialPageRoute<void>(
+        settings: settings,
+        builder: (_) => const gmail_inbox.InboxScreen(),
       );
     case AstraRoutes.notes:
       return MaterialPageRoute<void>(
@@ -96,10 +110,8 @@ Route<dynamic>? onGenerateRoute(
       final task = args['task'] as Task;
       return MaterialPageRoute<void>(
         settings: settings,
-        builder: (_) => TaskDetailScreen(
-          task: task,
-          database: dependencies.database,
-        ),
+        builder: (_) =>
+            TaskDetailScreen(task: task, database: dependencies.database),
       );
     default:
       return null;
