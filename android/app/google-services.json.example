@@ -9,7 +9,7 @@
       "client_info": {
         "mobilesdk_app_id": "1:000000000000:android:0000000000000000000000",
         "android_client_info": {
-          "package_name": "dehunters.astra"
+          "package_name": "dev.codehunters.astra"
         }
       },
       "oauth_client": [
@@ -17,7 +17,7 @@
           "client_id": "000000000000-example.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
-            "package_name": "dehunters.astra",
+            "package_name": "dev.codehunters.astra",
             "certificate_hash": "0000000000000000000000000000000000000000"
           }
         }
